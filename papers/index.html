@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Papers on tape · Dr Kasimir Gregory</title>
+  <meta name="description" content="Every one of Kasimir Gregory's papers as a tape on a rotating shelf: 23 refereed articles and a preprint. Pick one and press play to explore it, three of them in interactive 3D drawn from the papers' own data.">
+  <meta property="og:title" content="Papers on tape · Dr Kasimir Gregory">
+  <meta property="og:description" content="Every paper, on a rotating shelf of tapes. Press play to explore each one, three of them in interactive 3D.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kasimirgregory.com/papers/">
+  <meta property="og:image" content="https://kasimirgregory.com/img/og-papers.jpg">
+  <meta name="theme-color" content="#121312">
+  <link rel="canonical" href="https://kasimirgregory.com/papers/">
+  <link rel="icon" href="../img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Spectral:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="tapes.css">
+  <script>document.documentElement.classList.add('js')</script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "../vendor/three/three.module.min.js",
+      "three/addons/": "../vendor/three/addons/"
+    }
+  }
+  </script>
+  <script type="module" src="tapes.js"></script>
+</head>
+<body>
+  <div class="loading" aria-hidden="true"><span>LOADING</span><span class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="pct">0</span></div>
+
+  <div class="screen">
+    <header class="topbar">
+      <div class="left"><a class="home" href="../">Home</a><span class="clock" aria-hidden="true">00:00:00</span></div>
+      <div class="logo"><b>Dr Kas</b><i aria-hidden="true"></i><small>Home video</small></div>
+      <nav aria-label="This site"><a href="../#research">Research</a><a href="../#publications">All publications</a><a href="../#contact">Contact</a></nav>
+    </header>
+
+    <div class="shelf" tabindex="0" role="listbox" aria-label="Papers on tape. Use the left and right arrow keys to turn the shelf, Enter to play a tape and F to flip it over.">
+      <div class="rig"><div class="ring"></div></div>
+      <div class="floor" aria-hidden="true"></div>
+    </div>
+
+    <div class="caption">
+      <div class="now" aria-live="polite">
+        <p class="now-meta"></p>
+        <h1 class="now-title">Papers on tape</h1>
+        <p class="now-desc"></p>
+      </div>
+      <div class="caption-side">
+        <div class="count"><span class="now-i">01</span> / <span class="now-n">06</span></div>
+        <div class="filters" role="group" aria-label="Which papers are on the shelf">
+          <button type="button" class="filter" data-filter="all" aria-pressed="true">All <span class="n-all">24</span></button>
+          <button type="button" class="filter" data-filter="first" aria-pressed="false">First author <span class="n-first">8</span></button>
+          <button type="button" class="catalogue-open" aria-haspopup="dialog">☰ Catalogue</button>
+        </div>
+        <div class="controls">
+          <button type="button" class="prev" aria-label="Previous tape">◄◄</button>
+          <button type="button" class="flip" aria-pressed="false">⟲ Flip</button>
+          <button type="button" class="open">▶ Play</button>
+          <button type="button" class="next" aria-label="Next tape">►►</button>
+        </div>
+      </div>
+      <p class="hint">Drag or use ← → to turn the shelf. Enter plays a tape, F flips it over to read the back, Esc stops.</p>
+    </div>
+
+    <footer class="foot">
+      <span><span class="local">--:--</span> Armidale · <button type="button" class="crt-toggle" aria-pressed="true">CRT [ON]</button> · <button type="button" class="bw-toggle" aria-pressed="false">B&amp;W [OFF]</button></span>
+      <span>Dr Kasimir Gregory · Computational chemistry · UNE</span>
+    </footer>
+  </div>
+
+  <div class="catalogue" role="dialog" aria-modal="true" aria-labelledby="catalogue-title" hidden>
+    <div class="catalogue-inner">
+      <div class="catalogue-head"><h2 id="catalogue-title">Catalogue</h2><button type="button" class="catalogue-close">Close ✕</button></div>
+      <p class="catalogue-note">Every paper on the shelf, newest first. Pick one to turn the shelf to it.</p>
+      <div class="catalogue-list"></div>
+    </div>
+  </div>
+
+  <section class="play" aria-label="Playback">
+    <header class="static-head">
+      <p class="eyebrow"><a href="../">← Kasimir Gregory</a> · Papers on tape</p>
+      <h1>Every paper, on tape</h1>
+      <p class="static-lede">All 23 refereed articles and the 2026 preprint are on the shelf. With JavaScript on, the shelf turns and each tape plays its paper. The six papers below have their own pages, and the <a href="../#publications">full publication list</a> is on the home page.</p>
+    </header>
+
+    <article class="tape-body" id="body-hofmeister" data-id="hofmeister" aria-labelledby="hof-title">
+      <div class="wrap paper-grid">
+        <div class="stage-col">
+          <div class="stage" id="stage-hofmeister" role="group" aria-label="3D surface of radial charge density over site charge and effective radius, with 23 anions placed on it. Values are listed beside the scene."></div>
+          <ul class="legend">
+            <li><span class="dot fam-halide"></span>halide</li>
+            <li><span class="dot fam-oxygen"></span>oxygen site</li>
+            <li><span class="dot fam-other"></span>N, S or F site</li>
+            <li><span class="ramp"></span>surface height |ϸ|, 3 to 10</li>
+            <li>sphere size follows r</li>
+            <li class="narrow-only">axes: radius r (Å) across, site charge |q| (e) into the page, |ϸ| up</li>
+          </ul>
+          <div class="stage-bar">
+            <div class="seg">
+              <button type="button" class="btn" id="hof-labels" aria-pressed="false">Label every anion</button>
+            </div>
+            <button type="button" class="btn quiet" id="hof-reset">Reset view</button>
+          </div>
+          <p class="stage-note">Hover or tap a sphere, or pick an anion from the list, to read its values.</p>
+        </div>
+  
+        <div class="panel">
+          <p class="eyebrow">Chemical Science · 2021 · first author</p>
+          <h2 id="hof-title">The Hofmeister series follows charge per unit radius</h2>
+          <p>Hofmeister effects, where different salts change protein stability, viscosity or reaction rates in a consistent order, have resisted a quantitative explanation for over a century. For anions, this paper traces them to Coulomb interactions at the ion's most charge-dense atom. It reduces each anion to one number, the radial charge density ϸ = q/r: that atom's partial charge divided by its effective radius.</p>
+          <p>The surface is ϸ = q/r itself. Each sphere sits at an anion's computed site charge and radius, so its height is its place in the series. The white lines are constant ϸ: anions on the same line should behave alike, even when their size and charge differ.</p>
+  
+          <div class="readout" id="hof-readout" aria-live="polite"></div>
+  
+          <h3>Most to least charge-dense</h3>
+          <ol class="rank" id="hof-rank"></ol>
+  
+          <details>
+            <summary>Values and source</summary>
+            <div class="table-scroll">
+              <table id="hof-table">
+                <thead><tr><th scope="col">Anion (site)</th><th scope="col">q (e)</th><th scope="col">r (Å)</th><th scope="col">ϸ (10⁻¹⁰ C m⁻¹)</th><th scope="col">U<sub>E</sub> (kJ mol⁻¹)</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <p class="source">Site-specific rows of Table S2 in the paper's supplementary information. For each molecular anion the most charge-dense atom is used, as in the paper. U<sub>E</sub> is the electrostatic energy between the ion and one water molecule.</p>
+          </details>
+          <p class="source"><a href="https://doi.org/10.1039/d1sc03568a" target="_blank" rel="noopener">Gregory, Wanless, Webber, Craig and Page, Chem. Sci. 12, 15007 (2021)</a></p>
+        </div>
+      </div>
+    </article>
+
+    <article class="tape-body" id="body-review" data-id="review" aria-labelledby="rev-title">
+      <div class="wrap paper-grid">
+        <div class="stage-col">
+          <div class="stage art-stage"><svg class="art-svg" viewBox="0 0 320 220" role="img" aria-label="The classic Hofmeister series of anions, from carbonate and sulfate to perchlorate and thiocyanate."><defs><linearGradient id="hs-ramp" gradientUnits="userSpaceOnUse" x1="24" y1="0" x2="296" y2="0"><stop offset="0" stop-color="#2fc4b8"/><stop offset="0.5" stop-color="#f4c51f"/><stop offset="1" stop-color="#ef4b55"/></linearGradient></defs><g fill="none" stroke="rgba(219,228,240,0.18)" stroke-dasharray="2 4"><path d="M26.0,64.0 L55.8,72.6 L85.6,81.2 L115.4,89.8 L145.2,98.4 L175.0,107.0 L204.8,115.6 L234.6,124.2 L264.4,132.8 L294.2,141.4"/></g><circle cx="26.0" cy="64.0" r="10" fill="#2fc4b8" stroke="#0b1018" stroke-width="1.5"/><circle cx="23.0" cy="61.0" r="3" fill="rgba(255,255,255,0.55)"/><text x="26.0" y="47.0" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">CO₃²⁻</text><circle cx="55.8" cy="72.6" r="10" fill="#5bc496" stroke="#0b1018" stroke-width="1.5"/><circle cx="52.8" cy="69.6" r="3" fill="rgba(255,255,255,0.55)"/><text x="55.8" y="98.6" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">SO₄²⁻</text><circle cx="85.6" cy="81.2" r="10" fill="#87c474" stroke="#0b1018" stroke-width="1.5"/><circle cx="82.6" cy="78.2" r="3" fill="rgba(255,255,255,0.55)"/><text x="85.6" y="64.2" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">H₂PO₄⁻</text><circle cx="115.4" cy="89.8" r="10" fill="#b2c552" stroke="#0b1018" stroke-width="1.5"/><circle cx="112.4" cy="86.8" r="3" fill="rgba(255,255,255,0.55)"/><text x="115.4" y="115.8" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">F⁻</text><circle cx="145.2" cy="98.4" r="10" fill="#dec530" stroke="#0b1018" stroke-width="1.5"/><circle cx="142.2" cy="95.4" r="3" fill="rgba(255,255,255,0.55)"/><text x="145.2" y="81.4" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">Cl⁻</text><circle cx="175.0" cy="107.0" r="10" fill="#f3b725" stroke="#0b1018" stroke-width="1.5"/><circle cx="172.0" cy="104.0" r="3" fill="rgba(255,255,255,0.55)"/><text x="175.0" y="133.0" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">Br⁻</text><circle cx="204.8" cy="115.6" r="10" fill="#f29c31" stroke="#0b1018" stroke-width="1.5"/><circle cx="201.8" cy="112.6" r="3" fill="rgba(255,255,255,0.55)"/><text x="204.8" y="98.6" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">NO₃⁻</text><circle cx="234.6" cy="124.2" r="10" fill="#f1813d" stroke="#0b1018" stroke-width="1.5"/><circle cx="231.6" cy="121.2" r="3" fill="rgba(255,255,255,0.55)"/><text x="234.6" y="150.2" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">I⁻</text><circle cx="264.4" cy="132.8" r="10" fill="#f06649" stroke="#0b1018" stroke-width="1.5"/><circle cx="261.4" cy="129.8" r="3" fill="rgba(255,255,255,0.55)"/><text x="264.4" y="115.8" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">ClO₄⁻</text><circle cx="294.2" cy="141.4" r="10" fill="#ef4b55" stroke="#0b1018" stroke-width="1.5"/><circle cx="291.2" cy="138.4" r="3" fill="rgba(255,255,255,0.55)"/><text x="294.2" y="167.4" text-anchor="middle" fill="#dbe4f0" font-family="IBM Plex Mono, monospace" font-size="10">SCN⁻</text><path d="M24 182 H296" stroke="url(#hs-ramp)" stroke-width="3" stroke-linecap="round"/><path d="M30 176 L22 182 L30 188 M290 176 L298 182 L290 188" fill="none" stroke="#dbe4f0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><text x="24" y="204" fill="#93a0b2" font-family="IBM Plex Mono, monospace" font-size="9.5">kosmotropic</text><text x="296" y="204" text-anchor="end" fill="#93a0b2" font-family="IBM Plex Mono, monospace" font-size="9.5">chaotropic</text></svg></div>
+          <p class="stage-note">The classic anion series, from kosmotropic ions such as carbonate and sulfate to chaotropic ions such as perchlorate and thiocyanate. The order can change with the protein, the surface and the solvent.</p>
+        </div>
+        <div class="panel">
+          <p class="eyebrow">Physical Chemistry Chemical Physics · 2022 · first author</p>
+          <h2 id="rev-title">Understanding specific ion effects and the Hofmeister series</h2>
+          <p>Different salts change protein stability, polymer swelling, surface tension and reaction rates in a consistent order, known as the Hofmeister series. More than a century of work has produced many explanations, but no agreed one.</p>
+          <p>This review, written with experimental and computational colleagues, sets out what is and isn't understood about specific ion effects and the Hofmeister series.</p>
+          <div class="tiles">
+            <div class="tile"><b>Highly Cited</b><span>Web of Science</span></div>
+            <div class="tile"><b>Top 5</b><span>most downloaded PCCP articles of 2022</span></div>
+            <div class="tile"><b>Inside cover</b><span>plus the PCCP Reviews and 2022 HOT Articles collections</span></div>
+            <div class="tile"><b>37 pages</b><span>24, 12682–12718</span></div>
+          </div>
+          <p class="source"><a href="https://doi.org/10.1039/D2CP00847E" target="_blank" rel="noopener">Gregory, Elliott, Robertson, Kumar, Wanless, Webber, Craig, Andersson and Page, Phys. Chem. Chem. Phys. 24, 12682 (2022)</a></p>
+        </div>
+      </div>
+    </article>
+
+    <article class="tape-body" id="body-ionsolvr" data-id="ionsolvr" aria-labelledby="ion-title">
+      <div class="wrap paper-grid">
+        <div class="stage-col">
+          <div class="stage" id="stage-ionsolvr" role="group" aria-label="Four cubic simulation cells of NaCl in water at true relative size, holding 32, 64, 100 and 300 water molecules."></div>
+          <ul class="legend">
+            <li><span class="dot" style="background:#ab6ef2"></span>Na⁺</li>
+            <li><span class="dot" style="background:#45c486"></span>Cl⁻</li>
+            <li><span class="dot" style="background:#ef5b4f"></span>water O</li>
+            <li><span class="dot" style="background:#e9eef5;box-shadow:inset 0 0 0 1px #8a96a8"></span>water H</li>
+            <li>cells to scale; ions at 0.7 × ionic radius</li>
+          </ul>
+          <div class="stage-bar">
+            <div class="seg" role="group" aria-label="Cell">
+              <button type="button" class="btn" data-ion-box="all" aria-pressed="true">All four</button>
+              <button type="button" class="btn" data-ion-box="0" aria-pressed="false">32 H₂O</button>
+              <button type="button" class="btn" data-ion-box="1" aria-pressed="false">64</button>
+              <button type="button" class="btn" data-ion-box="2" aria-pressed="false">100</button>
+              <button type="button" class="btn" data-ion-box="3" aria-pressed="false">300</button>
+            </div>
+            <div class="seg">
+              <button type="button" class="btn quiet" id="ion-water" aria-pressed="false">Hide water</button>
+              <button type="button" class="btn quiet" id="ion-reset">Reset view</button>
+            </div>
+          </div>
+        </div>
+  
+        <div class="panel">
+          <p class="eyebrow">Scientific Data · 2022 · first author</p>
+          <h2 id="ion-title">IonSolvR: more than 3,000 quantum MD runs of ions in solvent</h2>
+          <p>Studying ions outside water has been limited by a lack of consistent data. IonSolvR is an open repository of nanosecond-scale density functional tight binding (DFTB3-D3(BJ)) molecular dynamics trajectories, covering up to 55 ionic solutes in 28 protic and aprotic solvents, all run with one protocol.</p>
+          <p>Effective concentration is set by cell size. The scene shows the four NaCl–water cells described in the paper, to scale. The water positions are a random packing drawn for this page, like the random starting boxes the simulations began from; they are not frames from the repository.</p>
+  
+          <div class="readout" id="ion-readout" aria-live="polite"></div>
+  
+          <div class="tiles">
+            <div class="tile"><b>3,000+</b><span>distinct trajectories</span></div>
+            <div class="tile"><b>55 × 28</b><span>solutes × solvents, at 4 effective concentrations</span></div>
+            <div class="tile"><b>100,000</b><span>frames per 1 ns run: 1 fs steps, saved every 10 fs</span></div>
+            <div class="tile"><b>2 M+</b><span>CPU hours; over 1.5 TB of data</span></div>
+          </div>
+  
+          <details>
+            <summary>The four NaCl–water cells</summary>
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th scope="col">Water molecules</th><th scope="col">Cell edge (Å)</th><th scope="col">Effective concentration (mol L⁻¹)</th></tr></thead>
+                <tbody>
+                  <tr><td>32</td><td>10.2</td><td>1.72</td></tr>
+                  <tr><td>64</td><td>12.6</td><td>0.87</td></tr>
+                  <tr><td>100</td><td>14.6</td><td>0.55</td></tr>
+                  <tr><td>300</td><td>20.9</td><td>0.19</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="source">From the Technical Validation section of the paper. Simulations ran in the NVT ensemble at 300 K with periodic cubic cells and the 3ob-3-1 parameters.</p>
+          </details>
+          <p class="source"><a href="https://doi.org/10.1038/s41597-022-01527-8" target="_blank" rel="noopener">Gregory, Elliott, Wanless, Webber and Page, Sci. Data 9, 430 (2022)</a></p>
+        </div>
+      </div>
+    </article>
+
+    <article class="tape-body" id="body-inductive" data-id="inductive" aria-labelledby="ind-title">
+      <div class="wrap paper-grid">
+        <div class="stage-col">
+          <div class="stage art-stage"><svg class="art-svg" viewBox="0 0 320 220" role="img" aria-label="A haloacetate drawn as a skeletal formula, X–CH₂–CO₂⁻, with the textbook inductive pull drawn on the C–X bond and a large question mark."><g stroke="#e8ecf3" stroke-width="3" stroke-linecap="round" fill="none"><path d="M78 130 L120 106 L176 138 L222 112"/><path d="M171 142 L171 184 M181 142 L181 184"/></g><path d="M110 98 L82 114" stroke="#ef4b55" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M86 106 L80 115 L91 114" stroke="#ef4b55" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" fill="none"/><text x="64" y="148" text-anchor="middle" fill="#a78bfa" font-family="Anton, Impact, sans-serif" font-size="30">X</text><text x="46" y="120" fill="#ef4b55" font-family="IBM Plex Mono, monospace" font-size="12">δ−</text><text x="106" y="90" fill="#2fc4b8" font-family="IBM Plex Mono, monospace" font-size="12">δ+</text><text x="130" y="98" fill="#93a0b2" font-family="IBM Plex Mono, monospace" font-size="10">CH₂</text><text x="236" y="110" fill="#e8ecf3" font-family="IBM Plex Sans, sans-serif" font-size="17">O⁻</text><text x="176" y="202" text-anchor="middle" fill="#e8ecf3" font-family="IBM Plex Sans, sans-serif" font-size="17">O</text><text x="290" y="92" text-anchor="middle" fill="#a78bfa" font-family="Anton, Impact, sans-serif" font-size="78" opacity="0.92">?</text><text x="24" y="204" fill="#93a0b2" font-family="IBM Plex Mono, monospace" font-size="9.5">X = F, Cl, Br, I</text><text x="24" y="30" fill="#93a0b2" font-family="IBM Plex Mono, monospace" font-size="9.5">the textbook picture</text></svg></div>
+          <p class="stage-note">The textbook picture: an electronegative halogen X pulls electron density towards itself along the C–X bond. A schematic, not a calculation.</p>
+        </div>
+        <div class="panel">
+          <p class="eyebrow">Chemical Science · 2025 · led by E. C. Johnson</p>
+          <h2 id="ind-title">Are our textbooks wrong about the inductive effect?</h2>
+          <p>The inductive effect, the idea that an electronegative atom pulls electron density along a chain of bonds, is one of the first explanations organic chemistry students learn. Haloacetates are the textbook example: change the halogen and the acid's strength changes.</p>
+          <p>This 2025 Chemical Science paper, led by E. C. Johnson, found that the inductive effect doesn't explain the electron density in haloacetates. Four follow-ups in the Journal of Chemical Education rethink how inductive effects, hyperconjugation and the reactivity of aldehydes and ketones are taught. Each one is on the shelf too:</p>
+          <ul class="source-list shelf-links">
+            <li><a href="#inductive-extent">Rethinking the nature and extent of inductive effects in organic compounds (2026)</a></li>
+            <li><a href="#hyperconjugation">Exploring the interface of hyperconjugation and polarizability (2026)</a></li>
+            <li><a href="#carbonyls">Enhancing pedagogies to explain the relative reactivity of aldehydes and ketones (2026)</a></li>
+            <li><a href="#reply">The inductive effect: a response to Nguyen (2026)</a></li>
+          </ul>
+          <p class="source"><a href="https://doi.org/10.1039/D4SC04832F" target="_blank" rel="noopener">Johnson, Gregory, Robertson, Gresham, Nelson, Craig, Prescott, Page, Webber and Wanless, Chem. Sci. 16, 2382 (2025)</a></p>
+        </div>
+      </div>
+    </article>
+
+    <article class="tape-body" id="body-pahaps" data-id="pahaps" aria-labelledby="pah-title">
+      <div class="wrap paper-grid">
+        <div class="stage-col">
+          <div class="stage" id="stage-pahaps" role="group" aria-label="38,264 PAH isomer energies as six stacked-dot histograms, one row per formula, with an option to view three isomers as molecules."></div>
+          <ul class="legend" id="pah-energy-legend">
+            <li><span class="ramp"></span>energy, 0 to 45+ kcal mol⁻¹</li>
+            <li>one dot per isomer, stacked in 0.5 kcal mol⁻¹ bins</li>
+            <li><span class="dot" style="background:#fff;box-shadow:0 0 0 1px var(--rule)"></span>formula mean (tick) and the three isomers you can open</li>
+          </ul>
+          <ul class="legend" id="pah-bond-legend" hidden>
+            <li><span class="ramp"></span>C–C bond colour: dihedral deviation around that bond, 0° to <span id="pah-legend-max" class="mono">max</span></li>
+          </ul>
+          <div class="stage-bar">
+            <div class="seg" role="group" aria-label="View">
+              <button type="button" class="btn" data-pah-mode="all" aria-pressed="true">All 38,264</button>
+              <button type="button" class="btn" data-pah-mode="most_stable" aria-pressed="false">Most stable</button>
+              <button type="button" class="btn" data-pah-mode="typical" aria-pressed="false">Typical</button>
+              <button type="button" class="btn" data-pah-mode="least_stable" aria-pressed="false">Least stable</button>
+            </div>
+            <button type="button" class="btn quiet" id="pah-reset">Reset view</button>
+          </div>
+        </div>
+  
+        <div class="panel">
+          <p class="eyebrow">Journal of Computational Chemistry · 2025 · corresponding author</p>
+          <h2 id="pah-title">Geometry alone goes a long way toward predicting PAH stability</h2>
+          <p>Polycyclic aromatic hydrocarbons matter for pollution toxicity and for carbon materials, and their isomers differ widely in stability. This paper computed PBE0-D4 energies for 38,264 nonplanar PAH isomers, a method that matches CCSD(T) to 0.67 kcal mol⁻¹ on a 335-molecule benchmark. It then asked which cheap geometric measure tracks those energies.</p>
+          <p>The winner is Σ<sub>dihedral</sub>, the sum of the deviations from planarity across every C–C–C–C dihedral. It costs nothing to compute from coordinates, and the paper's PAHAPS web tool uses it to estimate an isomer's energy without a quantum calculation.</p>
+  
+          <div class="readout" id="pah-readout" aria-live="polite"></div>
+  
+          <h3>How close each predictor gets</h3>
+          <figure class="bars">
+            <figcaption>Mean absolute deviation from PBE0-D4 over all 38,264 isomers, kcal mol⁻¹</figcaption>
+            <div class="bar-row"><span class="bar-label">GFN2-xTB, uncorrected</span><span class="bar-track"><span class="bar" style="--v: 5.87"></span></span><span class="bar-val">5.87</span></div>
+            <div class="bar-row"><span class="bar-label">HOMA (aromaticity)</span><span class="bar-track"><span class="bar" style="--v: 5.30"></span></span><span class="bar-val">5.30</span></div>
+            <div class="bar-row"><span class="bar-label">Δz (out-of-plane height)</span><span class="bar-track"><span class="bar" style="--v: 4.78"></span></span><span class="bar-val">4.78</span></div>
+            <div class="bar-row is-key"><span class="bar-label">Σ<sub>dihedral</sub></span><span class="bar-track"><span class="bar" style="--v: 3.62"></span></span><span class="bar-val">3.62</span></div>
+            <div class="bar-row"><span class="bar-label">Σ<sub>dihedral</sub> + HOMA</span><span class="bar-track"><span class="bar" style="--v: 2.53"></span></span><span class="bar-val">2.53</span></div>
+            <div class="bar-row"><span class="bar-label">GFN2-xTB, fitted</span><span class="bar-track"><span class="bar" style="--v: 1.16"></span></span><span class="bar-val">1.16</span></div>
+            <div class="bar-row"><span class="bar-label">Σ<sub>dihedral</sub> + HOMA + fitted xTB</span><span class="bar-track"><span class="bar" style="--v: 0.82"></span></span><span class="bar-val">0.82</span></div>
+            <p class="bars-note">The dashed line marks 1 kcal mol⁻¹, often called chemical accuracy. Values from Tables 2 and 3 of the paper.</p>
+          </figure>
+  
+          <details>
+            <summary>The six formula sets</summary>
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th scope="col">Formula</th><th scope="col">Isomers</th><th scope="col">Mean (kcal mol⁻¹)</th><th scope="col">Highest</th></tr></thead>
+                <tbody>
+                  <tr><td>C₃₆H₂₀</td><td>1,182</td><td>15.00</td><td>37.16</td></tr>
+                  <tr><td>C₃₈H₂₀</td><td>1,594</td><td>15.00</td><td>38.74</td></tr>
+                  <tr><td>C₄₀H₂₀</td><td>1,683</td><td>17.60</td><td>43.27</td></tr>
+                  <tr><td>C₄₀H₂₂</td><td>5,084</td><td>17.23</td><td>42.76</td></tr>
+                  <tr><td>C₄₂H₂₂</td><td>7,662</td><td>16.77</td><td>42.20</td></tr>
+                  <tr><td>C₄₄H₂₄</td><td>21,059</td><td>18.75</td><td>54.74</td></tr>
+                  <tr><td>All</td><td>38,264</td><td>17.82</td><td>54.74</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="source">Energies are PBE0-D4/6-31G(2df,p) on GFN2-xTB geometries, relative to the most stable isomer of each formula. The histograms use every one of them, from the data that ships with PAHAPS; the counts, means and maxima match Table 1 of the paper. The three molecules were re-optimised for this page with GFN2-xTB, the method COMPAS-3x used, and their Σ<sub>dihedral</sub> was computed with the same definition as the paper's code.</p>
+          </details>
+          <p class="source"><a href="https://doi.org/10.1002/jcc.70198" target="_blank" rel="noopener">Gregory and Karton, J. Comput. Chem. 46, e70198 (2025)</a> · <a href="https://pahaps.streamlit.app/" target="_blank" rel="noopener">PAHAPS web tool</a> · <a href="https://github.com/Kasigee/PAH_Analysis" target="_blank" rel="noopener">code</a></p>
+        </div>
+      </div>
+    </article>
+
+    <article class="tape-body" id="body-malaria" data-id="malaria" aria-labelledby="mal-title">
+      <div class="wrap paper-grid">
+        <div class="stage-col">
+          <div class="stage art-stage"><svg class="art-svg" viewBox="0 0 320 220" role="img" aria-label="Schematic of a membrane transporter: lactate and a proton pass together from inside the parasite, through a channel-like pore, to the outside."><g stroke="rgba(219,228,240,0.35)" stroke-width="1.4" fill="none"><path d="M6.0 93 V112 M10.0 93 V112 M6.0 145 V126 M10.0 145 V126"/><path d="M18.2 93 V112 M22.2 93 V112 M18.2 145 V126 M22.2 145 V126"/><path d="M30.4 93 V112 M34.4 93 V112 M30.4 145 V126 M34.4 145 V126"/><path d="M42.6 93 V112 M46.6 93 V112 M42.6 145 V126 M46.6 145 V126"/><path d="M54.8 93 V112 M58.8 93 V112 M54.8 145 V126 M58.8 145 V126"/><path d="M67.0 93 V112 M71.0 93 V112 M67.0 145 V126 M71.0 145 V126"/><path d="M79.2 93 V112 M83.2 93 V112 M79.2 145 V126 M83.2 145 V126"/><path d="M91.4 93 V112 M95.4 93 V112 M91.4 145 V126 M95.4 145 V126"/><path d="M103.6 93 V112 M107.6 93 V112 M103.6 145 V126 M107.6 145 V126"/><path d="M115.8 93 V112 M119.8 93 V112 M115.8 145 V126 M119.8 145 V126"/><path d="M201.2 93 V112 M205.2 93 V112 M201.2 145 V126 M205.2 145 V126"/><path d="M213.4 93 V112 M217.4 93 V112 M213.4 145 V126 M217.4 145 V126"/><path d="M225.6 93 V112 M229.6 93 V112 M225.6 145 V126 M229.6 145 V126"/><path d="M237.8 93 V112 M241.8 93 V112 M237.8 145 V126 M241.8 145 V126"/><path d="M250.0 93 V112 M254.0 93 V112 M250.0 145 V126 M254.0 145 V126"/><path d="M262.2 93 V112 M266.2 93 V112 M262.2 145 V126 M266.2 145 V126"/><path d="M274.4 93 V112 M278.4 93 V112 M274.4 145 V126 M278.4 145 V126"/><path d="M286.6 93 V112 M290.6 93 V112 M286.6 145 V126 M290.6 145 V126"/><path d="M298.8 93 V112 M302.8 93 V112 M298.8 145 V126 M302.8 145 V126"/><path d="M311.0 93 V112 M315.0 93 V112 M311.0 145 V126 M315.0 145 V126"/></g><g fill="#3b4b63" stroke="#7f93b0" stroke-width="1"><circle cx="8.0" cy="88" r="5"/><circle cx="8.0" cy="150" r="5"/><circle cx="20.2" cy="88" r="5"/><circle cx="20.2" cy="150" r="5"/><circle cx="32.4" cy="88" r="5"/><circle cx="32.4" cy="150" r="5"/><circle cx="44.6" cy="88" r="5"/><circle cx="44.6" cy="150" r="5"/><circle cx="56.8" cy="88" r="5"/><circle cx="56.8" cy="150" r="5"/><circle cx="69.0" cy="88" r="5"/><circle cx="69.0" cy="150" r="5"/><circle cx="81.2" cy="88" r="5"/><circle cx="81.2" cy="150" r="5"/><circle cx="93.4" cy="88" r="5"/><circle cx="93.4" cy="150" r="5"/><circle cx="105.6" cy="88" r="5"/><circle cx="105.6" cy="150" r="5"/><circle cx="117.8" cy="88" r="5"/><circle cx="117.8" cy="150" r="5"/><circle cx="203.2" cy="88" r="5"/><circle cx="203.2" cy="150" r="5"/><circle cx="215.4" cy="88" r="5"/><circle cx="215.4" cy="150" r="5"/><circle cx="227.6" cy="88" r="5"/><circle cx="227.6" cy="150" r="5"/><circle cx="239.8" cy="88" r="5"/><circle cx="239.8" cy="150" r="5"/><circle cx="252.0" cy="88" r="5"/><circle cx="252.0" cy="150" r="5"/><circle cx="264.2" cy="88" r="5"/><circle cx="264.2" cy="150" r="5"/><circle cx="276.4" cy="88" r="5"/><circle cx="276.4" cy="150" r="5"/><circle cx="288.6" cy="88" r="5"/><circle cx="288.6" cy="150" r="5"/><circle cx="300.8" cy="88" r="5"/><circle cx="300.8" cy="150" r="5"/><circle cx="313.0" cy="88" r="5"/><circle cx="313.0" cy="150" r="5"/></g><g fill="#7bd389" stroke="#0b1018" stroke-width="2"><rect x="124" y="66" width="30" height="106" rx="12"/><rect x="166" y="66" width="30" height="106" rx="12"/></g><g fill="rgba(11,16,24,0.25)"><rect x="130" y="76" width="8" height="86" rx="4"/><rect x="182" y="76" width="8" height="86" rx="4"/></g><path d="M160 206 V20" stroke="#dbe4f0" stroke-width="1.5" stroke-dasharray="4 4" fill="none"/><path d="M153 28 L160 18 L167 28" stroke="#dbe4f0" stroke-width="1.5" fill="none" stroke-linejoin="round"/><circle cx="134" cy="196" r="12" fill="#f4c51f" stroke="#0b1018" stroke-width="1.5"/><text x="134" y="199.5" text-anchor="middle" fill="#0b1018" font-family="IBM Plex Mono, monospace" font-size="8.5">lac⁻</text><circle cx="186" cy="198" r="9" fill="#ef4b55" stroke="#0b1018" stroke-width="1.5"/><text x="186" y="201.5" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono, monospace" font-size="9">H⁺</text><circle cx="160" cy="120" r="9" fill="#ef4b55" stroke="#0b1018" stroke-width="1.5"/><text x="160" y="123.5" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono, monospace" font-size="9">H⁺</text><circle cx="192" cy="36" r="12" fill="#f4c51f" stroke="#0b1018" stroke-width="1.5"/><text x="192" y="39.5" text-anchor="middle" fill="#0b1018" font-family="IBM Plex Mono, monospace" font-size="8.5">lac⁻</text><circle cx="130" cy="40" r="9" fill="#ef4b55" stroke="#0b1018" stroke-width="1.5"/><text x="130" y="43.5" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono, monospace" font-size="9">H⁺</text><text x="12" y="24" fill="#93a0b2" font-family="IBM Plex Mono, monospace" font-size="9.5">outside</text><text x="12" y="212" fill="#93a0b2" font-family="IBM Plex Mono, monospace" font-size="9.5">inside the parasite</text><text x="308" y="124" text-anchor="end" fill="#93a0b2" font-family="IBM Plex Mono, monospace" font-size="9.5">membrane</text></svg></div>
+          <p class="stage-note">A schematic, not to scale: lactate and a proton leave the parasite together through the transporter.</p>
+        </div>
+        <div class="panel">
+          <p class="eyebrow">bioRxiv · 2026 · preprint · led by Ciara Wallis</p>
+          <h2 id="mal-title">How the malaria parasite's lactate transporter moves protons</h2>
+          <p>Malaria parasites run on glycolysis, and must export the lactate it produces, together with a proton, through a transporter in their membrane. That transporter is a target for new antimalarial drugs.</p>
+          <p>Ciara Wallis led this work as first author, with Ben Corry's group at the Australian National University; I'm on her PhD supervisory panel. It proposes a proton-transfer mechanism, and points to a channel-like transporter that works without the large conformational changes most transporters rely on.</p>
+          <p class="source"><a href="https://doi.org/10.64898/2026.02.05.704099" target="_blank" rel="noopener">Wallis, Gregory, Fairweather, van Dooren, Lehane and Corry, “A proton transfer mechanism in the malaria parasite lactate/H⁺ symporter reveals a channel-like transporter without conformational changes”, bioRxiv (2026)</a></p>
+        </div>
+      </div>
+    </article>
+
+    <footer class="static-foot">
+      <p>Built with Three.js. The Hofmeister values come from the paper's supplementary information, the PAH energies from the data released with PAHAPS, and the cell sizes from the IonSolvR paper. Where a picture needs something the papers don't give, such as water positions or re-optimised molecular geometries, the caption says so.</p>
+      <p><a href="../">Kasimir Gregory, home page</a> · <a href="../#publications">All publications</a></p>
+    </footer>
+  </section>
+
+  <div class="osd"><span>▶ PLAY <span class="tc">00:00:00:00</span></span><span class="osd-title"></span><button type="button" class="stop">■ STOP</button></div>
+  <div class="crt" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+</body>
+</html>

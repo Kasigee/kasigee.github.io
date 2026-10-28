@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dr Kasimir Gregory · Computational chemist</title>
+  <meta name="description" content="Kasimir Gregory is a computational chemist at the University of New England. He uses quantum chemistry, molecular simulation and AI to understand the molecular processes behind our biology, industry and the fundamentals of chemistry.">
+  <meta property="og:title" content="Dr Kasimir Gregory · Computational chemist">
+  <meta property="og:description" content="Quantum chemistry, molecular simulation and AI for understanding how molecules behave: in our biology, in industry and in the concepts chemistry is built on.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kasimirgregory.com/">
+  <meta property="og:image" content="https://kasimirgregory.com/img/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#f3f2ee" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1312" media="(prefers-color-scheme: dark)">
+  <link rel="canonical" href="https://kasimirgregory.com/">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <!-- Unbounded is only used to draw "Dr Kas" and "DR KAS", so only those letters are downloaded. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@800&text=Dr%20KasRAS&display=swap">
+  <link rel="stylesheet" href="css/site.css">
+  <script>document.documentElement.classList.add('js')</script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/three.module.min.js",
+      "three/addons/": "./vendor/three/addons/"
+    }
+  }
+  </script>
+  <script type="module" src="js/main.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Kasimir Gregory",
+    "honorificPrefix": "Dr",
+    "jobTitle": "Lecturer in Chemistry",
+    "affiliation": { "@type": "CollegeOrUniversity", "name": "University of New England" },
+    "alumniOf": [
+      { "@type": "CollegeOrUniversity", "name": "University of Newcastle" },
+      { "@type": "CollegeOrUniversity", "name": "Australian National University" }
+    ],
+    "knowsAbout": ["Computational chemistry", "Quantum chemistry", "Molecular dynamics", "Machine-learned interatomic potentials", "Specific ion effects", "AI in science"],
+    "url": "https://kasimirgregory.com/",
+    "sameAs": ["https://orcid.org/0000-0002-8055-370X"]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="logo" href="#top"><i aria-hidden="true"></i>Kasimir Gregory</a>
+    <nav class="top-nav" aria-label="Main">
+      <a href="#now">Now</a>
+      <a href="#talks">Talks</a>
+      <a href="#live">Live figures</a>
+      <a href="#research">Research</a>
+      <a href="#publications">Publications</a>
+      <a class="tape-link" href="papers/">Papers on tape</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu">Menu <span aria-hidden="true">✦</span></button>
+  </header>
+
+  <nav class="overlay" id="menu" aria-label="Menu" hidden>
+    <button class="roll light close" type="button"><span data-text="Close">Close</span></button>
+    <ol>
+      <li><a href="#about">About</a></li>
+      <li><a href="#now">Now</a></li>
+      <li><a href="#talks">Talks</a></li>
+      <li><a href="#live">Live figures</a></li>
+      <li><a href="#research">Research</a></li>
+      <li><a href="#publications">Publications</a></li>
+      <li><a href="papers/">Papers on tape</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ol>
+    <p>Dr Kasimir Gregory · Computational chemistry · University of New England</p>
+  </nav>
+
+  <main id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <canvas aria-hidden="true"></canvas>
+      <p class="hero-word" aria-hidden="true">Dr Kas</p>
+
+      <figure class="sticker portrait s1" style="--r:-7deg">
+        <img src="img/kasimir-gregory.webp" width="400" height="400" alt="">
+        <figcaption><b>Kasimir Gregory</b><span>UNE · Armidale</span></figcaption>
+      </figure>
+      <div class="sticker tile s2" style="--r:6deg" aria-hidden="true"><span>14</span><b>Si</b><small>28.085</small></div>
+      <div class="sticker badge s3" style="--r:-5deg" aria-hidden="true">ϸ = <em>q</em> / <em>r</em></div>
+      <a class="sticker pod s4" style="--r:4deg" href="#podcast">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+        <span>Anion The Future<small>the podcast</small></span>
+      </a>
+
+      <div class="hero-info">
+        <h1 id="hero-title">Dr Kasimir Gregory</h1>
+        <p class="caps">Computational chemist · University of New England</p>
+        <p>I use quantum chemistry, molecular simulation and AI to understand how molecules behave: in our own biology, in industry, and in the concepts chemistry is built on.</p>
+      </div>
+      <a class="cue" href="#about"><span class="ring" aria-hidden="true"></span>Scroll to scatter the atoms</a>
+      <span class="star" aria-hidden="true">✦</span>
+    </section>
+
+    <section class="block wrap about" id="about" aria-labelledby="about-title">
+      <p class="label reveal">About</p>
+      <h2 class="rotator reveal" id="about-title">Understanding the molecular processes behind <span class="words" aria-hidden="true"><span class="on">our own biology</span><span>solar-panel recycling</span><span>the Hofmeister series</span><span>textbook chemistry</span><span>cryopreservation</span><span>light harvesting</span></span><span class="sr-only">our biology, industry and the fundamentals of chemistry</span></h2>
+      <div class="about-grid">
+        <div class="about-text reveal">
+          <p>I'm a computational chemist and Lecturer in Chemistry at the University of New England, and a Senior Lecturer from January 2027. My work asks how molecules behave in the processes that matter: the ones that underpin our own biology, the ones industry depends on, like freeing the materials locked in a retired solar panel, and the fundamental concepts chemistry is taught with.</p>
+          <p>AI runs through that work. Machine-learned potentials let me simulate bigger systems for longer than quantum chemistry alone allows, and AI tools speed up much of the rest. I check every model against high-level quantum chemistry and experiment. That checking cuts both ways: it tells me what the molecules are doing, and it shows where AI models do and don't understand the chemistry.</p>
+          <p>My PhD at the University of Newcastle (2022) used quantum chemistry to explain Hofmeister effects in non-aqueous solvents. As a postdoctoral fellow at the Australian National University, I built a maximum bubble pressure tensiometer to measure non-aqueous electrolytes, then used molecular dynamics to study salt thermodiffusion for membrane-free desalination and transport in the malaria parasite.</p>
+          <div class="ctas">
+            <a class="roll" href="#now"><span data-text="What I'm working on">What I'm working on</span></a>
+            <a class="roll light" href="papers/"><span data-text="Papers on tape">Papers on tape</span></a>
+          </div>
+        </div>
+        <aside class="about-card reveal" aria-label="At a glance">
+          <div class="about-card-head">
+            <img class="about-photo" src="img/kasimir-gregory.webp" width="400" height="400" alt="Kasimir Gregory">
+            <p><b>Dr Kasimir Gregory</b><span>Computational chemist · Armidale, NSW</span></p>
+          </div>
+          <dl class="facts">
+            <div><dt>Role</dt><dd>Lecturer in Chemistry, University of New England. Senior Lecturer from January 2027.</dd></div>
+            <div><dt>PhD</dt><dd>University of Newcastle, 2022</dd></div>
+            <div><dt>Postdoc</dt><dd>Australian National University, 2022–2024</dd></div>
+            <div><dt>Papers</dt><dd>23 refereed articles and 1 preprint, cited 932 times</dd></div>
+            <div><dt>Recognition</dt><dd>UNE Rising Star Award (2026) · CAS Future Leaders Top 100 (2023) · University Medal (2017)</dd></div>
+          </dl>
+        </aside>
+      </div>
+    </section>
+
+    <section class="block wrap now" id="now" aria-labelledby="now-title">
+      <div class="head-row reveal">
+        <div>
+          <p class="label">Now · 2026</p>
+          <h2 id="now-title">What I'm working on</h2>
+        </div>
+        <p>Solar-panel recycling is my newest project, not my only one. This year's work runs from a transporter in the malaria parasite to how organic chemistry is taught.</p>
+      </div>
+
+      <article class="lead-project reveal">
+        <div class="lead-text">
+          <p class="tag">Lead project · University of New England</p>
+          <h3>Using AI to take old solar panels apart</h3>
+          <p>Australia expects about a million tonnes of retired solar panels by 2035. Most of a panel's value, its silicon, silver and copper, sits under a tough plastic glue built to hold the panel together for 25 to 30 years. Releasing it cleanly and cheaply is the first step in recycling.</p>
+          <p>I lead the research. I designed the simulation workflow and run it on NCI's Gadi supercomputer under a national computing allocation I lead, using machine-learned interatomic potentials trained on quantum chemistry. They make large molecular dynamics simulations fast enough to screen solvents far more quickly than trial and error in the lab. I check every model against high-level quantum chemistry, and every screen against laboratory results. Lab testing at UNE comes next.</p>
+          <p class="press">In the press: <a href="https://www.pv-magazine.com/2026/05/07/australian-researchers-accelerate-silicon-wafer-recycling-using-ai-robotics/">pv magazine</a> (May 2026) · <a href="https://www.sustainabilitymatters.net.au/content/waste/news/university-uses-ai-to-accelerate-solar-panel-recycling-1362356819">Sustainability Matters</a> (May 2026) · <a href="https://www.labnext70.news/news/virtual-lab-speeds-solar-recycling-breakthrough">Lab Next 70</a> (November 2025)</p>
+        </div>
+        <figure class="lead-media">
+          <video data-autoplay controls muted loop playsinline preload="metadata" poster="img/eva-glass-poster.webp" width="364" height="948">
+            <source src="media/eva-glass.mp4" type="video/mp4">
+          </video>
+          <figcaption>A simulation from the project: fragments of the plastic glue (spheres) on two glass surfaces, in solvent (thin lines).</figcaption>
+        </figure>
+      </article>
+
+      <div class="threads">
+        <article class="thread reveal">
+          <p class="tag">Fundamental concepts</p>
+          <h3>Rethinking textbook organic chemistry</h3>
+          <p>Our 2025 Chemical Science paper found that the inductive effect doesn't explain the electron density in haloacetates, a classic textbook example. This year, three papers and a published reply in the Journal of Chemical Education rethink how inductive effects, hyperconjugation and the reactivity of aldehydes and ketones are taught.</p>
+          <p>“Rethinking the nature and extent of inductive effects” was among the ten most-read ACS journal articles in May 2026, and was covered by C&amp;EN, Chemistry World, Phys.org, ScienceDaily and <a href="https://www.miragenews.com/chemistry-textbooks-wrong-for-nearly-century-1743762/">Mirage News</a>.</p>
+          <p class="thread-links"><a href="https://doi.org/10.1039/D4SC04832F">Chem. Sci. 2025</a> <a href="https://doi.org/10.1021/acs.jchemed.6c00141">J. Chem. Educ. 2026</a> <a href="papers/#inductive">On tape</a></p>
+        </article>
+        <article class="thread reveal">
+          <p class="tag">Biology</p>
+          <h3>Molecules in living systems</h3>
+          <p>Led by Ciara Wallis, with Ben Corry's group at ANU: a proton-transfer mechanism for the malaria parasite's lactate/H⁺ symporter, a target for new antimalarials. It turns out to work like a channel, without the large conformational changes most transporters rely on. I'm on Ciara's PhD supervisory panel.</p>
+          <p>I also co-authored work on new trehalose-based cryoprotectants for preserving cells, in the Journal of Materials Chemistry B.</p>
+          <p class="thread-links"><a href="https://doi.org/10.64898/2026.02.05.704099">bioRxiv preprint</a> <a href="https://doi.org/10.1039/D6TB01172A">J. Mater. Chem. B 2026</a> <a href="papers/#malaria">On tape</a></p>
+        </article>
+        <article class="thread reveal">
+          <p class="tag">Ions, surfaces and light</p>
+          <h3>Where ions go, and how light is gathered</h3>
+          <p>Two 2026 papers with long-standing collaborators: depth profiles that show where each kind of ion sits at a solvent's surface, in the Journal of Colloid and Interface Science, and the rational design of pigment–polymer antenna complexes for harvesting light, in Chemical Science.</p>
+          <p class="thread-links"><a href="https://doi.org/10.1016/j.jcis.2025.139019">J. Colloid Interface Sci. 2026</a> <a href="https://doi.org/10.1039/D6SC01202G">Chem. Sci. 2026</a></p>
+        </article>
+      </div>
+    </section>
+
+    <section class="block wrap talks" id="talks" aria-labelledby="talks-title">
+      <div class="head-row reveal">
+        <div>
+          <p class="label">Talks · 2026</p>
+          <h2 id="talks-title">Fourteen talks and workshops this year, nine of them on AI</h2>
+        </div>
+        <p>Seven were by invitation. They range from chemistry seminars and research-training workshops to industry and renewable-energy forums.</p>
+      </div>
+      <ol class="talk-list">
+        <li class="reveal"><span class="talk-title">AI-assisted molecular simulations for solar-panel recycling</span><span class="talk-venue">UNE School of Science and Technology Conference</span><span class="talk-tags"><b class="t-ai">AI</b><b class="t-energy">Renewables</b></span></li>
+        <li class="reveal"><span class="talk-title">Adventures in Computational Chemistry and AI</span><span class="talk-venue">University of Newcastle, Chemistry Seminar</span><span class="talk-tags"><b class="t-invited">Invited</b><b class="t-ai">AI</b></span></li>
+        <li class="reveal"><span class="talk-title">Adventures in Computational Chemistry and AI</span><span class="talk-venue">UNE School Research Seminars</span><span class="talk-tags"><b class="t-invited">Invited</b><b class="t-ai">AI</b></span></li>
+        <li class="reveal"><span class="talk-title">AI in Science</span><span class="talk-venue">University of Newcastle, guest lecture</span><span class="talk-tags"><b class="t-invited">Invited</b><b class="t-ai">AI</b></span></li>
+        <li class="reveal"><span class="talk-title">Strategically Utilising AI in Your Research Workflow</span><span class="talk-venue">UNE Graduate Research School, HDR workshop</span><span class="talk-tags"><b class="t-invited">Invited</b><b class="t-ai">AI</b></span></li>
+        <li class="reveal"><span class="talk-title">Ethics, Economics and E-safety of AI</span><span class="talk-venue">UNE Graduate Research School, HDR workshop</span><span class="talk-tags"><b class="t-invited">Invited</b><b class="t-ai">AI</b></span></li>
+        <li class="reveal"><span class="talk-title">AI Teams as a Pragmatic Alternative to Traditional Groupwork in Online Science Education</span><span class="talk-venue">Australian Conference on Science and Mathematics Education</span><span class="talk-tags"><b class="t-ai">AI</b><b class="t-teach">Teaching</b></span></li>
+        <li class="reveal"><span class="talk-title">AI for SMEs</span><span class="talk-venue">Business NSW</span><span class="talk-tags"><b class="t-ai">AI</b></span></li>
+        <li class="reveal"><span class="talk-title">AI workshop</span><span class="talk-venue">UNE Biomedical Science discipline</span><span class="talk-tags"><b class="t-ai">AI</b></span></li>
+        <li class="reveal"><span class="talk-title">“Closing the Loop” symposium on renewables</span><span class="talk-venue">NOVA</span><span class="talk-tags"><b class="t-invited">Invited</b><b class="t-energy">Renewables</b></span></li>
+        <li class="reveal"><span class="talk-title">New England Renewable Energy Zone</span><span class="talk-venue">Planning Institute of Australia</span><span class="talk-tags"><b class="t-invited">Invited</b><b class="t-energy">Renewables</b></span></li>
+        <li class="reveal"><span class="talk-title">New England Solar Farm projects forum</span><span class="talk-venue">UNE, CSIRO, Macquarie University and ACEN</span><span class="talk-tags"><b class="t-energy">Renewables</b></span></li>
+        <li class="reveal"><span class="talk-title">Chemistry of Salt and Electrolytes</span><span class="talk-venue">UNE Nutrition Digest</span><span class="talk-tags"><b class="t-chem">Chemistry</b></span></li>
+        <li class="reveal"><span class="talk-title">Teaching &amp; Learning symposium</span><span class="talk-venue">UNE</span><span class="talk-tags"><b class="t-teach">Teaching</b></span></li>
+      </ol>
+    </section>
+
+    <section class="block live" id="live" aria-labelledby="live-title">
+      <div class="wrap head-row reveal">
+        <div>
+          <p class="label">Live · running in your browser</p>
+          <h2 id="live-title">Chemistry you can play with</h2>
+        </div>
+        <p>Both figures are computed as you watch: a reaction you can step through, and a liquid you can heat and cool.</p>
+      </div>
+
+      <div class="wrap">
+        <div class="sheet drafting fig-reaction">
+          <div class="ruler ruler-top" aria-hidden="true"></div>
+          <div class="stage-meta"><span>Fig. 1 · Cl⁻ + CH₃Cl → ClCH₃ + Cl⁻</span><span>S<sub>N</sub>2 Walden inversion · schematic energies</span></div>
+          <figure class="reaction" data-figure="reaction">
+            <div class="reaction-view">
+              <canvas aria-hidden="true"></canvas>
+              <div class="reaction-labels" aria-hidden="true">
+                <span class="atom-label atom-label-a" data-label="a">Cl</span>
+                <span class="atom-label atom-label-b" data-label="b">Cl⁻</span>
+                <span class="dim-label" data-label="dA"></span>
+                <span class="dim-label" data-label="dB"></span>
+                <span class="ts-label" data-label="ts">TS ‡</span>
+              </div>
+              <p class="reaction-fallback">The 3D view needs JavaScript and WebGL, which are turned off or unavailable in this browser.</p>
+            </div>
+            <div class="reaction-panel">
+              <div class="panel-head"><span>Energy profile</span><button class="play-toggle" type="button" aria-pressed="false">Pause</button></div>
+              <svg class="energy-plot" viewBox="0 0 360 214" role="slider" tabindex="0" aria-label="Reaction coordinate. Drag along the plot or use the arrow keys to move through the reaction." aria-valuemin="-4" aria-valuemax="4" aria-valuenow="-3.2"></svg>
+              <dl class="readouts">
+                <div><dt>ξ</dt><dd data-readout="xi">−3.20 Å</dd></div>
+                <div><dt>E / kJ mol⁻¹</dt><dd data-readout="energy">—</dd></div>
+                <div><dt>r(C–Clᵃ)</dt><dd data-readout="rA">—</dd></div>
+                <div><dt>r(C–Clᵇ)</dt><dd data-readout="rB">—</dd></div>
+                <div><dt>∠ H–C–Clᵃ</dt><dd data-readout="angle">—</dd></div>
+                <div><dt>Stage</dt><dd data-readout="stage">—</dd></div>
+              </dl>
+            </div>
+            <figcaption class="figure-caption"><strong>Fig. 1.</strong> A chloride ion attacks chloromethane from the side opposite the C–Cl bond. At the transition state both C–Cl bonds are 2.33 Å and the three hydrogens lie flat; the methyl group then inverts like an umbrella. Drag along the energy profile, or use the arrow keys, to step through the reaction. Energies are schematic, drawn to approximate published gas-phase values.</figcaption>
+          </figure>
+        </div>
+
+        <div class="sheet drafting simulation">
+          <div class="simulation-stage">
+            <div class="ruler ruler-top" aria-hidden="true"></div>
+            <div class="stage-meta"><span>Fig. 2 · Lennard-Jones fluid, N = 216, ρ* = 0.40</span><span>live · velocity Verlet · Berendsen thermostat</span></div>
+            <figure class="liquid" data-figure="liquid">
+              <div class="liquid-view">
+                <canvas aria-hidden="true"></canvas>
+                <p class="liquid-fallback">Drawing the atoms needs JavaScript and WebGL, which are turned off or unavailable in this browser.</p>
+                <span class="liquid-hint" aria-hidden="true">Drag to rotate</span>
+              </div>
+              <div class="liquid-panel">
+                <fieldset class="thermostat">
+                  <legend>Thermostat · target T*</legend>
+                  <div class="preset-row">
+                    <button type="button" data-preset="2" aria-pressed="false"><span>Gas</span><small>2.00</small></button>
+                    <button type="button" data-preset="0.75" aria-pressed="true"><span>Condense</span><small>0.75</small></button>
+                    <button type="button" data-preset="0.4" aria-pressed="false"><span>Freeze</span><small>0.40</small></button>
+                  </div>
+                  <div class="range"><label><span class="sr-only">Target temperature</span><input type="range" min="0.3" max="2.5" step="0.05" value="0.75"></label><output>0.75</output></div>
+                  <div class="preset-row secondary">
+                    <button type="button" data-action="play" aria-pressed="false">Pause</button>
+                    <button type="button" data-action="reset">Reset</button>
+                  </div>
+                </fieldset>
+                <div class="speed-plot">
+                  <div class="panel-head"><span>Speed distribution</span></div>
+                  <svg viewBox="0 0 300 128" aria-hidden="true"></svg>
+                  <p class="legend"><i class="legend-bar"></i> simulation <i class="legend-line"></i> Maxwell–Boltzmann at T*</p>
+                </div>
+                <dl class="readouts">
+                  <div><dt>Step</dt><dd data-readout="step">0</dd></div>
+                  <div><dt>t / τ</dt><dd data-readout="time">0.0</dd></div>
+                  <div><dt>T* (measured)</dt><dd data-readout="temperature">—</dd></div>
+                  <div><dt>U / N ε</dt><dd data-readout="potential">—</dd></div>
+                </dl>
+              </div>
+            </figure>
+          </div>
+          <div class="simulation-text">
+            <p class="label">Fig. 2 · Live simulation</p>
+            <h3>Molecular dynamics in your browser</h3>
+            <p>Your browser is integrating Newton's equations of motion for 216 Lennard-Jones atoms in a periodic box, in time steps of 0.005 τ (about 11 fs for argon).</p>
+            <p>Turn the thermostat down and the gas condenses into droplets. Turn it up and the speed distribution broadens, following the Maxwell–Boltzmann curve for the measured temperature.</p>
+            <p>My research simulations work the same way, with far more atoms and with forces from quantum chemistry or machine-learned potentials, on the Gadi supercomputer.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block wrap research" id="research" aria-labelledby="research-title">
+      <div class="head-row reveal">
+        <div>
+          <p class="label">Selected research</p>
+          <h2 id="research-title">Three highlights, built from their own data</h2>
+        </div>
+        <p>Each has an interactive 3D view drawn from the paper's published numbers. All 24 of my papers are on the shelf of <a href="papers/">Papers on tape</a>.</p>
+      </div>
+
+      <article class="feature reveal">
+        <div class="feature-text">
+          <p class="tag">Chemical Science · 2021 · first author · front cover</p>
+          <h3>Quantifying the Hofmeister series</h3>
+          <p>Salts change how proteins fold, how polymers swell and how surfaces interact, in a consistent order known as the Hofmeister series. The order has been known for over a century, but explaining it has been hard.</p>
+          <p>In Chemical Science we traced the anion series to electrostatics at each ion's most charge-dense atom, which reduces every anion to one number: its radial charge density. Our review in Physical Chemistry Chemical Physics, now Web of Science Highly Cited, sets out what is and isn't understood about specific ion effects.</p>
+          <p class="links"><a href="https://doi.org/10.1039/d1sc03568a">Chemical Science paper</a> <a href="https://doi.org/10.1039/D2CP00847E">PCCP review</a> <a href="papers/#hofmeister">Explore in 3D</a></p>
+        </div>
+        <figure class="poster">
+          <a href="papers/#hofmeister">
+            <img src="img/hofmeister.webp" width="1120" height="992" loading="lazy" decoding="async" alt="A 3D surface of radial charge density over site charge and effective radius, with 23 anions placed on it as spheres.">
+            <span class="poster-cta">Explore in 3D</span>
+          </a>
+          <figcaption>23 anions placed at their computed site charge and radius on the surface q/r. Height is each anion's place in the series.</figcaption>
+        </figure>
+      </article>
+
+      <article class="feature reverse reveal">
+        <div class="feature-text">
+          <p class="tag">Scientific Data · 2022 · first author</p>
+          <h3>IonSolvR: a repository of solvated ions</h3>
+          <p>How an ion holds its shell of solvent shapes everything from battery electrolytes to protein stability. Studying ions outside water has been held back by a lack of consistent data.</p>
+          <p>IonSolvR is an open collection of more than 3,000 nanosecond-scale quantum chemical (DFTB) molecular dynamics simulations, covering up to 55 solutes in 28 protic and aprotic solvents. Every run uses one protocol and is validated against experiment, so others can build on it instead of starting from scratch.</p>
+          <p class="links"><a href="https://doi.org/10.1038/s41597-022-01527-8">Read the paper</a> <a href="papers/#ionsolvr">Explore in 3D</a></p>
+        </div>
+        <figure class="poster">
+          <a href="papers/#ionsolvr">
+            <img src="img/ionsolvr.webp" width="1120" height="992" loading="lazy" decoding="async" alt="Four cubic simulation cells of sodium chloride in water, drawn to scale, holding 32, 64, 100 and 300 water molecules.">
+            <span class="poster-cta">Explore in 3D</span>
+          </a>
+          <figcaption>The paper's four NaCl–water cells, to scale. Smaller cells mean higher effective concentration, from 1.72 down to 0.19 mol L⁻¹.</figcaption>
+        </figure>
+      </article>
+
+      <article class="feature reveal">
+        <div class="feature-text">
+          <p class="tag">Journal of Computational Chemistry · 2025 · corresponding author</p>
+          <h3>Predicting PAH stability from geometry</h3>
+          <p>Curving a polycyclic aromatic hydrocarbon costs energy, but computing that cost with high-level quantum chemistry for tens of thousands of isomers is slow.</p>
+          <p>We computed PBE0-D4 energies for 38,264 nonplanar PAH isomers and tested which cheap geometric descriptor tracks them. The best is Σ<sub>dihedral</sub>, the sum of the deviations from planarity across every C–C–C–C dihedral. It predicts relative stability to a mean absolute deviation of 3.6 kcal mol⁻¹, and 0.8 kcal mol⁻¹ when combined with aromaticity and fitted GFN2-xTB energies. We released the PAHAPS web tool (PAH Automated Property Scanner) and code with the paper.</p>
+          <!-- TODO (Kas): confirm the web app and code links. -->
+          <p class="links"><a href="https://doi.org/10.1002/jcc.70198">Read the paper</a> <a href="https://pahaps.streamlit.app/">PAHAPS web app</a> <a href="https://github.com/Kasigee/PAH_Analysis">Code</a> <a href="papers/#pahaps">Explore in 3D</a></p>
+        </div>
+        <figure class="poster">
+          <a href="papers/#pahaps">
+            <img src="img/pahaps.webp" width="1120" height="992" loading="lazy" decoding="async" alt="Six stacked-dot histograms of PAH isomer energies, one row per molecular formula and one dot per isomer.">
+            <span class="poster-cta">Explore in 3D</span>
+          </a>
+          <figcaption>All 38,264 isomer energies, one dot per isomer and one row per formula. The 3D view also opens three isomers as molecules.</figcaption>
+        </figure>
+      </article>
+    </section>
+
+    <div class="drift" aria-hidden="true"><div><span>Quantum chemistry</span><span>Molecular dynamics</span><span>Machine-learned potentials</span><span>Specific ion effects</span><span>Membrane transport</span><span>Solar-panel recycling</span><span>Thermodiffusion</span><span>Textbook chemistry</span><span>AI for science</span><span>Quantum chemistry</span><span>Molecular dynamics</span><span>Machine-learned potentials</span><span>Specific ion effects</span><span>Membrane transport</span><span>Solar-panel recycling</span><span>Thermodiffusion</span><span>Textbook chemistry</span><span>AI for science</span></div></div>
+
+    <section class="block wrap beyond" id="beyond" aria-labelledby="beyond-title">
+      <div class="head-row reveal">
+        <div>
+          <p class="label">Beyond the papers</p>
+          <h2 id="beyond-title">Teaching, tools and talking science</h2>
+        </div>
+      </div>
+      <div class="cards">
+        <article class="card reveal">
+          <p class="tag">Teaching</p>
+          <h3>Teaching AI for science</h3>
+          <p>I developed and coordinate SCI310/510, Artificial Intelligence and Computing for Science, at UNE, and teach first-year, physical and quantum chemistry. I coordinate first-year teaching and learning for the School of Science and Technology, and have built computational chemistry labs and teaching materials since 2016.</p>
+        </article>
+        <article class="card reveal">
+          <p class="tag">AI in practice</p>
+          <h3>Using AI well in research</h3>
+          <p>I run workshops on using AI in research, from strategy and workflows to ethics, economics and e-safety, for UNE's Graduate Research School and other disciplines. In my own research I use AI coding assistants every day, and machine-learned potentials wherever quantum chemistry alone would be too slow.</p>
+        </article>
+        <article class="card reveal">
+          <p class="tag">Code and data</p>
+          <h3>Tools other people use</h3>
+          <p>The <a href="https://pahaps.streamlit.app/">PAHAPS web app</a> for PAH stability, the <a href="https://ionsolvr.newcastle.edu.au">IonSolvR repository</a> of solvated ions, and about ten years of Python for scientific data analysis. On the side, a reinforcement learning project implementing Dyna-Q on cryptocurrency market data.</p>
+        </article>
+        <article class="card reveal" id="podcast">
+          <p class="tag">Podcast</p>
+          <h3>Anion The Future</h3>
+          <p>My podcast makes advanced academic research understandable to general audiences, with episodes on ideas from science, accounting, agriculture and education.</p>
+          <!-- TODO (Kas): fix the certificate on anionthefuture.com before launch, or point this link at the show's Spotify or Apple Podcasts page. -->
+          <p class="card-link"><a href="https://anionthefuture.com/">Listen to Anion The Future</a></p>
+        </article>
+      </div>
+    </section>
+
+    <section class="block wrap publications" id="publications" aria-labelledby="pubs-title">
+      <div class="head-row reveal">
+        <div>
+          <p class="label">Publications</p>
+          <h2 id="pubs-title">Selected papers</h2>
+        </div>
+        <p>23 refereed articles and one preprint, cited 932 times (Google Scholar, October 2026). The full list is below and on <a href="https://orcid.org/0000-0002-8055-370X">ORCID</a>.</p>
+      </div>
+      <ol class="pubs">
+        <li><strong>K. P. Gregory</strong>, E. J. Wanless, G. B. Webber, V. S. J. Craig, A. J. Page. <a href="https://doi.org/10.1039/d1sc03568a">The electrostatic origins of specific ion effects: quantifying the Hofmeister series for anions.</a> <em>Chem. Sci.</em> 12, 15007 (2021). Front cover.</li>
+        <li><strong>K. P. Gregory</strong>, G. R. Elliott, H. Robertson, A. Kumar, E. J. Wanless, G. B. Webber, V. S. J. Craig, G. G. Andersson, A. J. Page. <a href="https://doi.org/10.1039/D2CP00847E">Understanding specific ion effects and the Hofmeister series.</a> <em>Phys. Chem. Chem. Phys.</em> 24, 12682 (2022). Web of Science Highly Cited.</li>
+        <li><strong>K. P. Gregory</strong>, G. R. Elliott, E. J. Wanless, G. B. Webber, A. J. Page. <a href="https://doi.org/10.1038/s41597-022-01527-8">A quantum chemical molecular dynamics repository of solvated ions.</a> <em>Sci. Data</em> 9, 430 (2022).</li>
+        <li><strong>K. P. Gregory</strong>, E. J. Wanless, G. B. Webber, V. S. J. Craig, A. J. Page. <a href="https://doi.org/10.1039/D4CP01975J">A first-principles alternative to empirical solvent parameters.</a> <em>Phys. Chem. Chem. Phys.</em> 26, 20750 (2024). Front cover.</li>
+        <li><strong>K. P. Gregory</strong>, A. Karton. <a href="https://doi.org/10.1002/jcc.70198">Big-data analysis of geometric descriptors as efficient predictors of energetic stability in nonplanar polycyclic aromatic hydrocarbons.</a> <em>J. Comput. Chem.</em> 46, e70198 (2025). Corresponding author.</li>
+        <li>S. Xu, <strong>K. P. Gregory</strong>, A. J. Hutchinson, R. Zielinski, L. D. Hall, B. Corry, J. F. Torres. <a href="https://doi.org/10.1038/s42004-025-01694-w">Thermophobic diffusion becomes dominant in ultra-dilute alkali halide aqueous solutions.</a> <em>Commun. Chem.</em> 8, 303 (2025). Joint first author.</li>
+        <li>E. C. Johnson, <strong>K. P. Gregory</strong>, H. Robertson, I. J. Gresham, A. R. J. Nelson, V. S. J. Craig, S. W. Prescott, A. J. Page, G. B. Webber, E. J. Wanless. <a href="https://doi.org/10.1039/D4SC04832F">The inductive effect does not explain electron density in haloacetates: are our textbooks wrong?</a> <em>Chem. Sci.</em> 16, 2382 (2025).</li>
+        <li>M. C. Elliott, E. C. Johnson, <strong>K. P. Gregory</strong>, C. E. Hughes. <a href="https://doi.org/10.1021/acs.jchemed.6c00141">Rethinking the nature and extent of inductive effects in organic compounds.</a> <em>J. Chem. Educ.</em> 103, 3156 (2026). Among the ten most-read ACS journal articles in May 2026.</li>
+        <li>C. Wallis, <strong>K. P. Gregory</strong>, S. J. Fairweather, G. G. van Dooren, A. M. Lehane, B. Corry. <a href="https://doi.org/10.64898/2026.02.05.704099">A proton transfer mechanism in the malaria parasite lactate/H⁺ symporter reveals a channel-like transporter without conformational changes.</a> <em>bioRxiv</em> preprint (2026).</li>
+      </ol>
+
+      <details class="all-pubs">
+        <summary>All 24 publications, newest first</summary>
+        <h3>2026</h3>
+        <ol class="pubs">
+          <li>M. C. Elliott, E. C. Johnson, <strong>K. P. Gregory</strong>, C. E. Hughes. <a href="https://doi.org/10.1021/acs.jchemed.6c01458">The inductive effect: a response to Nguyen.</a> <em>J. Chem. Educ.</em> (2026), published online 15 October 2026.</li>
+          <li>M. C. Elliott, E. C. Johnson, <strong>K. P. Gregory</strong>. <a href="https://doi.org/10.1021/acs.jchemed.6c00721">Rethinking organic chemistry: enhancing pedagogies to explain the relative reactivity of aldehydes and ketones.</a> <em>J. Chem. Educ.</em> 103, 5645 (2026).</li>
+          <li>M. C. Elliott, <strong>K. P. Gregory</strong>, C. E. Hughes, B. D. Ward. <a href="https://doi.org/10.1021/acs.jchemed.6c00708">Exploring the interface of hyperconjugation and polarizability: enhancing pedagogies for charge stabilization in organic chemistry.</a> <em>J. Chem. Educ.</em> 103, 4420 (2026).</li>
+          <li>M. J. Foster, S. J. Bryant, A. Taher, <strong>K. P. Gregory</strong>, I. Palombini, R. N. Ben, G. Bryant, B. L. Wilkinson. <a href="https://doi.org/10.1039/D6TB01172A">Amino acid-functionalised trehalose for multifunctional cryopreservation.</a> <em>J. Mater. Chem. B</em> 14, 11784 (2026).</li>
+          <li>M. C. Elliott, E. C. Johnson, <strong>K. P. Gregory</strong>, C. E. Hughes. <a href="https://doi.org/10.1021/acs.jchemed.6c00141">Rethinking the nature and extent of inductive effects in organic compounds.</a> <em>J. Chem. Educ.</em> 103, 3156 (2026).</li>
+          <li>E. C. Johnson, D. Bates, T. Yang, <strong>K. P. Gregory</strong>, J. West, D. B. Hammond, J. P. Pidgeon, J. Clark, N. H. Williams, C. N. Hunter, S. P. Armes, G. J. Leggett. <a href="https://doi.org/10.1039/D6SC01202G">Rational design of pigment–polymer antenna complexes.</a> <em>Chem. Sci.</em> 17, 11566 (2026).</li>
+          <li>C. Wallis, <strong>K. P. Gregory</strong>, S. J. Fairweather, G. G. van Dooren, A. M. Lehane, B. Corry. <a href="https://doi.org/10.64898/2026.02.05.704099">A proton transfer mechanism in the malaria parasite lactate/H⁺ symporter reveals a channel-like transporter without conformational changes.</a> <em>bioRxiv</em> preprint (2026).</li>
+          <li>A. Kumar, V. S. J. Craig, G. B. Webber, A. J. Page, <strong>K. P. Gregory</strong>, E. J. Wanless, G. G. Andersson. <a href="https://doi.org/10.1016/j.jcis.2025.139019">Ion specificity at solvent surfaces: concentration depth profiles of monovalent inorganic ions.</a> <em>J. Colloid Interface Sci.</em> 703, 139019 (2026).</li>
+        </ol>
+        <h3>2025</h3>
+        <ol class="pubs">
+          <li>S. Xu, <strong>K. P. Gregory</strong>, A. J. Hutchinson, R. Zielinski, L. D. Hall, B. Corry, J. F. Torres. <a href="https://doi.org/10.1038/s42004-025-01694-w">Thermophobic diffusion becomes dominant in ultra-dilute alkali halide aqueous solutions.</a> <em>Commun. Chem.</em> 8, 303 (2025). Joint first author.</li>
+          <li><strong>K. P. Gregory</strong>, A. Karton. <a href="https://doi.org/10.1002/jcc.70198">Big-data analysis of geometric descriptors as efficient predictors of energetic stability in nonplanar polycyclic aromatic hydrocarbons.</a> <em>J. Comput. Chem.</em> 46, e70198 (2025).</li>
+          <li>A. Karton, <strong>K. P. Gregory</strong>, B. Chan. <a href="https://doi.org/10.1016/j.chemphys.2025.112712">How perfluorination alters PAH stability: benchmarking DFT with CCSD(T) isomerization energies of perfluorinated PAHs.</a> <em>Chem. Phys.</em> 595, 112712 (2025).</li>
+          <li>E. C. Johnson, <strong>K. P. Gregory</strong>, H. Robertson, I. J. Gresham, A. R. J. Nelson, V. S. J. Craig, S. W. Prescott, A. J. Page, G. B. Webber, E. J. Wanless. <a href="https://doi.org/10.1039/D4SC04832F">The inductive effect does not explain electron density in haloacetates: are our textbooks wrong?</a> <em>Chem. Sci.</em> 16, 2382 (2025).</li>
+        </ol>
+        <h3>2024</h3>
+        <ol class="pubs">
+          <li><strong>K. P. Gregory</strong>, E. J. Wanless, G. B. Webber, V. S. J. Craig, A. J. Page. <a href="https://doi.org/10.1039/D4CP01975J">A first-principles alternative to empirical solvent parameters.</a> <em>Phys. Chem. Chem. Phys.</em> 26, 20750 (2024).</li>
+          <li>A. Kiy, S. Dutt, <strong>K. P. Gregory</strong>, C. Notthoff, M. E. Toimil-Molares, P. Kluth. <a href="https://doi.org/10.1021/acs.langmuir.4c01347">The effect of electrolyte properties on ionic transport through solid-state nanopores: experiment and simulation.</a> <em>Langmuir</em> 40, 20888 (2024).</li>
+          <li>G. R. Elliott, <strong>K. P. Gregory</strong>, H. Robertson, V. S. J. Craig, G. B. Webber, E. J. Wanless, A. J. Page. <a href="https://doi.org/10.1016/j.cplett.2024.141190">The known-unknowns of anomalous underscreening in concentrated electrolytes.</a> <em>Chem. Phys. Lett.</em> 843, 141190 (2024).</li>
+          <li>H. Robertson, I. J. Gresham, A. R. J. Nelson, <strong>K. P. Gregory</strong>, E. C. Johnson, J. D. Willott, S. W. Prescott, G. B. Webber, E. J. Wanless. <a href="https://doi.org/10.1021/acs.langmuir.3c02596">Solvent-modulated specific ion effects: poly(N-isopropylacrylamide) brushes in nonaqueous electrolytes.</a> <em>Langmuir</em> 40, 335 (2024).</li>
+        </ol>
+        <h3>2023</h3>
+        <ol class="pubs">
+          <li>T. Bourke, <strong>K. P. Gregory</strong>, A. J. Page. <a href="https://doi.org/10.1016/j.jcis.2023.04.052">Hofmeister effects influence bulk nanostructure in a protic ionic liquid.</a> <em>J. Colloid Interface Sci.</em> 645, 420 (2023).</li>
+          <li><strong>K. P. Gregory</strong>, G. B. Webber, E. J. Wanless, A. J. Page. <a href="https://doi.org/10.1088/2516-1075/acbe84">Decomposing Hofmeister effects on amino acid residues with symmetry adapted perturbation theory.</a> <em>Electron. Struct.</em> 5, 014007 (2023).</li>
+          <li>H. Robertson, J. D. Willott, <strong>K. P. Gregory</strong>, E. C. Johnson, I. J. Gresham, A. R. J. Nelson, V. S. J. Craig, S. W. Prescott, R. Chapman, G. B. Webber, E. J. Wanless. <a href="https://doi.org/10.1016/j.jcis.2022.12.114">From Hofmeister to hydrotrope: effect of anion hydrocarbon chain length on a polymer brush.</a> <em>J. Colloid Interface Sci.</em> 634, 983 (2023).</li>
+        </ol>
+        <h3>2022 and earlier</h3>
+        <ol class="pubs">
+          <li><strong>K. P. Gregory</strong>, G. R. Elliott, E. J. Wanless, G. B. Webber, A. J. Page. <a href="https://doi.org/10.1038/s41597-022-01527-8">A quantum chemical molecular dynamics repository of solvated ions.</a> <em>Sci. Data</em> 9, 430 (2022).</li>
+          <li><strong>K. P. Gregory</strong>, G. R. Elliott, H. Robertson, A. Kumar, E. J. Wanless, G. B. Webber, V. S. J. Craig, G. G. Andersson, A. J. Page. <a href="https://doi.org/10.1039/D2CP00847E">Understanding specific ion effects and the Hofmeister series.</a> <em>Phys. Chem. Chem. Phys.</em> 24, 12682 (2022).</li>
+          <li><strong>K. P. Gregory</strong>, E. J. Wanless, G. B. Webber, V. S. J. Craig, A. J. Page. <a href="https://doi.org/10.1039/d1sc03568a">The electrostatic origins of specific ion effects: quantifying the Hofmeister series for anions.</a> <em>Chem. Sci.</em> 12, 15007 (2021).</li>
+          <li><strong>K. P. Gregory</strong>, G. B. Webber, E. J. Wanless, A. J. Page. <a href="https://doi.org/10.1021/acs.jpca.9b04004">Lewis strength determines specific-ion effects in aqueous and nonaqueous solvents.</a> <em>J. Phys. Chem. A</em> 123, 6420 (2019).</li>
+          <li>T. J. Murdoch, B. A. Humphreys, J. D. Willott, <strong>K. P. Gregory</strong>, S. W. Prescott, A. Nelson, E. J. Wanless, G. B. Webber. <a href="https://doi.org/10.1021/acs.macromol.6b01001">Specific anion effects on the internal structure of a poly(N-isopropylacrylamide) brush.</a> <em>Macromolecules</em> 49, 6050 (2016).</li>
+        </ol>
+      </details>
+    </section>
+
+    <section class="block wrap contact" id="contact" aria-labelledby="contact-title">
+      <h2 class="reveal" id="contact-title">Questions, collaborations or a talk?<span>Get in touch.</span></h2>
+      <p class="contact-lede reveal">I'm happy to talk about molecular simulation, quantum chemistry and AI in science.</p>
+      <ul class="contact-list reveal">
+        <li><span>Email</span> <a data-email data-user="kasimir" data-domain="live.com.au" href="#contact">kasimir [at] live.com.au</a> <button class="copy" type="button" data-copy-email>Copy</button></li>
+        <li><span>ORCID</span> <a href="https://orcid.org/0000-0002-8055-370X">0000-0002-8055-370X</a></li>
+        <li><span>PAHAPS</span> <a href="https://pahaps.streamlit.app/">pahaps.streamlit.app</a></li>
+        <!-- TODO (Kas): add LinkedIn, and add GitHub once a few repositories are tidied. -->
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="cols">
+        <div><h3>Dr Kasimir Gregory</h3><p>Computational chemist and Lecturer in Chemistry at the University of New England, Armidale.</p></div>
+        <div><h3>On this site</h3><ul><li><a href="#now">Now</a></li><li><a href="#talks">Talks</a></li><li><a href="#live">Live figures</a></li><li><a href="papers/">Papers on tape</a></li></ul></div>
+        <div><h3>Elsewhere</h3><ul><li><a href="https://orcid.org/0000-0002-8055-370X">ORCID ↗</a></li><li><a href="https://pahaps.streamlit.app/">PAHAPS ↗</a></li><li><a href="https://anionthefuture.com/">Anion The Future ↗</a></li></ul></div>
+      </div>
+      <p class="big" aria-hidden="true">Dr Kas</p>
+      <p class="fine">© <span data-year>2026</span> Kasimir Gregory · Armidale, Australia</p>
+    </div>
+  </footer>
+</body>
+</html>
