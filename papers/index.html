@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Papers on tape · Dr Kasimir Gregory</title>
-  <meta name="description" content="Every one of Kasimir Gregory's papers as a tape on a rotating shelf: 23 refereed articles and a preprint. Pick one and press play to explore it, three of them in interactive 3D drawn from the papers' own data.">
-  <meta property="og:title" content="Papers on tape · Dr Kasimir Gregory">
-  <meta property="og:description" content="Every paper, on a rotating shelf of tapes. Press play to explore each one, three of them in interactive 3D.">
+  <title>Papers on disc · Dr Kasimir Gregory</title>
+  <meta name="description" content="Every one of Kasimir Gregory's papers as a disc on a rotating shelf: 23 refereed articles and a preprint. Pick one and press play to explore it, three of them in interactive 3D drawn from the papers' own data.">
+  <meta property="og:title" content="Papers on disc · Dr Kasimir Gregory">
+  <meta property="og:description" content="Every paper, on a rotating shelf of discs. Press play to explore each one, three of them in interactive 3D.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kasimirgregory.com/papers/">
   <meta property="og:image" content="https://kasimirgregory.com/img/og-papers.jpg">
-  <meta name="theme-color" content="#121312">
+  <meta name="theme-color" content="#07090f">
   <link rel="canonical" href="https://kasimirgregory.com/papers/">
   <link rel="icon" href="../img/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Spectral:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Spectral:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="tapes.css">
   <script>document.documentElement.classList.add('js')</script>
   <script type="importmap">
@@ -29,16 +29,16 @@
   <script type="module" src="tapes.js"></script>
 </head>
 <body>
-  <div class="loading" aria-hidden="true"><span>LOADING</span><span class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="pct">0</span></div>
+  <div class="loading" aria-hidden="true"><span class="spin"></span><span>Reading disc</span></div>
 
   <div class="screen">
     <header class="topbar">
       <div class="left"><a class="home" href="../">Home</a><span class="clock" aria-hidden="true">00:00:00</span></div>
-      <div class="logo"><b>Dr Kas</b><i aria-hidden="true"></i><small>Home video</small></div>
+      <div class="logo"><b>Dr Kas</b><i aria-hidden="true"></i><small>Papers on disc</small></div>
       <nav aria-label="This site"><a href="../#research">Research</a><a href="../#publications">All publications</a><a href="../#contact">Contact</a></nav>
     </header>
 
-    <div class="shelf" tabindex="0" role="listbox" aria-label="Papers on tape. Use the left and right arrow keys to turn the shelf, Enter to play a tape and F to flip it over.">
+    <div class="shelf" tabindex="0" role="listbox" aria-label="Papers on disc. Use the left and right arrow keys to turn the shelf, Enter to play a disc and F to flip its case over.">
       <div class="rig"><div class="ring"></div></div>
       <div class="floor" aria-hidden="true"></div>
     </div>
@@ -46,7 +46,7 @@
     <div class="caption">
       <div class="now" aria-live="polite">
         <p class="now-meta"></p>
-        <h1 class="now-title">Papers on tape</h1>
+        <h1 class="now-title">Papers on disc</h1>
         <p class="now-desc"></p>
       </div>
       <div class="caption-side">
@@ -57,17 +57,17 @@
           <button type="button" class="catalogue-open" aria-haspopup="dialog">☰ Catalogue</button>
         </div>
         <div class="controls">
-          <button type="button" class="prev" aria-label="Previous tape">◄◄</button>
-          <button type="button" class="flip" aria-pressed="false">⟲ Flip</button>
+          <button type="button" class="prev" aria-label="Previous paper">←</button>
+          <button type="button" class="flip" aria-pressed="false">Flip</button>
           <button type="button" class="open">▶ Play</button>
-          <button type="button" class="next" aria-label="Next tape">►►</button>
+          <button type="button" class="next" aria-label="Next paper">→</button>
         </div>
       </div>
-      <p class="hint">Drag or use ← → to turn the shelf. Enter plays a tape, F flips it over to read the back, Esc stops.</p>
+      <p class="hint">Drag or use ← → to turn the shelf. Enter plays a disc, F flips its case to read the back, Esc ejects.</p>
     </div>
 
     <footer class="foot">
-      <span><span class="local">--:--</span> Armidale · <button type="button" class="crt-toggle" aria-pressed="true">CRT [ON]</button> · <button type="button" class="bw-toggle" aria-pressed="false">B&amp;W [OFF]</button></span>
+      <span><span class="local">--:--</span> Armidale</span>
       <span>Dr Kasimir Gregory · Computational chemistry · UNE</span>
     </footer>
   </div>
@@ -82,9 +82,9 @@
 
   <section class="play" aria-label="Playback">
     <header class="static-head">
-      <p class="eyebrow"><a href="../">← Kasimir Gregory</a> · Papers on tape</p>
-      <h1>Every paper, on tape</h1>
-      <p class="static-lede">All 23 refereed articles and the 2026 preprint are on the shelf. With JavaScript on, the shelf turns and each tape plays its paper. The six papers below have their own pages, and the <a href="../#publications">full publication list</a> is on the home page.</p>
+      <p class="eyebrow"><a href="../">← Kasimir Gregory</a> · Papers on disc</p>
+      <h1>Every paper, on disc</h1>
+      <p class="static-lede">All 23 refereed articles and the 2026 preprint are on the shelf. With JavaScript on, the shelf turns and each disc plays its paper. The six papers below have their own pages, and the <a href="../#publications">full publication list</a> is on the home page.</p>
     </header>
 
     <article class="tape-body" id="body-hofmeister" data-id="hofmeister" aria-labelledby="hof-title">
@@ -328,8 +328,6 @@
     </footer>
   </section>
 
-  <div class="osd"><span>▶ PLAY <span class="tc">00:00:00:00</span></span><span class="osd-title"></span><button type="button" class="stop">■ STOP</button></div>
-  <div class="crt" aria-hidden="true"></div>
-  <div class="grain" aria-hidden="true"></div>
+  <div class="osd"><span>▶ Playing <span class="tc">00:00:00</span></span><span class="osd-title"></span><button type="button" class="stop">⏏ Eject</button></div>
 </body>
 </html>

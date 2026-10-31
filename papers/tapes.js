@@ -1,8 +1,10 @@
-// Papers on tape: every paper as a VHS sleeve on a rotating shelf, after the MM27 Home Video concept.
-// Each sleeve is a real box (front, back, two spines, top and bottom) on a CSS 3D ring. Turn the ring
-// by dragging, scrolling or with the arrow keys; flip a tape to read its back; press play to open it.
-// The shelf holds all the papers or only the first-author ones, and the catalogue jumps to any tape.
-// Three tapes play an interactive Three.js scene, mounted the first time they play.
+// Papers on disc: every paper as a disc case on a rotating shelf. Each case is a real box (cover,
+// back, two spines, top and bottom) on a CSS 3D ring, with its disc inside; the disc slides out of the
+// case at the front of the shelf. Turn the ring by dragging, scrolling or with the arrow keys; flip a
+// case to read its back; press play to open the paper. The shelf holds all the papers or only the
+// first-author ones, and the catalogue jumps to any of them. Three discs play an interactive
+// Three.js scene, mounted the first time they play. (The code still calls each case a tape: the shelf
+// began as a row of video tapes, and the file names date from then.)
 import { START, TAPES } from './tapes-data.js';
 import { schematic } from './schematics.js';
 
@@ -108,20 +110,23 @@ function sleeve(t) {
       <p class="sleeve-title${t.title.length > 15 ? ' long' : ''}">${title}</p>
       ${art}
       <p class="tagline">${esc(t.tagline)}</p>
-      <div class="meta"><span>VHS · Home Video</span><i>KG</i></div>
+      <div class="meta"><span>Papers on disc</span><i>KG</i></div>
+      <span class="hinge" aria-hidden="true"></span>
     </div>
     <div class="face back">
       <p class="back-title">${title}</p>
       <p class="synopsis">${esc(t.synopsis)}</p>
       <div class="stills">${stills}</div>
-      <p class="credits"><small>Starring</small>${esc(t.credits)}</p>
+      <p class="credits"><small>Authors</small>${esc(t.credits)}</p>
       <div class="badges">${badges}</div>
       <div class="barcode">${barcode(t.doi)}<small>DOI ${esc(t.doi)}</small></div>
+      <span class="hinge" aria-hidden="true"></span>
     </div>
     <div class="face side left">${side}</div>
     <div class="face side right">${side}</div>
     <div class="face lid top"></div>
-    <div class="face lid bottom"></div>`;
+    <div class="face lid bottom"></div>
+    <div class="face disc"><i></i></div>`;
 }
 
 let suppressClick = false;
@@ -164,8 +169,8 @@ const big = () => N > 10;
 const size = { w: 220, R: 300 };
 function measure() {
   const narrow = window.innerWidth < 640;
-  const byWidth = narrow ? window.innerWidth * 0.44 : Math.min(Math.max(window.innerWidth * 0.18, 160), 290);
-  const byHeight = (shelf.clientHeight * 0.74) / 1.6;
+  const byWidth = narrow ? window.innerWidth * 0.5 : Math.min(Math.max(window.innerWidth * 0.19, 170), 310);
+  const byHeight = (shelf.clientHeight * 0.74) / 1.41;
   size.w = Math.max(110, Math.min(byWidth, byHeight));
   const spacing = big() ? (narrow ? 1.18 : 1.3) : (narrow ? 1.5 : 1.62);
   size.R = (size.w * spacing) / (2 * Math.tan(Math.PI / N));
@@ -210,6 +215,10 @@ function render() {
     tape.style.setProperty('--shade', shade.toFixed(3));
     tape.style.setProperty('--gloss', `${(50 - d * 60).toFixed(1)}%`);
     const tilt = i === index ? near : 0;
+    // The disc slides out of the front case, and back in while the case flips over.
+    const out = i === index ? near * Math.max(0, 1 - flips[i] / 60) : 0;
+    tape.style.setProperty('--out', out.toFixed(3));
+    tape.style.setProperty('--spin', out > 0.6 && !REDUCE ? 'running' : 'paused');
     tape.style.transform = `translateZ(${(near * size.w * 0.16).toFixed(1)}px) rotateY(${(flips[i] + state.tiltY * tilt).toFixed(2)}deg) rotateX(${(state.tiltX * tilt).toFixed(2)}deg)`;
   });
 }
@@ -239,6 +248,7 @@ function tick(now) {
 
 function updateCaption() {
   const t = list[index];
+  root.style.setProperty('--cur', t.color);
   ui.meta.textContent = `${t.studio} · ${t.year} · ${roleOf(t)}`;
   ui.title.textContent = t.title;
   ui.desc.textContent = `${t.tagline} ${t.scene ? 'Press play to explore it in 3D.' : 'Press play to read about it.'}`;
@@ -504,7 +514,7 @@ window.addEventListener('hashchange', () => {
   playTape();
 });
 
-/* Clocks: time on the page, the playback timecode and the time in Armidale. */
+/* Clocks: time on the page, the time since play was pressed and the time in Armidale. */
 const pad = (n) => String(Math.floor(n)).padStart(2, '0');
 const hms = (s) => `${pad(s / 3600)}:${pad((s / 60) % 60)}:${pad(s % 60)}`;
 const opened = performance.now();
@@ -521,39 +531,11 @@ setInterval(tickClocks, 500);
 function timecode() {
   if (!state.playing) return;
   const s = (performance.now() - playStart) / 1000;
-  tc.textContent = `${hms(s)}:${pad((s * 25) % 25)}`;
+  tc.textContent = hms(s);
   requestAnimationFrame(timecode);
 }
 
-/* Screen effects: CRT scanlines and a fine grain (on by default), and black and white. */
-const crtButton = document.querySelector('.crt-toggle');
-crtButton.addEventListener('click', () => {
-  const off = root.classList.toggle('no-crt');
-  crtButton.textContent = `CRT [${off ? 'OFF' : 'ON'}]`;
-  crtButton.setAttribute('aria-pressed', String(!off));
-});
-const bwButton = document.querySelector('.bw-toggle');
-bwButton.addEventListener('click', () => {
-  const on = root.classList.toggle('bw');
-  bwButton.textContent = `B&W [${on ? 'ON' : 'OFF'}]`;
-  bwButton.setAttribute('aria-pressed', String(on));
-});
-{
-  const tile = document.createElement('canvas');
-  tile.width = 160;
-  tile.height = 160;
-  const g = tile.getContext('2d');
-  const img = g.createImageData(160, 160);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = Math.random() * 255;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 255;
-  }
-  g.putImageData(img, 0, 0);
-  document.querySelector('.grain').style.backgroundImage = `url(${tile.toDataURL()})`;
-}
-
-/* Start: a short LOADING bar, then the ring turns into place (or a deep-linked tape plays). */
+/* Start: the disc reads for a moment, then the ring turns into place (or a linked paper plays). */
 document.querySelector('.n-all').textContent = TAPES.length;
 document.querySelector('.n-first').textContent = FIRST.length;
 const linked = hashId();
@@ -561,24 +543,10 @@ setList(TAPES, linked || START);
 if (!linked && !REDUCE) state.p = state.target - 1.4;
 render();
 const loading = document.querySelector('.loading');
-const ticks = [...loading.querySelectorAll('.ticks i')];
-const pct = loading.querySelector('.pct');
-let lit = 0;
 const finish = () => {
   loading.classList.add('done');
   kick();
   if (linked) playTape();
 };
-if (REDUCE) {
-  finish();
-} else {
-  const timer = setInterval(() => {
-    ticks[lit]?.classList.add('on');
-    lit += 1;
-    pct.textContent = String(Math.min(100, Math.round((lit / ticks.length) * 100)));
-    if (lit >= ticks.length) {
-      clearInterval(timer);
-      finish();
-    }
-  }, 14);
-}
+if (REDUCE) finish();
+else setTimeout(finish, 550);

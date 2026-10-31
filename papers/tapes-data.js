@@ -1,5 +1,5 @@
-// Every paper on the shelf, oldest first: all 23 refereed articles and the 2026 preprint. Covers and
-// spines are built from these entries. Six tapes have a hand-made playback page in index.html (three
+// Every paper on the disc shelf, oldest first: all 23 refereed articles and the 2026 preprint. Covers and
+// spines are built from these entries. Six papers have a hand-made playback page in index.html (three
 // with a 3D scene, three with a drawing); the rest are built from `body` here. Facts come from the
 // papers, their DOIs and Kas's October 2026 CV. `lead` names the first author when it isn't Kas.
 export const START = 'hofmeister';

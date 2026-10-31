@@ -1,4 +1,4 @@
-// "Dr Kas" spelled in iridescent atoms, after the MM27 Atoms concept. The atoms tilt with the
+// "Dr Kas" spelled in iridescent atoms. The atoms tilt with the
 // pointer and scatter as the page scrolls. Capitals stay legible at this atom spacing, where the
 // small counters of a lowercase a and s fill in. On a tall, narrow screen the words stack.
 import * as THREE from 'three';

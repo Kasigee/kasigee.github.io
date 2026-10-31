@@ -8,9 +8,9 @@ kasimirgregory.com
 A static site with no build step, served by GitHub Pages at kasimirgregory.com (see `CNAME`). It has two pages:
 
 - **Home** (`index.html`): "Dr Kas" spelled in iridescent atoms that scatter as you scroll, what Kas is working on in 2026, this year's talks, two live simulations, three papers with stills of their 3D views, and the publication list.
-- **Papers on tape** (`papers/`): all 24 of Kas's papers (23 refereed articles and a preprint) as VHS sleeves on a rotating shelf. Drag, scroll or use the arrow keys to turn it, press F to flip a tape and read its back, and press play to open the paper. A filter narrows the shelf to the eight papers where Kas is first or joint first author, and the catalogue lists every tape, newest first. Three tapes play an interactive 3D scene built from the paper's own data, and the rest show a schematic drawing of the paper's subject. `papers/#` followed by a tape's id (for example `papers/#hofmeister` or `papers/#malaria`) opens straight onto that tape. The ids are in `papers/tapes-data.js`.
+- **Papers on disc** (`papers/`): all 24 of Kas's papers (23 refereed articles and a preprint) as glass disc cases on a rotating shelf. The disc slides out of the case at the front. Drag, scroll or use the arrow keys to turn the shelf, press F to flip a case and read its back, and press play to open the paper. A filter narrows the shelf to the eight papers where Kas is first or joint first author, and the catalogue lists every paper, newest first. Three discs play an interactive 3D scene built from the paper's own data, and the rest show a schematic drawing of the paper's subject. `papers/#` followed by a paper's id (for example `papers/#hofmeister` or `papers/#malaria`) opens straight onto that paper. The ids are in `papers/tapes-data.js`.
 
-Several features come from the MM27 website concepts: the atoms hero from Atoms, the tape shelf from Home Video (redrawn as real 3D boxes, with sharper covers and lighter scanlines), and the SN2 reaction and Lennard-Jones liquid from the MM27 redesign, where they were React components. Here they are plain JavaScript modules.
+The shelf began as a row of VHS tapes. That version is kept on the `archive/papers-vhs` branch, and the papers page's file names (`tapes.js`, `tapes.css`, `tapes-data.js`) date from it.
 
 ### Files
 
@@ -18,12 +18,12 @@ Several features come from the MM27 website concepts: the atoms hero from Atoms,
 - `js/main.js`: menu, rotating words, reveal on scroll, the project video, and the email address, which is assembled in the browser to keep it from scrapers.
 - `js/hero-atoms.js`: the "Dr Kas" atoms. They use capitals because a lowercase a and s lose their counters at this atom spacing. On a tall, narrow screen the words stack.
 - `js/figures/`: the live figures. `lj-engine.js` is the Lennard-Jones simulation (velocity Verlet, periodic box, Berendsen thermostat), `liquid-scene.js` draws it, `reaction-model.js` holds the schematic SN2 energy profile and geometry, `reaction-scene.js` draws the reaction, and `figures.js` wires up the controls. Both figures render only while they are on screen.
-- `papers/index.html`, `papers/tapes.css`, `papers/tapes.js`: the tape page. `papers/tapes-data.js` holds every tape: what is printed on its sleeve and, for 18 of them, the text that plays. The other six play a handwritten `<article id="body-…">` in `papers/index.html`. `papers/schematics.js` draws the schematic covers.
+- `papers/index.html`, `papers/tapes.css`, `papers/tapes.js`: the papers page. `papers/tapes-data.js` holds every paper: what is printed on its case and, for 18 of them, the text that plays. The other six play a handwritten `<article id="body-…">` in `papers/index.html`. `papers/schematics.js` draws the schematic covers.
 - `papers/paper-visuals.js`, `papers/paper-data.js`, `papers/build/`: the three 3D paper scenes and the data behind them. See `papers/README.md`.
 - `img/`: the portrait, the stills of the 3D scenes, the video poster, the favicon and the social preview images. `media/eva-glass.mp4`: the solar-panel simulation in the "Now" section (2.4 MB, silent, pauses off screen, no autoplay for reduced motion).
 - `vendor/three/`: Three.js r186 (MIT licence), with OrbitControls, CSS2DRenderer and RoomEnvironment. The r186 npm package doesn't ship a minified build, so `three.module.min.js` was bundled from `three@0.186.1` with esbuild (`esbuild node_modules/three/build/three.module.js --bundle --format=esm --minify`), and the add-ons were minified the same way.
 
-The only outside requests are the Google Fonts stylesheets (Spectral, IBM Plex Sans and Mono, Anton, and Unbounded for the letters D, r, K, a, s, R, A and S only). Every page falls back to system fonts if they fail.
+The only outside requests are the Google Fonts stylesheets (Spectral, IBM Plex Sans and Mono, Space Grotesk, and Unbounded for the letters D, r, K, a, s, R, A and S only). Every page falls back to system fonts if they fail.
 
 ### Preview locally
 

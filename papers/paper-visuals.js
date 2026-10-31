@@ -782,7 +782,7 @@ function mountIonSolvR() {
   apply();
 }
 
-// Each tape on the papers page mounts its scene the first time it plays.
+// Each disc on the papers page mounts its scene the first time it plays.
 const MOUNTS = { hofmeister: mountHofmeister, pahaps: mountPahaps, ionsolvr: mountIonSolvR };
 
 export function mountScene(id) {

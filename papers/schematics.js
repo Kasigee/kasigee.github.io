@@ -1,4 +1,4 @@
-// Schematic cover drawings for the tapes that have no 3D scene of their own. Each one is a picture of
+// Schematic cover drawings for the papers that have no 3D scene of their own. Each one is a picture of
 // the paper's subject, not of its results: no sizes, energies or counts are implied, and the page
 // labels every one as a schematic. All share a 320 × 220 frame drawn on the dark stage colour.
 const INK = '#dbe4f0';
