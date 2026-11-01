@@ -1,9 +1,10 @@
-// Three.js scenes for three of Kasimir Gregory's papers. Every number drawn here comes from the
-// papers, their supplementary tables, or the PAHAPS dataset; see paper-data.js for sources.
+// Three.js scenes for Kasimir Gregory's papers. Every number drawn here comes from the papers, their
+// supplementary tables, or the PAHAPS dataset; see paper-data.js and brush-data.js for sources.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ANIONS, PAH_ENERGIES, PAH_ISOMERS, ION_BOXES } from './paper-data.js';
+import { BRUSH, BRUSH_STEP, BRUSH_LEFT_OUT } from './brush-data.js';
 
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MINUS = '−';
@@ -782,8 +783,153 @@ function mountIonSolvR() {
   apply();
 }
 
+/* 4. PNIPAM brush: volume fraction profiles at every measured temperature, one ribbon each. */
+const TAIL_NAMES = { G: 'Gaussian', P: 'parabola with power law', HT: 'hyperbolic tangent' };
+function mountBrush() {
+  const el = document.getElementById('stage-brush');
+  if (!el) return;
+  const readout = document.getElementById('brush-readout');
+  const solButtons = [...document.querySelectorAll('[data-brush-sol]')];
+  const tempBar = document.getElementById('brush-temps');
+  let sol = BRUSH[0];
+  let row = sol.rows[sol.rows.length - 1];
+
+  const describe = () => {
+    const tail = row.tail ? `${TAIL_NAMES[row.tail]} tail` : 'no tail';
+    const regime = row.L < 260 ? 'Collapsed: one dense layer of about 60–65% polymer.'
+      : row.L < 380 ? 'In between: a dense inner layer under a dilute, swollen tail.'
+        : 'Swollen: a short dense layer at the surface, then a long dilute tail.';
+    readout.innerHTML = `
+      <p class="readout-name">${sol.name} · ${fmt(row.T, row.T % 1 ? 1 : 0)} °C</p>
+      <dl class="readout-grid">
+        <div><dt>Brush thickness (twice the first moment)</dt><dd>${row.L} <small>Å</small></dd></div>
+        <div><dt>Model</dt><dd>${row.slabs} <small>slab${row.slabs > 1 ? 's' : ''}, ${tail}</small></dd></div>
+        <div><dt>Peak polymer fraction</dt><dd>${fmt(Math.max(...row.phi), 2)}</dd></div>
+        <div><dt>Fit χ²</dt><dd>${row.chi2}</dd></div>
+      </dl>
+      <p class="readout-note">${regime}</p>`;
+  };
+
+  const st = createStage(el, { camera: [6, 5, 11], target: [4, 0.9, 0], minDistance: 4, maxDistance: 30 });
+  const buildTemps = () => {
+    tempBar.innerHTML = sol.rows.map((r) => `<button type="button" class="btn" data-brush-t="${r.T}" aria-pressed="${r === row}">${fmt(r.T, r.T % 1 ? 1 : 0)} °C</button>`).join('');
+    tempBar.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+      row = sol.rows.find((r) => r.T === Number(b.dataset.brushT));
+      apply();
+    }));
+  };
+  if (!st) {
+    buildTemps();
+    describe();
+    return;
+  }
+  const { scene } = st;
+  const X = 8 / 1000; // scene units per angstrom
+  const Y = 3; // scene units per unit volume fraction
+  const Z = (T) => 3 - ((T - 20) / 25) * 6; // 20 °C at the front, 45 °C at the back
+  const tColor = (T) => ramp((T - 20) / 25);
+
+  // The silicon wafer the chains are grafted to, and the axes.
+  const wafer = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 7), new THREE.MeshStandardMaterial({ color: '#2c3646', roughness: 0.7, metalness: 0.1 }));
+  wafer.position.set(-0.15, 0.25 - 0.5, 0);
+  scene.add(wafer);
+  const ax = new THREE.Group();
+  scene.add(ax);
+  ax.add(polyline([new THREE.Vector3(0, 0, 3.4), new THREE.Vector3(8.2, 0, 3.4)], COLOR.grid, 0.7));
+  // Vertical axis at the back left, behind the hottest (tallest) profiles.
+  for (let d = 0; d <= 1000; d += 200) {
+    ax.add(polyline([new THREE.Vector3(d * X, 0, -3.2), new THREE.Vector3(d * X, 0, 3.4)], COLOR.grid, 0.18));
+    const t = label(String(d), 'tag tag-tick');
+    t.position.set(d * X, -0.12, 3.8);
+    ax.add(t);
+  }
+  const dl = label('distance from the surface (Å)', 'tag tag-axis');
+  dl.position.set(4, -0.12, 4.6);
+  ax.add(dl);
+  ax.add(polyline([new THREE.Vector3(0, 0, -3.2), new THREE.Vector3(0, Y * 1.02, -3.2)], COLOR.grid, 0.7));
+  [0, 0.5, 1].forEach((v) => {
+    const t = label(v.toFixed(1), 'tag tag-tick');
+    t.position.set(-0.3, v * Y, -3.2);
+    ax.add(t);
+  });
+  const vl = label('polymer volume fraction', 'tag tag-axis');
+  vl.position.set(0.9, Y * 1.12, -3.2);
+  ax.add(vl);
+
+  const ribbons = new THREE.Group();
+  scene.add(ribbons);
+  const pickables = [];
+  const build = () => {
+    ribbons.clear();
+    pickables.length = 0;
+    sol.rows.forEach((r) => {
+      const z = Z(r.T);
+      const n = r.phi.length;
+      const pos = new Float32Array(n * 6);
+      const top = [];
+      for (let i = 0; i < n; i++) {
+        const x = i * BRUSH_STEP * X;
+        pos.set([x, 0, z, x, r.phi[i] * Y, z], i * 6);
+        top.push(new THREE.Vector3(x, r.phi[i] * Y, z));
+      }
+      const idx = [];
+      for (let i = 0; i < n - 1; i++) idx.push(2 * i, 2 * i + 2, 2 * i + 1, 2 * i + 1, 2 * i + 2, 2 * i + 3);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      const fill = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: tColor(r.T), transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false }));
+      fill.userData.row = r;
+      const line = polyline(top, tColor(r.T), 0.9);
+      const tag = label(`${fmt(r.T, r.T % 1 ? 1 : 0)} °C`, 'tag tag-lane');
+      tag.position.set(8.5, 0.05, z);
+      const g = new THREE.Group();
+      g.add(fill, line, tag);
+      g.userData = { row: r, fill, line, tag };
+      ribbons.add(g);
+      pickables.push(fill);
+    });
+  };
+  const highlight = () => {
+    ribbons.children.forEach((g) => {
+      const on = g.userData.row === row;
+      g.userData.fill.material.opacity = on ? 0.55 : 0.12;
+      g.userData.line.material.opacity = on ? 1 : 0.4;
+      g.userData.tag.element.classList.toggle('tag-marker', on);
+      // Label the chosen ribbon and the two ends; the rest are close together in depth.
+      const ends = g.userData.row === sol.rows[0] || g.userData.row === sol.rows[sol.rows.length - 1];
+      g.userData.tag.visible = on || ends;
+    });
+  };
+  const apply = () => {
+    pressed(solButtons, solButtons.find((b) => b.dataset.brushSol === sol.id));
+    buildTemps();
+    highlight();
+    describe();
+    st.render();
+  };
+  st.pick({
+    objects: () => pickables,
+    hover: (o) => `${fmt(o.userData.row.T, o.userData.row.T % 1 ? 1 : 0)} °C · thickness ${o.userData.row.L} Å`,
+    select: (o) => { row = o.userData.row; apply(); },
+  });
+  solButtons.forEach((b) => b.addEventListener('click', () => {
+    const next = BRUSH.find((x) => x.id === b.dataset.brushSol);
+    const T = row.T;
+    sol = next;
+    row = sol.rows.find((r) => r.T === T) || sol.rows[sol.rows.length - 1];
+    build();
+    apply();
+  }));
+  document.getElementById('brush-reset')?.addEventListener('click', () => st.reset());
+  st.view([6.5, 5.5, 11.5], [4, 0.8, 0], (aspect) => (aspect < 0.9 ? [5.4, 3.4, 2] : [5.2, 2.8, 2]));
+  build();
+  apply();
+  const left = document.getElementById('brush-left-out');
+  if (left) left.textContent = String(BRUSH_LEFT_OUT.length);
+}
+
 // Each disc on the papers page mounts its scene the first time it plays.
-const MOUNTS = { hofmeister: mountHofmeister, pahaps: mountPahaps, ionsolvr: mountIonSolvR };
+const MOUNTS = { hofmeister: mountHofmeister, pahaps: mountPahaps, ionsolvr: mountIonSolvR, 'brush-2016': mountBrush };
 
 export function mountScene(id) {
   try {

@@ -84,8 +84,50 @@
     <header class="static-head">
       <p class="eyebrow"><a href="../">← Kasimir Gregory</a> · Papers on disc</p>
       <h1>Every paper, on disc</h1>
-      <p class="static-lede">All 23 refereed articles and the 2026 preprint are on the shelf. With JavaScript on, the shelf turns and each disc plays its paper. The six papers below have their own pages, and the <a href="../#publications">full publication list</a> is on the home page.</p>
+      <p class="static-lede">All 23 refereed articles and the 2026 preprint are on the shelf. With JavaScript on, the shelf turns and each disc plays its paper. The seven papers below have their own pages, and the <a href="../#publications">full publication list</a> is on the home page.</p>
     </header>
+
+    <article class="tape-body" id="body-brush-2016" data-id="brush-2016" aria-labelledby="brush-title">
+      <div class="wrap paper-grid">
+        <div class="stage-col">
+          <div class="stage" id="stage-brush" role="group" aria-label="Polymer volume fraction against distance from the surface for a PNIPAM brush, one ribbon for each measured temperature from 20 to 45 °C."></div>
+          <ul class="legend">
+            <li><span class="ramp"></span>20 °C (blue) to 45 °C (red)</li>
+            <li>one ribbon per measured temperature</li>
+            <li>grey block: the silicon wafer</li>
+          </ul>
+          <div class="stage-bar">
+            <div class="seg" role="group" aria-label="Solution">
+              <button type="button" class="btn" data-brush-sol="D2O" aria-pressed="true">D₂O</button>
+              <button type="button" class="btn" data-brush-sol="KOAc100" aria-pressed="false">100 mM acetate</button>
+              <button type="button" class="btn" data-brush-sol="KOAc250" aria-pressed="false">250 mM acetate</button>
+              <button type="button" class="btn" data-brush-sol="KSCN100" aria-pressed="false">100 mM thiocyanate</button>
+              <button type="button" class="btn" data-brush-sol="KSCN250" aria-pressed="false">250 mM thiocyanate</button>
+            </div>
+            <div class="seg"><button type="button" class="btn quiet" id="brush-reset">Reset view</button></div>
+          </div>
+          <div class="stage-bar"><div class="seg" id="brush-temps" role="group" aria-label="Temperature"></div></div>
+          <p class="stage-note">Profiles rebuilt from the fitted parameters in the paper's Supporting Information (Tables S1–S5), using its model. In D₂O they reproduce the brush thicknesses in the paper's Figure 2 to within 3%. <span id="brush-left-out">7</span> of the 43 tabulated conditions are left out because their parameters don't reproduce the thicknesses in Figure 5.</p>
+        </div>
+
+        <div class="panel">
+          <p class="eyebrow">Macromolecules · 2016 · led by T. J. Murdoch</p>
+          <h2 id="brush-title">Inside a polymer brush, as salt and temperature change</h2>
+          <p>Poly(N-isopropylacrylamide), or PNIPAM, swells in cool water and collapses when warmed past its lower critical solution temperature. Grafted to a surface as a brush, it makes a coating that responds to its surroundings.</p>
+          <p>Neutron reflectometry looks inside the brush: how much of each slice above the surface is polymer. Each ribbon is one of those profiles. Cold brushes are swollen, with a long dilute tail; warm ones collapse into a dense layer about 230 Å thick. In between, the brush splits into a dense inner layer under a dilute tail, which the paper calls vertical phase separation.</p>
+          <p>Kosmotropic acetate shifts the collapse to lower temperatures; chaotropic thiocyanate shifts it higher and spreads it out, which the paper attributes to thiocyanate binding to the polymer. Pick a solution and a temperature to compare.</p>
+
+          <div class="readout" id="brush-readout" aria-live="polite"></div>
+
+          <div class="tiles">
+            <div class="tile"><b>186 Å</b><span>dry brush thickness</span></div>
+            <div class="tile"><b>20–45 °C</b><span>measured in D₂O and four salt solutions</span></div>
+          </div>
+          <p class="authors">T. J. Murdoch, B. A. Humphreys, J. D. Willott, <strong>K. P. Gregory</strong>, S. W. Prescott, A. Nelson, E. J. Wanless, G. B. Webber</p>
+          <p class="source"><a href="https://doi.org/10.1021/acs.macromol.6b01001" target="_blank" rel="noopener">Murdoch, Humphreys, Willott, Gregory, Prescott, Nelson, Wanless and Webber, Macromolecules 49, 6050 (2016)</a></p>
+        </div>
+      </div>
+    </article>
 
     <article class="tape-body" id="body-hofmeister" data-id="hofmeister" aria-labelledby="hof-title">
       <div class="wrap paper-grid">
