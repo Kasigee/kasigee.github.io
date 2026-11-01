@@ -858,6 +858,56 @@ function mountBrush() {
 
   const ribbons = new THREE.Group();
   scene.add(ribbons);
+
+  // Illustrative chains for the chosen profile, lying on the floor under its ribbon and grafted to
+  // the wafer. Each chain has one bead in each of BEADS equal slices of the profile's cumulative
+  // polymer, so the beads' density along the distance axis follows the volume fraction.
+  const CHAINS = 26;
+  const BEADS = 22;
+  const chainGroup = new THREE.Group();
+  scene.add(chainGroup);
+  let chainsOn = true;
+  const beadGeo = new THREE.SphereGeometry(0.045, 10, 8);
+  const drawChains = () => {
+    chainGroup.clear();
+    if (!chainsOn) return;
+    const cum = [0];
+    row.phi.forEach((v, i) => { if (i) cum.push(cum[i - 1] + (v + row.phi[i - 1]) / 2); });
+    const total = cum[cum.length - 1];
+    const at = (q) => { // distance (in samples) below which a fraction q of the polymer lies
+      const target = q * total;
+      let i = cum.findIndex((c) => c >= target);
+      if (i <= 0) return 0;
+      return i - 1 + (target - cum[i - 1]) / (cum[i] - cum[i - 1] || 1);
+    };
+    let seed = 20160801 + Math.round(row.T * 10);
+    const rand = () => { // mulberry32, so a temperature always draws the same chains
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const z0 = Z(row.T);
+    const color = tColor(row.T).clone().lerp(new THREE.Color('#ffffff'), 0.25);
+    const beads = new THREE.InstancedMesh(beadGeo, new THREE.MeshStandardMaterial({ color, roughness: 0.4 }), CHAINS * BEADS);
+    const m = new THREE.Matrix4();
+    let n = 0;
+    for (let c = 0; c < CHAINS; c++) {
+      const graft = z0 - 0.42 + (0.84 * (c + 0.5)) / CHAINS;
+      let z = graft;
+      const pts = [new THREE.Vector3(0, 0.03, graft)];
+      for (let k = 0; k < BEADS; k++) {
+        const x = at((k + rand()) / BEADS) * BRUSH_STEP * X;
+        z = Math.min(z0 + 0.5, Math.max(z0 - 0.5, z + (rand() - 0.5) * 0.16));
+        const v = new THREE.Vector3(x, 0.03, z);
+        pts.push(v);
+        m.makeTranslation(v.x, v.y, v.z);
+        beads.setMatrixAt(n++, m);
+      }
+      chainGroup.add(polyline(pts, color, 0.55));
+    }
+    chainGroup.add(beads);
+  };
   const pickables = [];
   const build = () => {
     ribbons.clear();
@@ -904,6 +954,7 @@ function mountBrush() {
     pressed(solButtons, solButtons.find((b) => b.dataset.brushSol === sol.id));
     buildTemps();
     highlight();
+    drawChains();
     describe();
     st.render();
   };
@@ -921,6 +972,13 @@ function mountBrush() {
     apply();
   }));
   document.getElementById('brush-reset')?.addEventListener('click', () => st.reset());
+  const chainButton = document.getElementById('brush-chains');
+  chainButton?.addEventListener('click', () => {
+    chainsOn = !chainsOn;
+    chainButton.setAttribute('aria-pressed', String(!chainsOn));
+    drawChains();
+    st.render();
+  });
   st.view([6.5, 5.5, 11.5], [4, 0.8, 0], (aspect) => (aspect < 0.9 ? [5.4, 3.4, 2] : [5.2, 2.8, 2]));
   build();
   apply();
