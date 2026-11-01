@@ -1,10 +1,11 @@
 // Three.js scenes for Kasimir Gregory's papers. Every number drawn here comes from the papers, their
-// supplementary tables, or the PAHAPS dataset; see paper-data.js and brush-data.js for sources.
+// supplementary tables, or the PAHAPS dataset; see paper-data.js, brush-data.js and lewis-data.js for sources.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ANIONS, PAH_ENERGIES, PAH_ISOMERS, ION_BOXES } from './paper-data.js';
 import { BRUSH, BRUSH_STEP, BRUSH_LEFT_OUT } from './brush-data.js';
+import { LEWIS } from './lewis-data.js';
 
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MINUS = '−';
@@ -986,8 +987,244 @@ function mountBrush() {
   if (left) left.textContent = String(BRUSH_LEFT_OUT.length);
 }
 
+/* 5. Lewis strength: ion-NIPAM free energies in five solvent environments, as a grid of bars. */
+const LEWIS_IONS = [
+  { id: 'SCN', label: 'SCN⁻', kind: 'anion', color: '#f2b24f', r: 0.62 },
+  { id: 'Cl', label: 'Cl⁻', kind: 'anion', color: '#45c486', r: 0.6 },
+  { id: 'F', label: 'F⁻', kind: 'anion', color: '#9ee6a6', r: 0.45 },
+  { id: 'K', label: 'K⁺', kind: 'cation', color: '#b98cf5', r: 0.55 },
+  { id: 'Na', label: 'Na⁺', kind: 'cation', color: '#ab6ef2', r: 0.45 },
+  { id: 'Li', label: 'Li⁺', kind: 'cation', color: '#d6b8ff', r: 0.32 },
+];
+// Front to back: DMSO in front, so its repulsive bars (below the floor) stay visible, and no
+// solvent, the tallest row, at the back.
+const LEWIS_SOLVENTS = [
+  { id: 'DMSO', label: 'DMSO', color: '#ef5b6e' },
+  { id: 'MeCN', label: 'acetonitrile', color: '#a3aebd' },
+  { id: 'MeOH', label: 'methanol', color: '#ffb547' },
+  { id: 'water', label: 'water', color: '#4ea1ff' },
+  { id: 'none', label: 'no solvent', color: '#7ce7c8' },
+];
+const ELEMENT = { C: ['#a3aebd', 0.34], H: ['#e9eef5', 0.22], N: ['#6f8cff', 0.34], O: ['#ff6b5e', 0.34] };
+function mountLewis() {
+  const el = document.getElementById('stage-lewis');
+  if (!el) return;
+  const readout = document.getElementById('lewis-readout');
+  const modeButtons = [...document.querySelectorAll('[data-lewis-mode]')];
+  let mode = 'bound';
+  let ion = LEWIS_IONS[2];
+  let solvent = LEWIS_SOLVENTS.find((x) => x.id === 'water');
+  const value = (i, s, m = mode) => LEWIS[m][i.id][s.id];
+
+  const describe = () => {
+    const bound = value(ion, solvent, 'bound');
+    const eff = solvent.id === 'none' ? null : value(ion, solvent, 'effective');
+    const site = ion.kind === 'cation' ? 'the C=O oxygen' : 'the amide N–H';
+    const dist = LEWIS.cation_O_distance_water_Cl[ion.id];
+    let note = ion.kind === 'cation'
+      ? 'The stronger the Lewis acid, the more strongly the cation binds the carbonyl oxygen, in every solvent and with no solvent at all.'
+      : 'The stronger the Lewis base, the more strongly the anion binds the amide hydrogen, in every solvent and with no solvent at all.';
+    if (mode === 'effective' && ion.kind === 'cation' && solvent.id === 'DMSO') note = 'In DMSO, a strong Lewis base, the cations hold their solvent more tightly than they bind NIPAM. Counting that cost reverses the series: Li⁺ binds least favourably.';
+    else if (mode === 'effective' && ion.kind === 'anion' && solvent.id === 'water') note = 'In water, the cost of losing a hydrogen-bonded water roughly cancels the gain from binding NIPAM, so the anions end up close to zero and close to each other.';
+    readout.innerHTML = `
+      <p class="readout-name">${ion.label} <span class="site">${solvent.id === 'none' ? 'with no solvent' : `in ${solvent.label}`}</span></p>
+      <dl class="readout-grid">
+        <div><dt>Interaction free energy with NIPAM</dt><dd>${fmt(bound, 1)} <small>kcal mol⁻¹</small></dd></div>
+        <div><dt>Including the desolvation penalty</dt><dd>${eff === null ? '—' : `${eff > 0 ? '+' : ''}${fmt(eff, 1)}`} <small>${eff === null ? 'no solvent to remove' : 'kcal mol⁻¹'}</small></dd></div>
+        <div><dt>Lewis ${ion.kind === 'cation' ? 'acidity' : 'basicity'} (Marcus)</dt><dd>${fmt(LEWIS.lewis[ion.id], 2)}</dd></div>
+        <div><dt>Binds at</dt><dd><small>${site}${dist ? `, ${fmt(dist[0], 2)} Å away in water` : ''}</small></dd></div>
+      </dl>
+      <p class="readout-note">${note}</p>`;
+  };
+
+  const st = createStage(el, { camera: [3, 7, 13], target: [0, 1.4, 0], minDistance: 5, maxDistance: 40 });
+  if (!st) {
+    describe();
+    return;
+  }
+  const { scene } = st;
+  const X = (i) => (i < 3 ? -4.4 + i * 1.25 : 1.9 + (i - 3) * 1.25);
+  const Z = (j) => 2.6 - j * 1.3;
+  const H = 1 / 10; // scene units per kcal/mol
+
+  // Floor, scale and labels.
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(11.6, 7.4), new THREE.MeshBasicMaterial({ color: '#1a263b', transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, 0, -0.1);
+  scene.add(floor);
+  for (let k = 10; k <= 50; k += 10) {
+    scene.add(polyline([new THREE.Vector3(-5.6, k * H, -3.4), new THREE.Vector3(5.6, k * H, -3.4)], COLOR.grid, 0.18));
+    const t = label(`${k}`, 'tag tag-tick');
+    t.position.set(-5.9, k * H, -3.4);
+    scene.add(t);
+  }
+  const yl = label('binding strength, −ΔG (kcal mol⁻¹)', 'tag tag-axis');
+  yl.position.set(-4.6, 5.6, -3.4);
+  scene.add(yl);
+  LEWIS_IONS.forEach((i, n) => {
+    const t = label(`${i.label}\n${fmt(LEWIS.lewis[i.id], 2)}`, 'tag tag-lane tag-stack');
+    t.position.set(X(n), -0.15, 3.55);
+    scene.add(t);
+  });
+  [['anions, at N–H · Lewis basicity →', -3.15], ['cations, at C=O · Lewis acidity →', 3.15]].forEach(([text, x]) => {
+    const t = label(text, 'tag tag-axis axis-wide');
+    t.position.set(x, -0.15, 4.7);
+    scene.add(t);
+  });
+  const rowTags = LEWIS_SOLVENTS.map((s, j) => {
+    const t = label(s.label, 'tag tag-lane lewis-row');
+    t.position.set(6.3, 0.05, Z(j));
+    scene.add(t);
+    return t;
+  });
+
+  // Bars: height is the binding strength; a repulsive (positive) free energy hangs below the floor.
+  const bars = [];
+  const geo = new THREE.BoxGeometry(0.8, 1, 0.8);
+  geo.translate(0, 0.5, 0);
+  LEWIS_IONS.forEach((i, n) => LEWIS_SOLVENTS.forEach((s, j) => {
+    const mat = new THREE.MeshStandardMaterial({ color: s.color, roughness: 0.45, metalness: 0.05, transparent: true, opacity: 0.92 });
+    const bar = new THREE.Mesh(geo, mat);
+    bar.position.set(X(n), 0, Z(j));
+    bar.userData = { ion: i, solvent: s, h: 0.001 };
+    bar.scale.y = 0.001;
+    scene.add(bar);
+    bars.push(bar);
+  }));
+  const outline = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: '#ffffff' }));
+  scene.add(outline);
+  const target = (b) => {
+    const v = b.userData.solvent.id === 'none' && mode === 'effective' ? null : value(b.userData.ion, b.userData.solvent);
+    return v === null ? 0.001 : -v * H;
+  };
+
+  // The NIPAM residue, turned so its C=O points at the cations and its N-H at the anions.
+  const mol = new THREE.Group();
+  const P = LEWIS.nipam.atoms.map(([, x, y, z]) => new THREE.Vector3(x, y, z));
+  const centre = P.reduce((a, b) => a.add(b), new THREE.Vector3()).divideScalar(P.length);
+  P.forEach((p) => p.sub(centre));
+  const co = P[LEWIS.nipam.O].clone().sub(P[LEWIS.nipam.C]).normalize();
+  const q1 = new THREE.Quaternion().setFromUnitVectors(co, new THREE.Vector3(1, 0, 0));
+  P.forEach((p) => p.applyQuaternion(q1));
+  const normal = new THREE.Vector3().crossVectors(P[LEWIS.nipam.O].clone().sub(P[LEWIS.nipam.C]), P[LEWIS.nipam.N].clone().sub(P[LEWIS.nipam.C])).normalize();
+  const flat = new THREE.Vector3(0, normal.y, normal.z).normalize();
+  const q2 = new THREE.Quaternion().setFromUnitVectors(flat, new THREE.Vector3(0, 0, 1));
+  P.forEach((p) => p.applyQuaternion(q2));
+  const sphere = new THREE.SphereGeometry(1, 20, 14);
+  LEWIS.nipam.atoms.forEach(([el], k) => {
+    const [color, r] = ELEMENT[el];
+    const m = new THREE.Mesh(sphere, new THREE.MeshStandardMaterial({ color, roughness: 0.35 }));
+    m.scale.setScalar(r);
+    m.position.copy(P[k]);
+    mol.add(m);
+  });
+  LEWIS.nipam.bonds.forEach(([a, b]) => {
+    const A = P[a];
+    const B = P[b];
+    const len = A.distanceTo(B);
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, len, 10), new THREE.MeshStandardMaterial({ color: '#8592a6', roughness: 0.5 }));
+    c.position.copy(A).add(B).multiplyScalar(0.5);
+    c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+    mol.add(c);
+  });
+  const ionMesh = new THREE.Mesh(sphere, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.3, emissive: '#000000' }));
+  mol.add(ionMesh);
+  const tether = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: '#dbe4f0', dashSize: 0.12, gapSize: 0.1, transparent: true, opacity: 0.8 }));
+  mol.add(tether);
+  const ionTag = label('', 'tag tag-marker');
+  mol.add(ionTag);
+  mol.scale.setScalar(0.5);
+  mol.position.set(1.4, 5.2, -3.6);
+  scene.add(mol);
+  const placeIon = () => {
+    const cation = ion.kind === 'cation';
+    const from = cation ? P[LEWIS.nipam.O] : P[LEWIS.nipam.H];
+    const dir = cation ? P[LEWIS.nipam.O].clone().sub(P[LEWIS.nipam.C]) : P[LEWIS.nipam.H].clone().sub(P[LEWIS.nipam.N]);
+    const d = cation ? LEWIS.cation_O_distance_water_Cl[ion.id][0] : 2.1;
+    const at = from.clone().add(dir.normalize().multiplyScalar(d + ion.r * 0.4));
+    ionMesh.position.copy(at);
+    ionMesh.scale.setScalar(ion.r * 1.6);
+    ionMesh.material.color.set(ion.color);
+    tether.geometry.setFromPoints([from, at]);
+    tether.computeLineDistances();
+    ionTag.element.textContent = ion.label;
+    ionTag.position.copy(at).add(new THREE.Vector3(0, ion.r * 1.6 + 0.5, 0));
+  };
+
+  let anim = 0;
+  const animate = () => {
+    cancelAnimationFrame(anim);
+    const start = performance.now();
+    const from = bars.map((b) => b.userData.h);
+    const to = bars.map(target);
+    const step = (now) => {
+      const t = REDUCED_MOTION ? 1 : Math.min(1, (now - start) / 600);
+      const e = 1 - (1 - t) ** 3;
+      bars.forEach((b, k) => {
+        const h = from[k] + (to[k] - from[k]) * e;
+        b.userData.h = h;
+        b.scale.y = Math.max(0.001, Math.abs(h));
+        b.rotation.x = h < 0 ? Math.PI : 0; // hang repulsive bars below the floor
+      });
+      fitOutline();
+      st.render();
+      if (t < 1) anim = requestAnimationFrame(step);
+    };
+    anim = requestAnimationFrame(step);
+  };
+  const fitOutline = () => {
+    const sel = bars.find((x) => x.userData.ion === ion && x.userData.solvent === solvent);
+    outline.position.copy(sel.position);
+    outline.scale.copy(sel.scale);
+    outline.rotation.copy(sel.rotation);
+  };
+  const highlight = () => {
+    fitOutline();
+    bars.forEach((b) => {
+      const on = b.userData.ion === ion && b.userData.solvent === solvent;
+      const hidden = mode === 'effective' && b.userData.solvent.id === 'none';
+      b.visible = !hidden;
+      b.material.emissive.set(on ? b.userData.solvent.color : '#000000');
+      b.material.emissiveIntensity = on ? 0.55 : 0;
+      b.material.opacity = on ? 1 : 0.7;
+    });
+    rowTags.forEach((t, j) => {
+      t.visible = !(mode === 'effective' && LEWIS_SOLVENTS[j].id === 'none');
+      t.element.classList.toggle('tag-marker', LEWIS_SOLVENTS[j] === solvent);
+    });
+  };
+  const apply = (redraw = false) => {
+    if (mode === 'effective' && solvent.id === 'none') solvent = LEWIS_SOLVENTS.find((x) => x.id === 'water');
+    pressed(modeButtons, modeButtons.find((b) => b.dataset.lewisMode === mode));
+    highlight();
+    placeIon();
+    describe();
+    if (redraw) animate();
+    else st.render();
+  };
+  st.pick({
+    objects: () => bars,
+    hover: (b) => {
+      const v = value(b.userData.ion, b.userData.solvent);
+      return `${b.userData.ion.label} · ${b.userData.solvent.label} · ${v > 0 ? '+' : ''}${fmt(v, 1)} kcal/mol`;
+    },
+    select: (b) => {
+      ion = b.userData.ion;
+      solvent = b.userData.solvent;
+      apply();
+    },
+  });
+  modeButtons.forEach((b) => b.addEventListener('click', () => {
+    mode = b.dataset.lewisMode;
+    apply(true);
+  }));
+  document.getElementById('lewis-reset')?.addEventListener('click', () => st.reset());
+  st.view([3, 5.5, 14], [0, 1.6, 0], (aspect) => (aspect < 0.9 ? [6.6, 4.4, 3] : [6.4, 3.6, 3]));
+  apply(true);
+}
+
 // Each disc on the papers page mounts its scene the first time it plays.
-const MOUNTS = { hofmeister: mountHofmeister, pahaps: mountPahaps, ionsolvr: mountIonSolvR, 'brush-2016': mountBrush };
+const MOUNTS = { hofmeister: mountHofmeister, pahaps: mountPahaps, ionsolvr: mountIonSolvR, 'brush-2016': mountBrush, lewis: mountLewis };
 
 export function mountScene(id) {
   try {

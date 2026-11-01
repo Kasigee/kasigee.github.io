@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Papers on disc · Dr Kasimir Gregory</title>
-  <meta name="description" content="Every one of Kasimir Gregory's papers as a disc on a rotating shelf: 23 refereed articles and a preprint. Pick one and press play to explore it, three of them in interactive 3D drawn from the papers' own data.">
+  <meta name="description" content="Every one of Kasimir Gregory's papers as a disc on a rotating shelf: 23 refereed articles and a preprint. Pick one and press play to explore it, five of them in interactive 3D drawn from the papers' own data.">
   <meta property="og:title" content="Papers on disc · Dr Kasimir Gregory">
-  <meta property="og:description" content="Every paper, on a rotating shelf of discs. Press play to explore each one, three of them in interactive 3D.">
+  <meta property="og:description" content="Every paper, on a rotating shelf of discs. Press play to explore each one, five of them in interactive 3D.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kasimirgregory.com/papers/">
   <meta property="og:image" content="https://kasimirgregory.com/img/og-papers.jpg">
@@ -84,7 +84,7 @@
     <header class="static-head">
       <p class="eyebrow"><a href="../">← Kasimir Gregory</a> · Papers on disc</p>
       <h1>Every paper, on disc</h1>
-      <p class="static-lede">All 23 refereed articles and the 2026 preprint are on the shelf. With JavaScript on, the shelf turns and each disc plays its paper. The seven papers below have their own pages, and the <a href="../#publications">full publication list</a> is on the home page.</p>
+      <p class="static-lede">All 23 refereed articles and the 2026 preprint are on the shelf. With JavaScript on, the shelf turns and each disc plays its paper. The eight papers below have their own pages, and the <a href="../#publications">full publication list</a> is on the home page.</p>
     </header>
 
     <article class="tape-body" id="body-brush-2016" data-id="brush-2016" aria-labelledby="brush-title">
@@ -126,6 +126,51 @@
           </div>
           <p class="authors">T. J. Murdoch, B. A. Humphreys, J. D. Willott, <strong>K. P. Gregory</strong>, S. W. Prescott, A. Nelson, E. J. Wanless, G. B. Webber</p>
           <p class="source"><a href="https://doi.org/10.1021/acs.macromol.6b01001" target="_blank" rel="noopener">Murdoch, Humphreys, Willott, Gregory, Prescott, Nelson, Wanless and Webber, Macromolecules 49, 6050 (2016)</a></p>
+        </div>
+      </div>
+    </article>
+
+    <article class="tape-body" id="body-lewis" data-id="lewis" aria-labelledby="lewis-title">
+      <div class="wrap paper-grid">
+        <div class="stage-col">
+          <div class="stage" id="stage-lewis" role="group" aria-label="Bars for the free energy of interaction between a NIPAM monomer and six ions in five solvent environments, with the monomer and the chosen ion above them."></div>
+          <ul class="legend">
+            <li><span class="dot" style="background:#ef5b6e"></span>DMSO</li>
+            <li><span class="dot" style="background:#a3aebd"></span>acetonitrile</li>
+            <li><span class="dot" style="background:#ffb547"></span>methanol</li>
+            <li><span class="dot" style="background:#4ea1ff"></span>water</li>
+            <li><span class="dot" style="background:#7ce7c8"></span>no solvent</li>
+            <li>bars below the floor are repulsive</li>
+          </ul>
+          <div class="stage-bar">
+            <div class="seg" role="group" aria-label="Free energy shown">
+              <button type="button" class="btn" data-lewis-mode="bound" aria-pressed="true">Binding NIPAM</button>
+              <button type="button" class="btn" data-lewis-mode="effective" aria-pressed="false">Including desolvation</button>
+            </div>
+            <div class="seg"><button type="button" class="btn quiet" id="lewis-reset">Reset view</button></div>
+          </div>
+          <p class="stage-note">Click a bar to choose an ion and solvent. Energies are read from the paper's Figure 4, which is only published as a plot, to about ±0.5 kcal mol⁻¹. The NIPAM model is drawn for this page; cation distances are the paper's, in water with Cl⁻.</p>
+        </div>
+
+        <div class="panel">
+          <p class="eyebrow">The Journal of Physical Chemistry A · 2019 · first author</p>
+          <h2 id="lewis-title">Lewis strength decides how ions bind, with or without a solvent</h2>
+          <p>Specific-ion effects are usually explained by how ions change the structure of water. But they also appear in solvents with no hydrogen-bond network, which that explanation can't account for.</p>
+          <p>This paper used energy decomposition analysis to measure how six ions bind a NIPAM monomer, the repeat unit of a temperature-responsive polymer, in water, methanol, acetonitrile and DMSO, and with no solvent at all. Cations bind the C=O oxygen; anions bind the amide N–H. In every environment, the order follows each ion's Lewis strength, so the trend belongs to the ions themselves.</p>
+          <p>The solvent decides the direction. Binding NIPAM means giving up a solvent molecule, and when an ion holds its solvent more tightly than it binds NIPAM, the series reverses. Switch on the desolvation penalty and look at the cations in DMSO.</p>
+
+          <div class="readout" id="lewis-readout" aria-live="polite"></div>
+
+          <div class="tiles">
+            <div class="tile"><b>4,400</b><span>energy decomposition calculations</span></div>
+            <div class="tile"><b>10</b><span>independent solvated complexes per ion and solvent</span></div>
+          </div>
+          <details>
+            <summary>How it was calculated</summary>
+            <p>Each ion–NIPAM complex was surrounded by explicit solvent (30 water, 15 methanol or acetonitrile, or 10 DMSO molecules) inside a continuum solvent, optimised with density functional tight binding (DFTB3, or SCC-DFTB for Li⁺), then analysed with GKS-EDA at the M06-2X/cc-pVDZ level. The desolvation penalty is the free energy of removing one solvent molecule from the ion's shell.</p>
+          </details>
+          <p class="authors"><strong>K. P. Gregory</strong>, G. B. Webber, E. J. Wanless, A. J. Page</p>
+          <p class="source"><a href="https://doi.org/10.1021/acs.jpca.9b04004" target="_blank" rel="noopener">Gregory, Webber, Wanless and Page, J. Phys. Chem. A 123, 6420 (2019)</a></p>
         </div>
       </div>
     </article>
@@ -366,7 +411,7 @@
     </article>
 
     <footer class="static-foot">
-      <p>Built with Three.js. The Hofmeister values come from the paper's supplementary information, the PAH energies from the data released with PAHAPS, and the cell sizes from the IonSolvR paper. Where a picture needs something the papers don't give, such as water positions or re-optimised molecular geometries, the caption says so.</p>
+      <p>Built with Three.js. The Hofmeister values and brush profiles come from the papers' supplementary information, the PAH energies from the data released with PAHAPS, the cell sizes from the IonSolvR paper, and the Lewis strength energies from that paper's Figure 4. Where a picture needs something the papers don't give, such as water positions or re-optimised molecular geometries, the caption says so.</p>
       <p><a href="../">Kasimir Gregory, home page</a> · <a href="../#publications">All publications</a></p>
     </footer>
   </section>

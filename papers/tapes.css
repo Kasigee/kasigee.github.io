@@ -285,6 +285,7 @@ button { font: inherit; color: inherit; }
 @media (max-width: 600px) {
   .axis-wide, .lane-n { display: none !important; }
   .narrow-only { display: inline-flex !important; }
+  .play .lewis-row:not(.tag-marker) { display: none; }
   .play .tag { padding: 1px 4px; font-size: 9.5px; }
   .play .tag-axis { font-size: 10px; }
   .play .tag-tick, .play .tag-iso { font-size: 9px; }

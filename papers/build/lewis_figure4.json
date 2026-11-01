@@ -1,0 +1,21 @@
+{
+  "_source": "Gregory, Webber, Wanless and Page, J. Phys. Chem. A 123, 6420 (2019), doi:10.1021/acs.jpca.9b04004, Figure 4. Free energies of interaction (kcal/mol) between dissociated ions and a NIPAM monomer, averaged over 10 configurations. The paper gives these only as a plot (a 300 ppi raster, with no table in the paper or its SI), so each value was read by eye from magnified crops of the figure with a 1 kcal/mol grid (see lewis_digitise.py for the axis calibration). Where markers overlap, values are good to about +/- 0.5 kcal/mol; elsewhere about +/- 0.3. 'bound' = panels a and b (no desolvation penalty); 'effective' = panels c and d (with the penalty of removing one solvent molecule from the ion's shell). Cations bind at the C=O oxygen, anions at the amide N-H.",
+  "lewis": {"SCN": 0.35, "Cl": 1.67, "F": 2.88, "K": 0.85, "Na": 0.89, "Li": 1.24},
+  "bound": {
+    "SCN": {"water": -9.2, "MeOH": -9.9, "MeCN": -10.8, "DMSO": -10.5, "none": -19.0},
+    "Cl":  {"water": -15.6, "MeOH": -16.7, "MeCN": -18.0, "DMSO": -15.9, "none": -27.0},
+    "F":   {"water": -26.0, "MeOH": -29.0, "MeCN": -31.1, "DMSO": -32.7, "none": -49.0},
+    "K":   {"water": -9.3, "MeOH": -12.9, "MeCN": -10.6, "DMSO": -9.9, "none": -20.6},
+    "Na":  {"water": -23.6, "MeOH": -24.9, "MeCN": -20.2, "DMSO": -19.7, "none": -32.3},
+    "Li":  {"water": -37.6, "MeOH": -36.2, "MeCN": -32.2, "DMSO": -33.0, "none": -42.8}
+  },
+  "effective": {
+    "SCN": {"water": -3.3, "MeOH": -1.0, "MeCN": -6.0, "DMSO": -4.5},
+    "Cl":  {"water": -5.0, "MeOH": -2.9, "MeCN": -11.0, "DMSO": -6.0},
+    "F":   {"water": -5.5, "MeOH": -2.1, "MeCN": -15.4, "DMSO": -14.1},
+    "K":   {"water": -2.0, "MeOH": -5.7, "MeCN": -1.7, "DMSO": 1.7},
+    "Na":  {"water": -13.9, "MeOH": -11.3, "MeCN": -10.3, "DMSO": 5.2},
+    "Li":  {"water": -16.3, "MeOH": -13.9, "MeCN": -15.8, "DMSO": 8.6}
+  },
+  "cation_O_distance_water_Cl": {"Li": [1.71, 0.05], "Na": [2.35, 0.06], "K": [2.98, 0.14]}
+}
