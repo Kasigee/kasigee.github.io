@@ -352,6 +352,10 @@ button { font: inherit; color: inherit; }
 .panel .authors { margin-top: 16px; color: var(--muted); font-size: 13px; }
 .panel .authors strong { color: var(--ink); font-weight: 600; }
 .source-list { display: grid; gap: 6px; padding-left: 1.1rem; }
+.contact-list { margin: 12px 0 0; padding-left: 1.1rem; color: var(--ink-2); font-size: 13.5px; }
+.pick { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.pick select { padding: 7px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink); font: 500 13px var(--sans); }
+.btn[disabled] { opacity: 0.4; cursor: default; }
 
 @media (max-width: 760px) {
   .topbar { grid-template-columns: auto 1fr; }

@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Papers on disc · Dr Kasimir Gregory</title>
-  <meta name="description" content="Every one of Kasimir Gregory's papers as a disc on a rotating shelf: 23 refereed articles and a preprint. Pick one and press play to explore it, five of them in interactive 3D drawn from the papers' own data.">
+  <meta name="description" content="Every one of Kasimir Gregory's papers as a disc on a rotating shelf: 23 refereed articles and a preprint. Pick one and press play to explore it, six of them in interactive 3D drawn from the papers' own data.">
   <meta property="og:title" content="Papers on disc · Dr Kasimir Gregory">
-  <meta property="og:description" content="Every paper, on a rotating shelf of discs. Press play to explore each one, five of them in interactive 3D.">
+  <meta property="og:description" content="Every paper, on a rotating shelf of discs. Press play to explore each one, six of them in interactive 3D.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kasimirgregory.com/papers/">
   <meta property="og:image" content="https://kasimirgregory.com/img/og-papers.jpg">
@@ -84,7 +84,7 @@
     <header class="static-head">
       <p class="eyebrow"><a href="../">← Kasimir Gregory</a> · Papers on disc</p>
       <h1>Every paper, on disc</h1>
-      <p class="static-lede">All 23 refereed articles and the 2026 preprint are on the shelf. With JavaScript on, the shelf turns and each disc plays its paper. The eight papers below have their own pages, and the <a href="../#publications">full publication list</a> is on the home page.</p>
+      <p class="static-lede">All 23 refereed articles and the 2026 preprint are on the shelf. With JavaScript on, the shelf turns and each disc plays its paper. The nine papers below have their own pages, and the <a href="../#publications">full publication list</a> is on the home page.</p>
     </header>
 
     <article class="tape-body" id="body-brush-2016" data-id="brush-2016" aria-labelledby="brush-title">
@@ -171,6 +171,62 @@
           </details>
           <p class="authors"><strong>K. P. Gregory</strong>, G. B. Webber, E. J. Wanless, A. J. Page</p>
           <p class="source"><a href="https://doi.org/10.1021/acs.jpca.9b04004" target="_blank" rel="noopener">Gregory, Webber, Wanless and Page, J. Phys. Chem. A 123, 6420 (2019)</a></p>
+        </div>
+      </div>
+    </article>
+
+    <article class="tape-body" id="body-sapt" data-id="sapt" aria-labelledby="sapt-title">
+      <div class="wrap paper-grid">
+        <div class="stage-col">
+          <div class="stage" id="stage-sapt" role="group" aria-label="One optimised anion–amino acid complex in 3D, with the anion's hydrogen-bond contacts drawn as dashed lines."></div>
+          <ul class="legend">
+            <li><span class="dot" style="background:#8d99ab"></span>C</li>
+            <li><span class="dot" style="background:#e9eef5;box-shadow:inset 0 0 0 1px #8a96a8"></span>H</li>
+            <li><span class="dot" style="background:#6f8cff"></span>N</li>
+            <li><span class="dot" style="background:#ff6b5e"></span>O</li>
+            <li><span class="dot" style="background:#f2d14f"></span>S</li>
+            <li>enlarged, glowing atoms: the anion</li>
+            <li>dashed: anion⋯H within 2.6 Å</li>
+          </ul>
+          <div class="stage-bar">
+            <div class="seg" role="group" aria-label="Anion">
+              <button type="button" class="btn" data-sapt-anion="F" aria-pressed="false">F⁻</button>
+              <button type="button" class="btn" data-sapt-anion="Cl" aria-pressed="true">Cl⁻</button>
+              <button type="button" class="btn" data-sapt-anion="SCN" aria-pressed="false">SCN⁻</button>
+              <button type="button" class="btn" data-sapt-anion="PF6" aria-pressed="false">PF₆⁻</button>
+            </div>
+            <label class="pick"><span>Amino acid</span><select id="sapt-aa"></select></label>
+          </div>
+          <div class="stage-bar">
+            <div class="seg" role="group" aria-label="Binding configuration">
+              <button type="button" class="btn" id="sapt-prev" aria-label="Previous configuration">←</button>
+              <span class="btn quiet mono" id="sapt-count" aria-live="polite">1 / 1</span>
+              <button type="button" class="btn" id="sapt-next" aria-label="Next configuration">→</button>
+            </div>
+            <div class="seg"><button type="button" class="btn quiet" id="sapt-reset">Reset view</button></div>
+          </div>
+          <p class="stage-note">Every structure is one of the paper's 345 M06-2X/aug-cc-pVDZ optimised complexes, from its Supporting Information. Contacts and binding sites are measured from each geometry for this page.</p>
+        </div>
+
+        <div class="panel">
+          <p class="eyebrow">Electronic Structure · 2023 · first author</p>
+          <h2 id="sapt-title">Where Hofmeister anions grip the 20 amino acids</h2>
+          <p>Salts change how proteins fold and stick together, in the ion-specific order of the Hofmeister series. Much of that happens where ions meet individual amino acids.</p>
+          <p>This paper placed F⁻, Cl⁻, SCN⁻ and PF₆⁻ around each of the 20 amino acids, starting from 1,000 random arrangements per pair, optimised every distinct complex, then split each interaction energy into electrostatics, exchange, induction and dispersion with SAPT2+3. Electrostatics dominates: on average it supplies 111.5% of the total, with exchange repulsion taking some back, and it tracks the total almost perfectly (ρ = 0.99). So the anion's radial charge density, ϸ, orders the binding.</p>
+          <p>Browse the complexes: pick an anion and an amino acid, then step through each binding configuration the search found.</p>
+
+          <div class="readout" id="sapt-readout" aria-live="polite"></div>
+
+          <div class="tiles">
+            <div class="tile"><b>345</b><span>optimised complexes, 20 amino acids × 4 anions</span></div>
+            <div class="tile"><b>111.5%</b><span>average share of the total from electrostatics</span></div>
+          </div>
+          <details>
+            <summary>How it was calculated</summary>
+            <p>Starting structures came from the Kick stochastic search (1,000 configurations per pair) with DFTB3/3ob, then were re-optimised with M06-2X/aug-cc-pVDZ in the gas phase. SAPT2+3/aug-cc-pVDZ gave the basis-set-superposition-corrected interaction energies and their components. Amino acids are in their neutral backbone form; aspartate and glutamate carry a negative sidechain, and lysine, arginine and histidine a positive one.</p>
+          </details>
+          <p class="authors"><strong>K. P. Gregory</strong>, G. B. Webber, E. J. Wanless, A. J. Page</p>
+          <p class="source"><a href="https://doi.org/10.1088/2516-1075/acbe84" target="_blank" rel="noopener">Gregory, Webber, Wanless and Page, Electron. Struct. 5, 014007 (2023)</a> · geometries from its Supporting Information (CC BY 4.0)</p>
         </div>
       </div>
     </article>
@@ -411,7 +467,7 @@
     </article>
 
     <footer class="static-foot">
-      <p>Built with Three.js. The Hofmeister values and brush profiles come from the papers' supplementary information, the PAH energies from the data released with PAHAPS, the cell sizes from the IonSolvR paper, and the Lewis strength energies from that paper's Figure 4. Where a picture needs something the papers don't give, such as water positions or re-optimised molecular geometries, the caption says so.</p>
+      <p>Built with Three.js. The Hofmeister values and brush profiles come from the papers' supplementary information, the PAH energies from the data released with PAHAPS, the cell sizes from the IonSolvR paper, the amino acid complexes from the SAPT paper's supplementary geometries, and the Lewis strength energies from that paper's Figure 4. Where a picture needs something the papers don't give, such as water positions or re-optimised molecular geometries, the caption says so.</p>
       <p><a href="../">Kasimir Gregory, home page</a> · <a href="../#publications">All publications</a></p>
     </footer>
   </section>

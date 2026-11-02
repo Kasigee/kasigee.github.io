@@ -1,11 +1,12 @@
 // Three.js scenes for Kasimir Gregory's papers. Every number drawn here comes from the papers, their
-// supplementary tables, or the PAHAPS dataset; see paper-data.js, brush-data.js and lewis-data.js for sources.
+// supplementary tables, or the PAHAPS dataset; see paper-data.js, brush-data.js, lewis-data.js and sapt-data.js for sources.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ANIONS, PAH_ENERGIES, PAH_ISOMERS, ION_BOXES } from './paper-data.js';
 import { BRUSH, BRUSH_STEP, BRUSH_LEFT_OUT } from './brush-data.js';
 import { LEWIS } from './lewis-data.js';
+import { AMINO, COMPLEXES } from './sapt-data.js';
 
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MINUS = '−';
@@ -1223,8 +1224,147 @@ function mountLewis() {
   apply(true);
 }
 
+/* 6. Anion-amino acid complexes: every optimised geometry from the SAPT paper's SI. */
+const SAPT_ANIONS = [
+  { id: 'F', label: 'F⁻', rho: '−8.60' },
+  { id: 'Cl', label: 'Cl⁻', rho: '−6.25' },
+  { id: 'SCN', label: 'SCN⁻', rho: '−5.56 (N) / −4.40 (S)' },
+  { id: 'PF6', label: 'PF₆⁻', rho: null },
+];
+const CPK = { H: ['#e9eef5', 0.24], C: ['#8d99ab', 0.36], N: ['#6f8cff', 0.36], O: ['#ff6b5e', 0.36], S: ['#f2d14f', 0.44], P: ['#ff9f43', 0.44], F: ['#9ee6a6', 0.34], Cl: ['#45c486', 0.46] };
+const COVALENT = { H: 0.31, C: 0.76, N: 0.71, O: 0.66, S: 1.05, F: 0.57, Cl: 1.02, P: 1.07 };
+function mountSapt() {
+  const el = document.getElementById('stage-sapt');
+  if (!el) return;
+  const readout = document.getElementById('sapt-readout');
+  const anionButtons = [...document.querySelectorAll('[data-sapt-anion]')];
+  const pick = document.getElementById('sapt-aa');
+  const prevBtn = document.getElementById('sapt-prev');
+  const nextBtn = document.getElementById('sapt-next');
+  const countEl = document.getElementById('sapt-count');
+  let aa = 'glutamine';
+  let anion = SAPT_ANIONS[1];
+  let k = 0;
+  const list = () => COMPLEXES.filter((c) => c.aa === aa && c.anion === anion.id);
+  const groups = [['nonpolar', 'Nonpolar sidechain'], ['polar', 'Polar sidechain'], ['charged', 'Charged sidechain']];
+  pick.innerHTML = groups.map(([g, name]) => `<optgroup label="${name}">${Object.entries(AMINO).filter(([, m]) => m.group === g).map(([id, m]) => `<option value="${id}">${m.name}${m.charge}</option>`).join('')}</optgroup>`).join('');
+  pick.value = aa;
+
+  const siteName = (s) => s.replace('backbone OH', 'backbone acid OH').replace('backbone NH', 'backbone amine NH');
+  const describe = (c, n) => {
+    const m = AMINO[aa];
+    const name = `${m.name}${m.charge}`;
+    if (!c) {
+      readout.innerHTML = `<p class="readout-name">${name} <span class="site">with ${anion.label}</span></p><p class="readout-note">The paper has no ${anion.label} complex for ${m.name.toLowerCase()}${anion.id === 'F' && (aa === 'glycine' || aa === 'proline') ? ': F⁻ pulls a proton off it, whatever the binding site' : ''}.</p>`;
+      return;
+    }
+    const el2 = c.el.split(' ');
+    const contacts = c.contacts.slice(0, 4).map((x) => `<li>${el2[x.a]}⋯H, ${siteName(x.site)}: <span class="mono">${fmt(x.d, 2)} Å</span></li>`).join('');
+    const sites = c.sites.length ? c.sites.map(siteName).join(' + ') : 'no hydrogen within 2.6 Å';
+    const all = list();
+    const tally = {};
+    all.forEach((x) => { const key = x.sites.length ? x.sites.map(siteName).join(' + ') : 'no H-bond'; tally[key] = (tally[key] || 0) + 1; });
+    const s1 = m.s1;
+    readout.innerHTML = `
+      <p class="readout-name">${name} <span class="site">with ${anion.label} · configuration ${n + 1} of ${all.length}</span></p>
+      <dl class="readout-grid">
+        <div><dt>Binds at</dt><dd><small>${sites}</small></dd></div>
+        <div><dt>Closest anion–H</dt><dd>${fmt(c.near, 2)} <small>Å</small></dd></div>
+      </dl>
+      ${contacts ? `<ul class="contact-list">${contacts}</ul>` : ''}
+      ${c.hf ? '<p class="readout-note"><b>F⁻ has taken a proton:</b> the H sits 1.00 Å from F, closer to it than to the oxygen it came from, so this complex is HF with a deprotonated amino acid.</p>' : ''}
+      <p class="readout-note">Across all ${all.length} ${m.name.toLowerCase()}–${anion.label} complexes: ${Object.entries(tally).map(([key, v]) => `${v} × ${key}`).join(' · ')}.</p>
+      <p class="readout-note">For ${m.name.toLowerCase()} (all anions), the total SAPT2+3 interaction energy correlates with electrostatics at ρ = ${fmt(s1[0], 2)}, exchange ${fmt(s1[1], 2)}, induction ${fmt(s1[2], 2)} and dispersion ${fmt(s1[3], 2)} (Table S1).${anion.rho ? ` ${anion.label} radial charge density ϸ = ${anion.rho} × 10⁻¹⁰ C m⁻¹.` : ''}</p>`;
+  };
+
+  const st = createStage(el, { camera: [0, 2, 14], target: [0, 0, 0], minDistance: 4, maxDistance: 40 });
+  const mol = new THREE.Group();
+  if (st) st.scene.add(mol);
+  const sphere = new THREE.SphereGeometry(1, 22, 16);
+  const mats = {};
+  const mat = (color, emissive = false) => {
+    const key = color + emissive;
+    if (!mats[key]) mats[key] = new THREE.MeshStandardMaterial({ color, roughness: 0.35, emissive: emissive ? color : '#000000', emissiveIntensity: emissive ? 0.35 : 0 });
+    return mats[key];
+  };
+  const draw = (c) => {
+    mol.clear();
+    if (!c) return;
+    const els = c.el.split(' ');
+    const P = els.map((_, i) => new THREE.Vector3(c.xyz[3 * i], c.xyz[3 * i + 1], c.xyz[3 * i + 2]));
+    const anionSet = new Set(c.an);
+    const centre = new THREE.Vector3();
+    let n = 0;
+    P.forEach((p, i) => { if (!anionSet.has(i)) { centre.add(p); n += 1; } });
+    centre.divideScalar(n);
+    P.forEach((p) => p.sub(centre));
+    els.forEach((e, i) => {
+      const [color, r] = CPK[e];
+      const isAnion = anionSet.has(i) && e !== 'H';
+      const m = new THREE.Mesh(sphere, mat(color, isAnion));
+      m.scale.setScalar(isAnion ? r * 1.35 : r);
+      m.position.copy(P[i]);
+      mol.add(m);
+    });
+    for (let i = 0; i < els.length; i++) {
+      for (let j = i + 1; j < els.length; j++) {
+        if (anionSet.has(i) !== anionSet.has(j)) continue; // no bonds between anion and amino acid
+        const d = P[i].distanceTo(P[j]);
+        if (d > 1.2 * (COVALENT[els[i]] + COVALENT[els[j]])) continue;
+        const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, d, 10), mat('#7d899c'));
+        cyl.position.copy(P[i]).add(P[j]).multiplyScalar(0.5);
+        cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), P[j].clone().sub(P[i]).normalize());
+        mol.add(cyl);
+      }
+    }
+    c.contacts.slice(0, 4).forEach((x) => {
+      const line = polyline([P[x.a], P[x.h]], '#dbe4f0', 0.9, true);
+      line.material.dashSize = 0.14;
+      line.material.gapSize = 0.1;
+      line.computeLineDistances();
+      mol.add(line);
+      const t = label(`${fmt(x.d, 2)} Å`, 'tag tag-tick axis-wide');
+      t.position.copy(P[x.a]).add(P[x.h]).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.32, 0));
+      mol.add(t);
+    });
+    const ai = c.an.find((i) => els[i] !== 'H');
+    const tag = label(anion.label, 'tag tag-marker');
+    tag.position.copy(P[ai]).add(new THREE.Vector3(0, 1.1, 0));
+    mol.add(tag);
+  };
+
+  const apply = () => {
+    const all = list();
+    k = Math.min(k, Math.max(0, all.length - 1));
+    const c = all[k];
+    pressed(anionButtons, anionButtons.find((b) => b.dataset.saptAnion === anion.id));
+    countEl.textContent = all.length ? `${k + 1} / ${all.length}` : '0 / 0';
+    prevBtn.disabled = nextBtn.disabled = all.length < 2;
+    describe(c, k);
+    if (st) {
+      draw(c);
+      st.render();
+    }
+  };
+  anionButtons.forEach((b) => b.addEventListener('click', () => {
+    anion = SAPT_ANIONS.find((a) => a.id === b.dataset.saptAnion);
+    k = 0;
+    apply();
+  }));
+  pick.addEventListener('change', () => {
+    aa = pick.value;
+    k = 0;
+    apply();
+  });
+  prevBtn.addEventListener('click', () => { const n = list().length; k = (k - 1 + n) % n; apply(); });
+  nextBtn.addEventListener('click', () => { k = (k + 1) % list().length; apply(); });
+  document.getElementById('sapt-reset')?.addEventListener('click', () => st?.reset());
+  if (st) st.view([0, 2.5, 14], [0, 0, 0], (aspect) => (aspect < 0.9 ? 5.0 : 5.4));
+  apply();
+}
+
 // Each disc on the papers page mounts its scene the first time it plays.
-const MOUNTS = { hofmeister: mountHofmeister, pahaps: mountPahaps, ionsolvr: mountIonSolvR, 'brush-2016': mountBrush, lewis: mountLewis };
+const MOUNTS = { hofmeister: mountHofmeister, pahaps: mountPahaps, ionsolvr: mountIonSolvR, 'brush-2016': mountBrush, lewis: mountLewis, sapt: mountSapt };
 
 export function mountScene(id) {
   try {
