@@ -1025,6 +1025,7 @@ function mountLewis() {
     let note = ion.kind === 'cation'
       ? 'The stronger the Lewis acid, the more strongly the cation binds the carbonyl oxygen, in every solvent and with no solvent at all.'
       : 'The stronger the Lewis base, the more strongly the anion binds the amide hydrogen, in every solvent and with no solvent at all.';
+    if (ion.id === 'SCN') note = 'SCN⁻ is linear and anisotropic, with two different ends; here it binds the amide hydrogen through its S atom. For ions like this, polarizability is an ambiguous descriptor (it is a tensor, not one number), so the paper uses Lewis strength, which is specific to the binding site.';
     if (mode === 'effective' && ion.kind === 'cation' && solvent.id === 'DMSO') note = 'In DMSO, a strong Lewis base, the cations hold their solvent more tightly than they bind NIPAM. Counting that cost reverses the series: Li⁺ binds least favourably.';
     else if (mode === 'effective' && ion.kind === 'anion' && solvent.id === 'water') note = 'In water, the cost of losing a hydrogen-bonded water roughly cancels the gain from binding NIPAM, so the anions end up close to zero and close to each other.';
     readout.innerHTML = `
@@ -1130,6 +1131,18 @@ function mountLewis() {
   });
   const ionMesh = new THREE.Mesh(sphere, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.3, emissive: '#000000' }));
   mol.add(ionMesh);
+  // SCN- is linear and anisotropic, with different ends, so it gets its own S-C-N model (S-C 1.65 A,
+  // C-N 1.18 A) bound through the S atom, as in the paper. Its tilt from the N-H axis is illustrative.
+  const scn = new THREE.Group();
+  const scnAtoms = [['#f2d14f', 0.55], ['#c3cbd6', 0.42], ['#6f8cff', 0.45]].map(([color, r]) => {
+    const m = new THREE.Mesh(sphere, new THREE.MeshStandardMaterial({ color, roughness: 0.3 }));
+    m.scale.setScalar(r);
+    scn.add(m);
+    return m;
+  });
+  const scnBond = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2.83, 12), new THREE.MeshStandardMaterial({ color: '#8592a6', roughness: 0.5 }));
+  scn.add(scnBond);
+  mol.add(scn);
   const tether = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: '#dbe4f0', dashSize: 0.12, gapSize: 0.1, transparent: true, opacity: 0.8 }));
   mol.add(tether);
   const ionTag = label('', 'tag tag-marker');
@@ -1142,14 +1155,33 @@ function mountLewis() {
     const from = cation ? P[LEWIS.nipam.O] : P[LEWIS.nipam.H];
     const dir = cation ? P[LEWIS.nipam.O].clone().sub(P[LEWIS.nipam.C]) : P[LEWIS.nipam.H].clone().sub(P[LEWIS.nipam.N]);
     const d = cation ? LEWIS.cation_O_distance_water_Cl[ion.id][0] : 2.1;
-    const at = from.clone().add(dir.normalize().multiplyScalar(d + ion.r * 0.4));
-    ionMesh.position.copy(at);
-    ionMesh.scale.setScalar(ion.r * 1.6);
-    ionMesh.material.color.set(ion.color);
+    dir.normalize();
+    const isScn = ion.id === 'SCN';
+    ionMesh.visible = !isScn;
+    scn.visible = isScn;
+    let at;
+    if (isScn) {
+      // S sits on the N-H axis; the rod leans off it at 105 degrees (H...S-C), in the amide plane.
+      at = from.clone().add(dir.clone().multiplyScalar(d + 0.5));
+      const toC = dir.clone().negate().applyAxisAngle(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(105));
+      const c = at.clone().add(toC.clone().multiplyScalar(1.65));
+      const n = c.clone().add(toC.clone().multiplyScalar(1.18));
+      scnAtoms[0].position.copy(at);
+      scnAtoms[1].position.copy(c);
+      scnAtoms[2].position.copy(n);
+      scnBond.position.copy(at).add(n).multiplyScalar(0.5);
+      scnBond.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), toC);
+    } else {
+      at = from.clone().add(dir.clone().multiplyScalar(d + ion.r * 0.4));
+      ionMesh.position.copy(at);
+      ionMesh.scale.setScalar(ion.r * 1.6);
+      ionMesh.material.color.set(ion.color);
+    }
     tether.geometry.setFromPoints([from, at]);
     tether.computeLineDistances();
-    ionTag.element.textContent = ion.label;
-    ionTag.position.copy(at).add(new THREE.Vector3(0, ion.r * 1.6 + 0.5, 0));
+    ionTag.element.textContent = isScn ? 'SCN⁻ (via S)' : ion.label;
+    // SCN- leans upwards, so its label goes below the S atom, clear of the rod.
+    ionTag.position.copy(at).add(new THREE.Vector3(0, isScn ? -1.2 : ion.r * 1.6 + 0.5, 0));
   };
 
   let anim = 0;
