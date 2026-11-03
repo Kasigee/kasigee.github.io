@@ -179,6 +179,7 @@
 
         <h2>A side effect: thinking in Chinese</h2>
         <p>Neither unedited model wrote a single Chinese character on any of the 30 tasks. After the edit, 9 of the 0.6B model's outputs and 18 of the 1.7B model's contain Chinese. For 0.6B it stays inside the reasoning; for 1.7B, 8 final answers are partly or wholly in Chinese, all in maths, logic and science (try <code>math_02</code> in the explorer). Pushing hard on a fixed direction in late layers seems to have disturbed the model's choice of language as well as its choice of when to stop thinking. The initial report didn't mention this.</p>
+        <p>Is that necessarily bad? Qwen3 was trained on a great deal of Chinese, so falling back to it might be a way of reasoning the model is good at, and its tokenizer writes Chinese compactly, so the same reasoning could fit into fewer tokens. That is worth testing. The traces here don't show it yet: on the eight tasks where the edited 1.7B model's answers drifted into Chinese, its reasoning closed sooner than the unedited model's (657–1,001 tokens, against running out at 1,022), but Chinese made up anywhere from none to half of that reasoning. On the two logic tasks the reasoning was entirely English and the Chinese appeared only in the final answer. Stopping sooner, not the language, is what separates these runs from the unedited ones. And for someone who asked in English, an answer in Chinese is a problem in its own right.</p>
 
         <h2>Quality versus speed</h2>
         <figure class="wsp-fig">
@@ -243,7 +244,7 @@
         <ol>
           <li>Run the three free baselines on the same 30 tasks: non-thinking mode, a 4,000–8,000-token budget, and a "&lt;/think&gt;" logit bias.</li>
           <li>Re-run 0.6B with its calibration winner only, as a clean held-out test.</li>
-          <li>Measure language drift directly, and see whether a weaker edit avoids it.</li>
+          <li>Measure language drift directly, see whether a weaker edit avoids it, and test whether Chinese reasoning actually helps: for example, by asking the unedited model to reason in Chinese, and comparing tokens per step.</li>
           <li>Add seeds and more tasks, so effects the size of the 0.6B result can be resolved.</li>
         </ol>
         <p>If the edited 1.7B model still beat non-thinking mode on maths and science under the strict rule, that would be real evidence that a weight edit can do something prompting and decoding settings can't. These results don't show that yet.</p>
