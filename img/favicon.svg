@@ -1,15 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <radialGradient id="pearl" cx="0.36" cy="0.32" r="0.75">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="0.5" stop-color="#e6e1d8"/>
-      <stop offset="1" stop-color="#9f9a8f"/>
-    </radialGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="#0d110f"/>
-  <line x1="30" y1="34" x2="48" y2="18" stroke="#a9aeaa" stroke-width="3"/>
-  <line x1="30" y1="34" x2="17" y2="50" stroke="#a9aeaa" stroke-width="3"/>
-  <circle cx="30" cy="34" r="14" fill="url(#pearl)"/>
-  <circle cx="48" cy="18" r="7" fill="#13968d"/>
-  <circle cx="17" cy="50" r="6" fill="#e2525c"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<defs>
+<radialGradient id="p" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#ffffff"/><stop offset="0.55" stop-color="#e4e0d8"/><stop offset="1" stop-color="#a39e93"/></radialGradient>
+<radialGradient id="t" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#9ff0e8"/><stop offset="0.5" stop-color="#2fb5aa"/><stop offset="1" stop-color="#0d6f68"/></radialGradient>
+<radialGradient id="c" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#ffc2c6"/><stop offset="0.5" stop-color="#ef6a73"/><stop offset="1" stop-color="#a8323b"/></radialGradient>
+</defs>
+<rect width="100" height="100" rx="22" fill="#0d110f"/>
+<g stroke-width="7.0" stroke-linecap="round">
+<line x1="17.0" y1="28.01" x2="17.0" y2="50" stroke="#c9ccc6"/>
+<line x1="17.0" y1="50" x2="17.0" y2="71.99" stroke="#c9ccc6"/>
+<line x1="17.0" y1="50" x2="32.0" y2="28.01" stroke="#c9ccc6"/>
+<line x1="17.0" y1="50" x2="32.0" y2="71.99" stroke="#c9ccc6"/>
+<line x1="71.75" y1="30.51" x2="49.25" y2="30.51" stroke="#58c9bf"/>
+<line x1="49.25" y1="30.51" x2="38.0" y2="50" stroke="#58c9bf"/>
+<line x1="38.0" y1="50" x2="49.25" y2="69.49" stroke="#58c9bf"/>
+<line x1="49.25" y1="69.49" x2="71.75" y2="69.49" stroke="#58c9bf"/>
+<line x1="71.75" y1="69.49" x2="83.0" y2="50" stroke="#58c9bf"/>
+<line x1="83.0" y1="50" x2="63.88" y2="50" stroke="#58c9bf"/>
+</g>
+<circle cx="17.0" cy="28.01" r="6.6" fill="url(#p)"/>
+<circle cx="17.0" cy="50" r="6.6" fill="url(#p)"/>
+<circle cx="17.0" cy="71.99" r="6.6" fill="url(#p)"/>
+<circle cx="32.0" cy="28.01" r="6.6" fill="url(#p)"/>
+<circle cx="32.0" cy="71.99" r="6.6" fill="url(#p)"/>
+<circle cx="38.0" cy="50" r="6.6" fill="url(#t)"/>
+<circle cx="49.25" cy="30.51" r="6.6" fill="url(#t)"/>
+<circle cx="71.75" cy="30.51" r="6.6" fill="url(#t)"/>
+<circle cx="49.25" cy="69.49" r="6.6" fill="url(#t)"/>
+<circle cx="71.75" cy="69.49" r="6.6" fill="url(#t)"/>
+<circle cx="83.0" cy="50" r="6.6" fill="url(#t)"/>
+<circle cx="63.88" cy="50" r="6.6" fill="url(#c)"/>
 </svg>
