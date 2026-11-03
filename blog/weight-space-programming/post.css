@@ -68,10 +68,11 @@
 .ex-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--rule); }
 .ex-head h4 { margin: 0 0 8px; font: 600 0.95rem var(--mono); }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
-.badge { padding: 2px 9px; border-radius: 999px; font: 600 0.75rem/1.6 var(--mono); }
-.badge.pass { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
-.badge.fail { background: color-mix(in srgb, var(--signal-b) 16%, transparent); color: var(--signal-b); }
-.badge.info { background: var(--paper-2); color: var(--ink-2); }
+/* .explorer prefix: the site stylesheet hides a .badge on the home page at phone widths */
+.explorer .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font: 600 0.75rem/1.6 var(--mono); }
+.explorer .badge.pass { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.explorer .badge.fail { background: color-mix(in srgb, var(--signal-b) 16%, transparent); color: var(--signal-b); }
+.explorer .badge.info { background: var(--paper-2); color: var(--ink-2); }
 .tokbar { position: relative; display: flex; height: 10px; margin: 10px 0 4px; overflow: hidden; border-radius: 5px; background: var(--paper-2); }
 .tokbar i { display: block; height: 100%; }
 .tokbar .t { background: color-mix(in srgb, var(--signal-ab) 70%, transparent); }
@@ -81,7 +82,8 @@
 .ex-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; margin: 10px 0 0; font-size: 0.85rem; }
 .ex-stats dt { color: var(--muted); }
 .ex-stats dd { margin: 0 0 4px; font-family: var(--mono); }
-.trace { max-height: 520px; overflow: auto; padding: 12px 14px; font: 0.82rem/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.trace { max-height: 520px; overflow: auto; padding: 12px 14px; font: 0.82rem/1.55 var(--mono); overflow-wrap: anywhere; }
+.trace .think, .trace .answer { white-space: pre-wrap; }
 .trace .tag { display: block; margin: 0 0 6px; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.04em; }
 .trace .think { margin-bottom: 12px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--signal-ab) 7%, transparent); color: var(--ink-2); }
 .trace .answer { padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 8%, transparent); }

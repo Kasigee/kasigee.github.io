@@ -33,7 +33,7 @@ function pane(t, label, side) {
         <div class="badges">
           <span class="badge ${r.pass ? 'pass' : 'fail'}">${r.pass ? 'PASS' : 'FAIL'} as graded</span>
           ${isBoxed && r.pass ? `<span class="badge ${r.strict ? 'pass' : 'fail'}">${r.strict ? 'answer after &lt;/think&gt;' : 'answer only inside &lt;think&gt;'}</span>` : ''}
-          ${r.cutoff ? '<span class="badge fail">budget ran out in &lt;think&gt;</span>' : ''}
+          ${r.tokens >= budget ? `<span class="badge fail">budget ran out ${closed ? 'in the final answer' : 'in &lt;think&gt;'}</span>` : ''}
           ${r.closed && r.think === 0 ? '<span class="badge info">empty &lt;think&gt;</span>' : ''}
           ${r.cjk_think || r.cjk_answer ? `<span class="badge info">${lang}</span>` : ''}
         </div>
