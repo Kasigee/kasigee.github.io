@@ -1,0 +1,100 @@
+/* The weight-space programming post: disclosure box, headline numbers, tables, figures and the
+   before/after trace explorer. Colours come from the site's tokens, so both themes work. */
+.wsp.post { max-width: 1120px; }
+.wsp h1, .wsp .lede { max-width: 26ch; }
+.wsp .lede { max-width: 62ch; }
+.wsp .post-body { max-width: none; }
+.wsp .post-body > p, .wsp .post-body > ul, .wsp .post-body > ol, .wsp .post-body > h2, .wsp .post-body > h3 { max-width: 70ch; }
+.wsp .post-body h3 { margin: 1.6em 0 0.5em; font: 600 1.2rem/1.3 var(--display); }
+.wsp code { padding: 0.08em 0.3em; border-radius: 4px; background: var(--paper-2); font: 0.88em var(--mono); }
+.wsp sup.ast { color: var(--signal-b); font-weight: 600; }
+
+.disclosure { max-width: 70ch; margin: 28px 0 0; padding: 18px 20px; border: 1.5px solid var(--signal-b); border-radius: 14px; background: var(--surface); }
+.disclosure strong:first-child { display: block; margin-bottom: 6px; font: 600 1.05rem/1.4 var(--body); }
+.disclosure p { margin: 0 0 8px; color: var(--ink-2); }
+.disclosure p:last-child { margin-bottom: 0; }
+
+.numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 36px 0 8px; }
+.numbers > div { padding: 16px 18px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); }
+.numbers b { display: block; font: 600 1.7rem/1.1 var(--display); letter-spacing: -0.01em; }
+.numbers span { display: block; margin-top: 6px; color: var(--ink-2); font-size: 0.93rem; line-height: 1.4; }
+.numbers small { display: block; margin-top: 6px; color: var(--muted); font-size: 0.82rem; }
+
+.wsp .table-wrap { max-width: 100%; overflow-x: auto; margin: 18px 0 22px; }
+.wsp table { border-collapse: collapse; min-width: 560px; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.wsp th, .wsp td { padding: 8px 12px; border-bottom: 1px solid var(--rule); text-align: right; vertical-align: top; }
+.wsp th:first-child, .wsp td:first-child { text-align: left; }
+.wsp thead th { color: var(--muted); font: 500 0.78rem/1.3 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+.wsp td.left, .wsp th.left { text-align: left; }
+.wsp table.errors { min-width: 0; width: 100%; max-width: 1000px; }
+.wsp table.errors td, .wsp table.errors th { text-align: left; }
+
+.wsp-fig { max-width: 1000px; margin: 28px 0; }
+.wsp-fig img { display: block; width: 100%; height: auto; padding: 10px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; }
+.wsp-fig figcaption { max-width: 80ch; margin-top: 10px; color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+
+.eq { overflow-x: auto; padding: 14px 16px; border-left: 3px solid var(--accent); background: var(--surface); font: 1.05rem var(--display); }
+.eq var { font-style: italic; }
+
+.footnote { max-width: 80ch; margin: 10px 0 18px; color: var(--muted); font-size: 0.9rem; }
+.footnote .ast { color: var(--signal-b); font-weight: 600; }
+
+.audio-pairs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; max-width: 1000px; margin: 18px 0; }
+.audio-pairs > div { padding: 14px 16px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); }
+.audio-pairs h3 { margin: 0 0 4px; font: 600 1rem var(--body); }
+.audio-pairs p { margin: 0 0 10px; color: var(--muted); font-size: 0.88rem; }
+.audio-pairs label { display: block; margin-top: 8px; color: var(--ink-2); font: 500 0.78rem var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+.audio-pairs audio { width: 100%; margin-top: 4px; }
+
+/* Trace explorer */
+.explorer { margin: 26px 0 32px; padding: clamp(14px, 2vw, 22px); border: 1px solid var(--rule); border-radius: 18px; background: var(--surface); }
+.ex-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.ex-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.ex-controls button, .ex-controls select { padding: 7px 12px; border: 1px solid var(--rule-strong); border-radius: 999px; background: var(--paper); color: var(--ink); cursor: pointer; font: 500 0.88rem var(--body); }
+.ex-controls button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.ex-controls button:focus-visible, .ex-controls select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ex-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; max-width: 100%; }
+.ex-pick select { min-width: 0; max-width: 100%; }
+.ex-controls .ex-label { color: var(--muted); font: 500 0.75rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.ex-task { margin: 16px 0 0; }
+.ex-task h3 { margin: 0; font: 600 1.25rem/1.3 var(--display); }
+.ex-task p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+.ex-task details { margin-top: 8px; }
+.ex-task summary { cursor: pointer; color: var(--ink-2); font-weight: 600; }
+.ex-task pre { white-space: pre-wrap; margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--paper); font: 0.85rem/1.5 var(--mono); }
+.ex-note { max-width: 90ch; margin: 12px 0 0; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--paper); color: var(--ink-2); font-size: 0.95rem; }
+.ex-panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.ex-pane { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--rule); border-radius: 14px; background: var(--paper); }
+.ex-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--rule); }
+.ex-head h4 { margin: 0 0 8px; font: 600 0.95rem var(--mono); }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.badge { padding: 2px 9px; border-radius: 999px; font: 600 0.75rem/1.6 var(--mono); }
+.badge.pass { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.badge.fail { background: color-mix(in srgb, var(--signal-b) 16%, transparent); color: var(--signal-b); }
+.badge.info { background: var(--paper-2); color: var(--ink-2); }
+.tokbar { position: relative; display: flex; height: 10px; margin: 10px 0 4px; overflow: hidden; border-radius: 5px; background: var(--paper-2); }
+.tokbar i { display: block; height: 100%; }
+.tokbar .t { background: color-mix(in srgb, var(--signal-ab) 70%, transparent); }
+.tokbar .a { background: var(--accent); }
+.tokbar-key { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); font: 0.75rem var(--mono); }
+.tokbar-key span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 2px; background: var(--c); }
+.ex-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; margin: 10px 0 0; font-size: 0.85rem; }
+.ex-stats dt { color: var(--muted); }
+.ex-stats dd { margin: 0 0 4px; font-family: var(--mono); }
+.trace { max-height: 520px; overflow: auto; padding: 12px 14px; font: 0.82rem/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.trace .tag { display: block; margin: 0 0 6px; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.04em; }
+.trace .think { margin-bottom: 12px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--signal-ab) 7%, transparent); color: var(--ink-2); }
+.trace .answer { padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.trace .empty { color: var(--muted); font-style: italic; }
+.trace mark.doubt { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--amber) 55%, transparent); color: inherit; }
+.trace .cjk { padding: 0 2px; border-radius: 3px; outline: 1.5px dashed var(--signal-b); }
+.trace .cut { margin: 10px 0 0; color: var(--signal-b); font-weight: 600; }
+.ex-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; color: var(--muted); font-size: 0.85rem; }
+.ex-legend mark { padding: 0 3px; border-radius: 3px; background: color-mix(in srgb, var(--amber) 55%, transparent); color: var(--ink); }
+.ex-legend .cjk-key { padding: 0 3px; border-radius: 3px; outline: 1.5px dashed var(--signal-b); }
+.ex-loading { margin: 18px 0 0; color: var(--muted); }
+
+@media (max-width: 860px) {
+  .ex-panes { grid-template-columns: minmax(0, 1fr); }
+  .trace { max-height: 380px; }
+}
