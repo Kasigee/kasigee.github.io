@@ -19,6 +19,7 @@
   <link rel="icon" href="../../img/favicon-192.png" type="image/png" sizes="192x192">
   <link rel="icon" href="../../img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../../img/apple-touch-icon.png">
+  <script data-goatcounter="https://kasimirgregory.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -26,6 +27,7 @@
   <link rel="stylesheet" href="../../css/site.css">
   <script>document.documentElement.classList.add('js')</script>
   <script type="module" src="../../js/chrome.js"></script>
+  <script type="module" src="../../js/blog.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -60,10 +62,11 @@
   <main id="main">
     <!-- How to use this template: copy it to blog/your-post-name/index.html (keep the folder depth, so
          the ../../ links work), then edit the title, description and canonical address in <head>
-         (remove the robots "noindex" line), the date and the text below. Then list the post in
+         (remove the robots "noindex" line), the date, the data-views path (the post's address after
+         kasimirgregory.com, e.g. /blog/your-post-name/), the email subject in Comments, and the text below. Then list the post in
          blog/index.html. Delete this comment. -->
     <article class="page wrap post" aria-labelledby="post-title">
-      <p class="post-meta"><time datetime="2026-11-01">1 November 2026</time> · Blog</p>
+      <p class="post-meta"><time datetime="2026-11-01">1 November 2026</time> · Blog<span class="views" data-views="/blog/your-post-name/" hidden></span></p>
       <h1 id="post-title">Title of the post</h1>
       <p class="lede">A one-sentence summary that sets up the post.</p>
       <div class="post-body">
@@ -76,6 +79,12 @@
         </figure>
         <blockquote><p>A quote, if you want one.</p></blockquote>
       </div>
+      <section class="comments" id="comments" aria-labelledby="comments-title">
+        <h2 id="comments-title">Comments</h2>
+        <p class="comments-note" data-when="giscus" hidden>Comment below with a GitHub account (comments are stored as GitHub Discussions on this site's repository, through <a href="https://giscus.app/">giscus</a>), or email them to <a data-email data-user="kasimir" data-domain="live.com.au" data-subject="Comment: Title of the post" href="#comments">kasimir [at] live.com.au</a>.</p>
+        <p class="comments-note" data-when="no-giscus">Thoughts, questions or corrections? Email them to <a data-email data-user="kasimir" data-domain="live.com.au" data-subject="Comment: Title of the post" href="#comments">kasimir [at] live.com.au</a>.</p>
+        <div class="giscus"></div>
+      </section>
       <p class="post-back"><a href="../">← All posts</a></p>
     </article>
   </main>
@@ -88,7 +97,7 @@
         <div><h3>Elsewhere</h3><ul><li><a href="https://orcid.org/0000-0002-8055-370X">ORCID ↗</a></li><li><a href="https://open.spotify.com/show/17Def43GZ8wubUTK5jnaEU">Anion The Future ↗</a></li><li><a href="https://www.strava.com/athletes/49302230">Strava ↗</a></li></ul></div>
       </div>
       <p class="big" aria-hidden="true">Dr Kas</p>
-      <p class="fine">© <span data-year>2026</span> Kasimir Gregory · Armidale, Australia</p>
+      <p class="fine">© <span data-year>2026</span> Kasimir Gregory · Armidale, Australia · Visits counted by <a href="https://www.goatcounter.com/">GoatCounter</a>, without cookies</p>
     </div>
   </footer>
 </body>

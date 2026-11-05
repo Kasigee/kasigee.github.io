@@ -18,6 +18,7 @@
   <link rel="icon" href="../../img/favicon-192.png" type="image/png" sizes="192x192">
   <link rel="icon" href="../../img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../../img/apple-touch-icon.png">
+  <script data-goatcounter="https://kasimirgregory.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -27,6 +28,7 @@
   <script>document.documentElement.classList.add('js')</script>
   <script type="module" src="../../js/chrome.js"></script>
   <script type="module" src="explorer.js"></script>
+  <script type="module" src="../../js/blog.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -60,7 +62,7 @@
 
   <main id="main">
     <article class="page wrap post wsp" aria-labelledby="post-title">
-      <p class="post-meta"><time datetime="2026-11-03">3 November 2026</time> · Blog · Draft</p>
+      <p class="post-meta"><time datetime="2026-11-03">3 November 2026</time> · Blog · Draft<span class="views" data-views="/blog/weight-space-programming/" hidden></span></p>
       <h1 id="post-title">Editing 0.1% of a small model's weights: what changed, and what didn't</h1>
       <p class="lede">A reproduction of this week's weight-space programming study on two small Qwen3 models. The edit stopped them overthinking and made coding answers about five times quicker. But most of the headline accuracy gain depends on how answers are graded, and the edited models started thinking in Chinese.</p>
 
@@ -290,6 +292,12 @@
         <h2>Reference</h2>
         <p>Rikiya Takehi, Jayden Teoh, Alex Zhang and Omar Khattab. "Sparks of Weight-Space Programming: LLMs can natively read &amp; write neural network weights." November 2026. <a href="https://rikiyat.github.io/blog/weight-space-programming/">rikiyat.github.io/blog/weight-space-programming</a></p>
         <p class="footnote">Raw outputs for all 30 tasks and all four models are in <a href="traces.json">traces.json</a>, the source of the explorer above. The scripts Gemini Argon 4 wrote and ran are in <a href="https://github.com/Kasigee/kasigee.github.io/tree/main/blog/weight-space-programming/code">the code folder on GitHub</a>, with local file paths and the voice recording removed.</p>
+        <section class="comments" id="comments" aria-labelledby="comments-title">
+          <h2 id="comments-title">Comments</h2>
+          <p class="comments-note" data-when="giscus" hidden>Comment below with a GitHub account (comments are stored as GitHub Discussions on this site's repository, through <a href="https://giscus.app/">giscus</a>), or email them to <a data-email data-user="kasimir" data-domain="live.com.au" data-subject="Comment: Editing 0.1% of a small model&#39;s weights" href="#comments">kasimir [at] live.com.au</a>.</p>
+          <p class="comments-note" data-when="no-giscus">Thoughts, questions or corrections? Email them to <a data-email data-user="kasimir" data-domain="live.com.au" data-subject="Comment: Editing 0.1% of a small model&#39;s weights" href="#comments">kasimir [at] live.com.au</a>.</p>
+          <div class="giscus"></div>
+        </section>
         <p class="post-back"><a href="../">← All posts</a></p>
       </div>
     </article>
@@ -303,7 +311,7 @@
         <div><h3>Elsewhere</h3><ul><li><a href="https://orcid.org/0000-0002-8055-370X">ORCID ↗</a></li><li><a href="https://open.spotify.com/show/17Def43GZ8wubUTK5jnaEU">Anion The Future ↗</a></li><li><a href="https://www.strava.com/athletes/49302230">Strava ↗</a></li></ul></div>
       </div>
       <p class="big" aria-hidden="true">Dr Kas</p>
-      <p class="fine">© <span data-year>2026</span> Kasimir Gregory · Armidale, Australia</p>
+      <p class="fine">© <span data-year>2026</span> Kasimir Gregory · Armidale, Australia · Visits counted by <a href="https://www.goatcounter.com/">GoatCounter</a>, without cookies</p>
     </div>
   </footer>
 </body>

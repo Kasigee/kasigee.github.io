@@ -7,7 +7,8 @@ document.documentElement.classList.add('js');
 let address = '';
 for (const link of document.querySelectorAll('[data-email]')) {
   address = [link.dataset.user, link.dataset.domain].join('@');
-  link.href = `mailto:${address}`;
+  const subject = link.dataset.subject ? `?subject=${encodeURIComponent(link.dataset.subject)}` : '';
+  link.href = `mailto:${address}${subject}`;
   link.textContent = address;
 }
 for (const button of document.querySelectorAll('[data-copy-email]')) {
