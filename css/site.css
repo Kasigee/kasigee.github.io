@@ -536,6 +536,12 @@ h3 { margin: 0 0 0.6rem; font-size: 1.3rem; line-height: 1.2; }
 .post-list h2 a { color: var(--ink); text-decoration: none; }
 .post-list h2 a:hover { color: var(--accent); }
 .post-list p { max-width: 64ch; margin: 0; color: var(--ink-2); }
+.eap { border-top: 1px solid var(--rule); margin-top: clamp(40px, 6vw, 64px); }
+.eap h2 { margin: 10px 0 0; font: 600 clamp(1.8rem, 3.4vw, 2.6rem)/1.1 var(--display); }
+.eap-copy { max-width: 64ch; margin: 18px 0 0; color: var(--ink-2); }
+.eap-example { max-width: 860px; margin: 26px 0 0; }
+.eap-example pre { margin: 0; padding: 18px 20px; overflow-x: auto; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); font: 0.92rem/1.6 var(--mono); white-space: pre-wrap; }
+.eap-example figcaption { margin-top: 8px; color: var(--muted); font-size: 0.88rem; }
 .empty-note { max-width: 60ch; margin: clamp(40px, 6vw, 64px) 0 0; padding: 22px 24px; border: 1px dashed var(--rule); border-radius: 14px; color: var(--muted); }
 .post { max-width: 720px; }
 .post-body { margin-top: clamp(32px, 5vw, 48px); font-size: 1.1rem; line-height: 1.75; }
