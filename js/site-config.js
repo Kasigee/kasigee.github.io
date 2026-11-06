@@ -5,12 +5,13 @@
 // The counting script itself is the <script data-goatcounter> line in each page's <head>.
 export const GOATCOUNTER = 'https://kasimirgregory.goatcounter.com';
 
-// giscus (giscus.app) stores blog comments as GitHub Discussions on this site's repository.
-// Comments stay switched off until categoryId is filled in; the ID comes from giscus.app once
-// Discussions are on and a "Comments" category exists.
+// giscus (giscus.app) stores blog comments as GitHub Discussions on this site's repository, one
+// discussion per post, in the "General" category (an open-ended discussion category). To move them
+// to another category, put its name and ID here: giscus.app lists the IDs once you enter the repo.
+// An empty categoryId switches comments off, leaving the email option.
 export const GISCUS = {
   repo: 'Kasigee/kasigee.github.io',
   repoId: 'R_kgDOVaV21Q',
-  category: 'Comments',
-  categoryId: '',
+  category: 'General',
+  categoryId: 'DIC_kwDOVaV21c4DKf3i',
 };

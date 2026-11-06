@@ -43,7 +43,19 @@ document.querySelectorAll('[data-views]').forEach(showViews);
 
 // Comments: load giscus once it is configured; until then only the email option shows.
 const box = document.querySelector('.giscus');
+const showGiscus = (on) => {
+  box.hidden = !on;
+  document.querySelectorAll('[data-when="giscus"]').forEach((el) => { el.hidden = !on; });
+  document.querySelectorAll('[data-when="no-giscus"]').forEach((el) => { el.hidden = on; });
+};
 if (box && GISCUS.repoId && GISCUS.categoryId) {
+  // If giscus can't run on the repository (its app isn't installed, say), fall back to the email
+  // option rather than show an error box. "Discussion not found" is normal before a first comment.
+  window.addEventListener('message', (event) => {
+    if (event.origin !== 'https://giscus.app') return;
+    const error = event.data?.giscus?.error;
+    if (typeof error === 'string' && /not installed/i.test(error)) showGiscus(false);
+  });
   // One discussion per post, keyed by the post's canonical path so /index.html and query strings
   // don't split its comments.
   const canonical = document.querySelector('link[rel="canonical"]')?.href;
@@ -69,6 +81,5 @@ if (box && GISCUS.repoId && GISCUS.categoryId) {
   script.crossOrigin = 'anonymous';
   script.async = true;
   box.after(script);
-  document.querySelectorAll('[data-when="giscus"]').forEach((el) => { el.hidden = false; });
-  document.querySelectorAll('[data-when="no-giscus"]').forEach((el) => { el.hidden = true; });
+  showGiscus(true);
 }
