@@ -79,6 +79,27 @@
       </ol>
       <p class="empty-note">Race reports and training notes are on their way. Until then, Strava has every run.</p>
     </section>
+
+    <section class="page wrap eap" id="eap" aria-labelledby="eap-title">
+      <p class="label">Tool · in private testing</p>
+      <h2 id="eap-title">Environment Adjusted Pace</h2>
+      <p class="lede">A pace on a hilly, windy morning at altitude isn't the same effort as the same pace on a flat, still, sea-level day. Environment Adjusted Pace (EAP) estimates what each run would have been worth on that ideal day, point by point along the GPS track, and shows where the time went.</p>
+      <p class="eap-copy">It combines published models for hills (grade-adjusted pace), heat and humidity (dew point), wind (speed and direction against the way you're running, corrected from mast height to runner height), altitude, surface, air quality and tight corners. Weather comes from Open-Meteo for the time and place of the run.</p>
+      <figure class="eap-example">
+        <pre><code>🌦️ EAP 3:44/km (ran 3:54/km)
+Time lost to altitude 26 s, hills 10 s, wind 7 s, temperature 4 s, corners 2 s
+15 °C, dew point 6 °C, wind 9 km/h NW</code></pre>
+        <figcaption>A 5 km time trial in November 2026, as the line EAP adds to the run on Strava.</figcaption>
+      </figure>
+      <p class="eap-copy">A Strava plugin that adds this line to every run is in testing on my own account. Once it opens up, you'll be able to connect here.</p>
+      <!-- When the plugin opens to others: uncomment this, and add a short privacy note
+           (EAP reads your run's GPS, time and elevation, adds a line to the description, doesn't keep the
+           streams, and you can disconnect any time in Strava under Settings → My Apps).
+      <ul class="page-links">
+        <li><a href="https://eap.kasimirgregory.com/connect">Connect with Strava</a></li>
+      </ul>
+      -->
+    </section>
   </main>
 
   <footer class="site-footer">
