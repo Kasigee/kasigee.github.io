@@ -15,3 +15,12 @@ export const GISCUS = {
   category: 'Comments',
   categoryId: 'DIC_kwDOVaV21c4DKf4F',
 };
+
+// Guest comments, for readers without a GitHub account: a form on each post sends the comment to a
+// small Cloudflare Worker (worker/guest-comments/), which posts it into the post's giscus thread
+// through a separate guest GitHub account. Cloudflare Turnstile keeps bots out. The form appears once
+// both values are filled in; both are public, so they're safe here.
+export const GUEST_COMMENTS = {
+  endpoint: '', // the Worker's address, e.g. https://guest-comments.your-name.workers.dev
+  turnstileSiteKey: '', // the site key of the Turnstile widget for kasimirgregory.com
+};

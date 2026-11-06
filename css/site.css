@@ -553,6 +553,26 @@ h3 { margin: 0 0 0.6rem; font-size: 1.3rem; line-height: 1.2; }
 .comments { max-width: 760px; margin-top: clamp(48px, 7vw, 72px); padding-top: clamp(24px, 4vw, 36px); border-top: 1px solid var(--rule); }
 .comments h2 { margin: 0 0 10px; font: 600 1.6rem/1.2 var(--display); }
 .comments .comments-note { max-width: 66ch; margin: 0 0 20px; color: var(--ink-2); font-size: 1rem; line-height: 1.6; }
+.guest { max-width: 680px; margin: 0 0 24px; }
+.guest summary { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border: 1px solid var(--rule-strong); border-radius: 999px; color: var(--ink); cursor: pointer; font: 600 0.95rem var(--body); list-style: none; }
+.guest summary::-webkit-details-marker { display: none; }
+.guest summary::before { content: "+"; color: var(--accent); font-weight: 700; }
+.guest[open] summary::before { content: "−"; }
+.guest summary:hover { border-color: var(--ink); }
+.guest form { display: grid; gap: 14px; margin-top: 14px; padding: clamp(16px, 3vw, 22px); border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); }
+.guest label { display: grid; gap: 6px; color: var(--muted); font: 500 0.78rem var(--mono); letter-spacing: 0.05em; text-transform: uppercase; }
+.guest input, .guest textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--rule-strong); border-radius: 10px; background: var(--paper); color: var(--ink); font: 1rem/1.5 var(--body); letter-spacing: normal; text-transform: none; }
+.guest textarea { min-height: 130px; resize: vertical; }
+.guest .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.guest .turnstile:empty { display: none; }
+.guest button { justify-self: start; padding: 10px 22px; border: 0; border-radius: 999px; background: var(--ink); color: var(--paper); cursor: pointer; font: 600 0.95rem var(--body); }
+.guest button:hover { background: var(--accent); }
+.guest button[disabled] { opacity: 0.55; cursor: progress; }
+.comments .guest p { max-width: none; margin: 0; font-size: 0.9rem; line-height: 1.5; }
+.comments .guest .fine-print { color: var(--muted); }
+.comments .guest .status { color: var(--ink-2); font-size: 0.95rem; }
+.comments .guest .status:empty { display: none; }
+.comments .guest .status.err { color: var(--signal-b); }
 .run-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; max-width: 860px; margin: 34px 0 0; }
 .top-nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
 .overlay a[aria-current="page"] { color: var(--green); }
