@@ -144,7 +144,8 @@ export function createReactionScene(THREE, { canvas, colors, labels }) {
 
   let width = 1;
   let height = 1;
-  const cam = { centre: 0, distance: 10, sway: 0, swayTarget: 0 };
+  let sized = false; // true once resize() has been given the canvas's real size
+  const cam = { centre: 0, distance: 10, sway: 0, swayTarget: 0, placed: false };
 
   function frame(xi, time, ease) {
     const g = geometry(xi);
@@ -190,8 +191,12 @@ export function createReactionScene(THREE, { canvas, colors, labels }) {
     const reach = (g.rA + g.rB) / 2 + 0.8;
     const aspect = width / height;
     const distance = Math.max(reach / (tanHalfFov * aspect), 2.45 / tanHalfFov) * 1.06;
-    cam.centre += (centre - cam.centre) * ease;
-    cam.distance += (distance - cam.distance) * ease;
+    // Once the canvas has its real size, jump straight to the framing; ease only after that, so
+    // the far chloride isn't cut off while the camera catches up.
+    const follow = sized && !cam.placed ? 1 : ease;
+    if (sized) cam.placed = true;
+    cam.centre += (centre - cam.centre) * follow;
+    cam.distance += (Math.min(distance, 60) - cam.distance) * follow;
     cam.sway += (cam.swayTarget - cam.sway) * 0.05;
     camera.position.set(cam.centre + cam.sway * 1.4, 1, cam.distance);
     camera.lookAt(cam.centre, -0.3, 0);
@@ -227,6 +232,7 @@ export function createReactionScene(THREE, { canvas, colors, labels }) {
     resize(w, h) {
       width = Math.max(1, w);
       height = Math.max(1, h);
+      sized = w > 1 && h > 1;
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
