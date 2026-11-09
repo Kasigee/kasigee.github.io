@@ -451,7 +451,7 @@ h3 { margin: 0 0 0.6rem; font-size: 1.3rem; line-height: 1.2; }
 .site-footer a { color: var(--night-ink); text-decoration: none; }
 .site-footer a:hover { color: var(--green); }
 .site-footer .big { max-width: none; margin: 56px 0 26px; color: var(--green); font: 800 clamp(3.6rem, 15vw, 13rem)/0.85 var(--word); letter-spacing: -0.06em; white-space: nowrap; }
-.site-footer .fine { color: #7f8a83; font-size: 0.86rem; }
+.site-footer .fine { max-width: none; color: #7f8a83; font-size: 0.86rem; }
 
 /* Reveal on scroll */
 .js .reveal { transition: opacity 0.8s, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
