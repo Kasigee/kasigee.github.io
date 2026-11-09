@@ -94,7 +94,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 h2 { margin: 0; font-size: clamp(2rem, 4.4vw, 3.5rem); line-height: 1.04; text-wrap: balance; }
 h3 { margin: 0 0 0.6rem; font-size: 1.3rem; line-height: 1.2; }
 .wrap { position: relative; max-width: 1240px; margin: 0 auto; padding-inline: var(--gutter) max(20px, env(safe-area-inset-right, 0px)); }
-.block { padding-block: clamp(72px, 10vw, 140px); }
+.block { padding-block: clamp(56px, 7vw, 100px); }
 .label {
   display: inline-flex; align-items: center; gap: 8px; margin: 0 0 14px;
   color: var(--muted); font: 500 0.74rem/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
