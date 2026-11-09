@@ -134,7 +134,10 @@ export async function mountHero(hero) {
   darkScheme.addEventListener('change', () => { if (mesh) paint(); });
 
   // Fit the word, with a margin, to the hero at any aspect ratio, and lift it clear of the text
-  // block at the bottom of the hero.
+  // block at the bottom of the hero. When the words stack (phones), fit them into the gap between
+  // the stickers at the top and the text block, so the letters never run under the name.
+  const info = hero.querySelector('.hero-info');
+  const topStickers = [...hero.querySelectorAll('.sticker.s1, .sticker.s4')];
   const resize = () => {
     const { width, height } = hero.getBoundingClientRect();
     if (!width || !height) return;
@@ -149,8 +152,19 @@ export async function mountHero(hero) {
     const stacked = layout === 'stacked';
     const fitWidth = (word.halfWidth + (stacked ? 0.55 : 1.3)) / (tanHalf * camera.aspect);
     const fitHeight = (word.halfHeight + (stacked ? 1.2 : 1.4)) / tanHalf;
-    const distance = Math.max(fitWidth, fitHeight, stacked ? 7 : 10.5);
-    camera.position.set(0, -0.12 * distance * tanHalf, distance);
+    if (stacked && info) {
+      const box = hero.getBoundingClientRect();
+      const top = Math.max(64, ...topStickers.map((el) => el.offsetTop + el.offsetHeight)) + 10;
+      const bottom = info.getBoundingClientRect().top - box.top - 18;
+      const gap = Math.max(120, bottom - top);
+      const fitGap = ((word.halfHeight + 0.12) * height) / (gap * tanHalf);
+      const distance = Math.max(fitWidth, fitGap, 7);
+      const unitsPerPixel = (2 * distance * tanHalf) / height;
+      camera.position.set(0, ((top + bottom) / 2 - height / 2) * unitsPerPixel, distance);
+    } else {
+      const distance = Math.max(fitWidth, fitHeight, stacked ? 7 : 10.5);
+      camera.position.set(0, -0.12 * distance * tanHalf, distance);
+    }
     camera.updateProjectionMatrix();
   };
   resize();
