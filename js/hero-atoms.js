@@ -1,5 +1,5 @@
-// "Dr Kas" spelled in iridescent atoms. The atoms tilt with the
-// pointer and scatter as the page scrolls. Capitals stay legible at this atom spacing, where the
+// "Dr Kas" spelled in iridescent atoms: pearl on the dark theme, ink on the light one, so the word
+// reads clearly on either. The atoms tilt with the pointer and scatter as the page scrolls. Capitals stay legible at this atom spacing, where the
 // small counters of a lowercase a and s fill in. On a tall, narrow screen the words stack.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -85,7 +85,14 @@ export async function mountHero(hero) {
     sheenColor: new THREE.Color(0xfff0f5),
   });
   const accents = [0x13968d, 0xe2525c, 0xf4c430].map((c) => new THREE.Color(c));
-  const white = new THREE.Color(0xffffff);
+  // Instance colours multiply the pearl material: white leaves it pearl, ink makes it near-black.
+  const pearl = new THREE.Color(0xffffff);
+  const ink = new THREE.Color(0x1d2925);
+  const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+  const isDark = () => {
+    const forced = document.documentElement.dataset.theme;
+    return forced ? forced === 'dark' : darkScheme.matches;
+  };
 
   let mesh = null;
   let word = null;
@@ -94,6 +101,7 @@ export async function mountHero(hero) {
   let scatter = [];
   let radius = [];
   let phase = [];
+  let accent = [];
   const build = (lines) => {
     if (mesh) {
       scene.remove(mesh);
@@ -105,19 +113,31 @@ export async function mountHero(hero) {
     scatter = [];
     radius = [];
     phase = [];
+    accent = [];
     word.points.forEach(([x, y], i) => {
       base.push(new THREE.Vector3(x, y, (Math.random() - 0.5) * 0.18));
       const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
       scatter.push(dir.multiplyScalar(2.5 + Math.random() * 5));
       radius.push(0.05 + Math.random() * 0.035);
       phase.push(Math.random() * Math.PI * 2);
-      mesh.setColorAt(i, Math.random() < 0.06 ? accents[i % 3] : white);
+      accent.push(Math.random() < 0.07);
     });
+    paint();
     scene.add(mesh);
   };
+  const paint = () => {
+    const body = isDark() ? pearl : ink;
+    material.sheen = isDark() ? 0.6 : 0.15;
+    accent.forEach((on, i) => mesh.setColorAt(i, on ? accents[i % 3] : body));
+    mesh.instanceColor.needsUpdate = true;
+  };
+  darkScheme.addEventListener('change', () => { if (mesh) paint(); });
 
   // Fit the word, with a margin, to the hero at any aspect ratio, and lift it clear of the text
-  // block at the bottom of the hero.
+  // block at the bottom of the hero. When the words stack (phones), fit them into the gap between
+  // the stickers at the top and the text block, so the letters never run under the name.
+  const info = hero.querySelector('.hero-info');
+  const topStickers = [...hero.querySelectorAll('.sticker.s1, .sticker.s4')];
   const resize = () => {
     const { width, height } = hero.getBoundingClientRect();
     if (!width || !height) return;
@@ -132,8 +152,19 @@ export async function mountHero(hero) {
     const stacked = layout === 'stacked';
     const fitWidth = (word.halfWidth + (stacked ? 0.55 : 1.3)) / (tanHalf * camera.aspect);
     const fitHeight = (word.halfHeight + (stacked ? 1.2 : 1.4)) / tanHalf;
-    const distance = Math.max(fitWidth, fitHeight, stacked ? 7 : 10.5);
-    camera.position.set(0, -0.12 * distance * tanHalf, distance);
+    if (stacked && info) {
+      const box = hero.getBoundingClientRect();
+      const top = Math.max(64, ...topStickers.map((el) => el.offsetTop + el.offsetHeight)) + 10;
+      const bottom = info.getBoundingClientRect().top - box.top - 18;
+      const gap = Math.max(120, bottom - top);
+      const fitGap = ((word.halfHeight + 0.12) * height) / (gap * tanHalf);
+      const distance = Math.max(fitWidth, fitGap, 7);
+      const unitsPerPixel = (2 * distance * tanHalf) / height;
+      camera.position.set(0, ((top + bottom) / 2 - height / 2) * unitsPerPixel, distance);
+    } else {
+      const distance = Math.max(fitWidth, fitHeight, stacked ? 7 : 10.5);
+      camera.position.set(0, -0.12 * distance * tanHalf, distance);
+    }
     camera.updateProjectionMatrix();
   };
   resize();
