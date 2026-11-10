@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="../css/site.css">
   <script>document.documentElement.classList.add('js')</script>
   <script type="module" src="../js/chrome.js"></script>
+  <script type="module" src="../js/eap.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -78,6 +79,66 @@
         -->
       </ol>
       <p class="empty-note">Race reports and training notes are on their way. Until then, Strava has every run.</p>
+    </section>
+
+    <section class="page wrap eap" id="eap" aria-labelledby="eap-title" data-eap-api="https://eap-strava-965027354537.australia-southeast1.run.app">
+      <p class="label">Tool · private beta</p>
+      <h2 id="eap-title">Environment Adjusted Pace</h2>
+      <p class="lede">A pace on a hilly, windy morning at altitude isn't the same effort as the same pace on a flat, still, sea-level day. Environment Adjusted Pace (EAP) estimates what each run would have been worth on that ideal day, second by second along the GPS track, and shows where the time went.</p>
+      <p class="eap-copy">It adjusts for hills (the extra cost of climbing and the smaller gain from descending, measured on treadmills), altitude and the thinner air that comes with it, wind (speed and direction against the way you're running, brought down from mast height to runner height), heat and humidity (temperature plus dew point), and tight corners. Weather comes from Open-Meteo for the time and place of the run.</p>
+      <figure class="eap-example">
+        <pre><code>🌦️ EAP 3:39/km (ran 3:54/km)
+Time lost to hills 38 s, altitude 33 s, wind 4 s, heat 1 s
+Km splits (EAP): 3:26 · 3:44 · 3:36 · 3:47 · 3:42
+15 °C, dew point 6 °C, wind 9 km/h NW</code></pre>
+        <figcaption>A 5 km time trial in Armidale (about 1,000 m up) in November 2026, as the line EAP adds to the run on Strava.</figcaption>
+      </figure>
+
+      <div class="eap-tools">
+        <form class="eap-card" id="eap-try" novalidate>
+          <h3>Try it on a run</h3>
+          <p>Upload a run's FIT file: from Garmin Connect (Export Original), COROS, Suunto, Polar or Strava (Export Original). You'll get the same lines as above.</p>
+          <label class="eap-field">FIT file <input type="file" name="file" accept=".fit,.zip" required></label>
+          <div class="eap-row">
+            <label class="eap-field">Weight (kg) <input name="weight_kg" type="number" inputmode="decimal" min="30" max="150" step="0.5" value="70"></label>
+            <label class="eap-field">Height (cm) <input name="height_cm" type="number" inputmode="numeric" min="120" max="220" step="1" value="175"></label>
+          </div>
+          <label class="eap-check"><input type="checkbox" name="acclimatized" checked> I live at about the altitude I ran at</label>
+          <button type="submit">Work out EAP</button>
+          <p class="eap-status" role="status" aria-live="polite"></p>
+          <pre class="eap-result" hidden></pre>
+          <p class="eap-small">Your file is read once to work out EAP and isn't kept.</p>
+        </form>
+
+        <form class="eap-card" id="eap-waitlist" novalidate>
+          <h3>Get it on every run</h3>
+          <p>A Strava plugin adds the EAP line to each run as it uploads, with nothing to do after connecting. It's in a private beta with ten runners for now. Join the list and I'll send you an invite when there's a place.</p>
+          <label class="eap-field">Email <input type="email" name="email" autocomplete="email" required></label>
+          <label class="eap-field"><span>First name <small>(optional)</small></span> <input type="text" name="name" autocomplete="given-name" maxlength="80"></label>
+          <label class="eap-field">Watch
+            <select name="watch">
+              <option value="">Choose one</option>
+              <option>Garmin</option>
+              <option>COROS</option>
+              <option>Apple Watch</option>
+              <option>Suunto</option>
+              <option>Polar</option>
+              <option>Other or phone</option>
+            </select>
+          </label>
+          <label class="eap-hp" aria-hidden="true">Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+          <button type="submit">Join the waitlist</button>
+          <p class="eap-status" role="status" aria-live="polite"></p>
+          <p class="eap-small">Your email is used only for your invite and the odd EAP update. Reply to any of them to be removed.</p>
+        </form>
+      </div>
+
+      <div class="eap-privacy">
+        <h3>Privacy</h3>
+        <p>Connecting EAP to Strava lets it read your runs and add a line to their descriptions. Each run is read when it uploads, used once and not stored; EAP keeps only your Strava sign-in and your settings (weight, height, and whether to show laps). You can change those, pause EAP, or disconnect and delete everything from its settings page, or remove it on Strava under Settings → My Apps. EAP's numbers are estimates from published research, not measurements.</p>
+      </div>
+      <!-- When EAP opens to everyone: add Strava's official "Connect with Strava" button (their brand rules
+           require it) linking to https://eap-strava-965027354537.australia-southeast1.run.app/connect -->
     </section>
   </main>
 
