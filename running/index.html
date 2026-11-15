@@ -62,34 +62,16 @@
   </nav>
 
   <main id="main">
-    <section class="page wrap" aria-labelledby="run-title">
-      <p class="label">Running</p>
-      <h1 id="run-title">Running</h1>
-      <p class="lede">Away from the computer, I run, mostly on trails around Armidale. This is where I write up races and training. Every run is on Strava.</p>
-      <ul class="page-links">
-        <li><a href="https://www.strava.com/athletes/49302230">Follow me on Strava ↗</a></li>
-      </ul>
-      <!-- To add an entry: copy the example <li> below to the top of the list (newest first) and
-           fill it in. A longer race report can have its own page: copy blog/TEMPLATE.html to
-           running/your-race/index.html and link to it from here. -->
-      <ol class="post-list" reversed>
-        <!--
-        <li>
-          <time datetime="2026-11-01">1 November 2026</time>
-          <h2>Race or run name</h2>
-          <p>A few sentences: distance, how it went, what you learned.</p>
-        </li>
-        -->
-      </ol>
-      <p class="empty-note">Race reports and training notes are on their way. Until then, Strava has every run.</p>
-    </section>
-
     <section class="page wrap eap" id="eap" aria-labelledby="eap-title" data-eap-api="https://eap-strava-965027354537.australia-southeast1.run.app">
       <div class="eap-head">
         <div class="eap-intro">
-          <p class="label">Tool · private beta</p>
-          <h2 id="eap-title">Environment Adjusted Pace</h2>
+          <p class="label">Running · Tool in private beta</p>
+          <h1 id="eap-title">Environment Adjusted Pace</h1>
           <p class="lede">A pace on a hilly, windy morning at altitude isn't the same effort as the same pace on a flat, still, sea-level day. Environment Adjusted Pace (EAP) estimates what each run would have been worth on that ideal day, second by second along the GPS track, and shows where the time went.</p>
+          <ul class="page-links eap-cta">
+            <li><a class="primary" href="#eap-waitlist">Join the waitlist</a></li>
+            <li><a href="#eap-try">Try it on a run</a></li>
+          </ul>
           <p class="eap-copy">It adjusts for hills (the extra cost of climbing and the smaller gain from descending, measured on treadmills), altitude and the thinner air that comes with it, wind (speed and direction against the way you're running, brought down from mast height to runner height), heat and humidity (temperature plus dew point), and tight corners. Weather comes from Open-Meteo for the time and place of the run.</p>
         </div>
         <img class="eap-logo" src="../img/eap-logo.webp" width="960" height="628" alt="The letters E, A and P built from a road, a mountain, and fire and wind, joined by a glowing route line" decoding="async">
@@ -153,6 +135,29 @@ Km splits (EAP):
       <!-- When EAP opens to everyone: add Strava's official "Connect with Strava" button (their brand rules
            require it) linking to https://eap-strava-965027354537.australia-southeast1.run.app/connect -->
     </section>
+
+    <section class="wrap run-notes" aria-labelledby="run-title">
+      <p class="label">Running</p>
+      <h2 id="run-title">Races and training</h2>
+      <p class="lede">Away from the computer, I run, mostly on trails around Armidale. This is where I write up races and training. Every run is on Strava.</p>
+      <!-- To add an entry: copy the example <li> below to the top of the list (newest first) and
+           fill it in. A longer race report can have its own page: copy blog/TEMPLATE.html to
+           running/your-race/index.html and link to it from here. -->
+      <ol class="post-list" reversed>
+        <!--
+        <li>
+          <time datetime="2026-11-01">1 November 2026</time>
+          <h2>Race or run name</h2>
+          <p>A few sentences: distance, how it went, what you learned.</p>
+        </li>
+        -->
+      </ol>
+      <p class="empty-note">Race reports and training notes are on their way. Until then, Strava has every run.</p>
+      <ul class="page-links">
+        <li><a href="https://www.strava.com/athletes/49302230">Follow me on Strava ↗</a></li>
+      </ul>
+    </section>
+
   </main>
 
   <footer class="site-footer">
