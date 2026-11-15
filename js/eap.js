@@ -1,4 +1,4 @@
-// Running page: the EAP "try it on a run" upload and the waitlist form. Both post to the EAP
+// Running page: the EAP "try it on a run" upload, the waitlist form and the invite-code Connect button. Both post to the EAP
 // service named in the section's data-eap-api attribute.
 const section = document.querySelector('[data-eap-api]');
 
@@ -66,7 +66,24 @@ if (section) {
       body: JSON.stringify(body),
     }, () => {
       listForm.reset();
-      status.textContent = "You're on the list. I'll email you when there's a place.";
+      status.textContent = "You're on the list. Keep an eye on your inbox for an email from me.";
     });
   });
+
+  // "Got an invite?": the code goes to the EAP service's /connect, which sends the runner on to
+  // Strava's own sign-in page. A link like running/?invite=CODE#eap-connect fills the code in.
+  const connectForm = section.querySelector('#eap-connect');
+  if (connectForm) {
+    const given = new URLSearchParams(location.search).get('invite');
+    if (given) connectForm.elements.invite.value = given;
+    connectForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const code = connectForm.elements.invite.value.trim();
+      if (!code) {
+        connectForm.querySelector('.eap-status').textContent = 'Please enter the invite code from your email.';
+        return;
+      }
+      location.href = `${api}/connect?invite=${encodeURIComponent(code)}`;
+    });
+  }
 }
