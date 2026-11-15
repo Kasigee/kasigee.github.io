@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>EAP privacy · Dr Kasimir Gregory · Dr Kasimir Gregory</title>
+  <meta name="description" content="What Environment Adjusted Pace collects, why, where it is kept, and how to have it deleted.">
+  <meta property="og:title" content="EAP privacy · Dr Kasimir Gregory · Dr Kasimir Gregory">
+  <meta property="og:description" content="What Environment Adjusted Pace collects, why, where it is kept, and how to have it deleted.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kasimirgregory.com/eap/privacy/">
+  <meta property="og:image" content="https://kasimirgregory.com/img/og-eap.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#f3f2ee" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1312" media="(prefers-color-scheme: dark)">
+  <link rel="canonical" href="https://kasimirgregory.com/eap/privacy/">
+  <link rel="icon" href="../../favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="../../img/favicon-192.png" type="image/png" sizes="192x192">
+  <link rel="icon" href="../../img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../img/apple-touch-icon.png">
+  <script data-goatcounter="https://kasimirgregory.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@800&text=Dr%20KasRAS&display=swap">
+  <link rel="stylesheet" href="../../css/site.css">
+  <script>document.documentElement.classList.add('js')</script>
+  <script type="module" src="../../js/chrome.js"></script>
+  </head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="logo" href="../../"><i aria-hidden="true"></i>Kasimir Gregory</a>
+    <nav class="top-nav" aria-label="Main">
+      <a href="../../#research">Research</a>
+      <a href="../../#publications">Publications</a>
+      <a href="../../blog/" >Blog</a>
+      <a href="../../running/" aria-current="page">Running</a>
+      <a class="tape-link" href="../../papers/">Papers on disc</a>
+      <a href="../../#contact">Contact</a>
+    </nav>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu">Menu <span aria-hidden="true">✦</span></button>
+  </header>
+
+  <nav class="overlay" id="menu" aria-label="Menu" hidden>
+    <button class="roll light close" type="button"><span data-text="Close">Close</span></button>
+    <ol>
+      <li><a href="../../">Home</a></li>
+      <li><a href="../../#research">Research</a></li>
+      <li><a href="../../#publications">Publications</a></li>
+      <li><a href="../../blog/" >Blog</a></li>
+      <li><a href="../../running/" aria-current="page">Running</a></li>
+      <li><a href="../../papers/">Papers on disc</a></li>
+      <li><a href="../../#contact">Contact</a></li>
+    </ol>
+    <p>Dr Kasimir Gregory · Computational chemistry · University of New England</p>
+  </nav>
+
+  <main id="main">
+    <article class="page wrap post" aria-labelledby="post-title">
+      <p class="post-meta">Environment Adjusted Pace · Updated <time datetime="2026-11-15">15 November 2026</time></p>
+      <h1 id="post-title">EAP privacy</h1>
+      <p class="lede">What EAP keeps, what it doesn't, and how to have it deleted.</p>
+      <div class="post-body">
+        <p>Environment Adjusted Pace (EAP) is a small service run by Kasimir Gregory in Armidale, NSW. This page says what EAP collects, why, where it's kept, and how to have it deleted. Questions or requests go to <a data-email data-user="kasimir" data-domain="live.com.au" data-subject="EAP privacy" href="#contact">kasimir [at] live.com.au</a>.</p>
+        <h2>What EAP collects</h2>
+        <ul>
+          <li><strong>Waitlist.</strong> Your email address, and if you give them, your first name and watch brand, with the date you joined and the page you joined from.</li>
+          <li><strong>Strava connection.</strong> Your Strava athlete ID and first name, the sign-in tokens Strava issues to EAP, and the settings you choose: weight, height, whether you live at altitude, whether to show laps, and whether EAP is paused.</li>
+          <li><strong>Your runs.</strong> When you upload a run to Strava, EAP reads it (time, distance, GPS track, elevation, speed and laps), works out EAP, and adds a short block to the run's description. The run itself isn't stored: it's held in memory while EAP is worked out, then dropped.</li>
+          <li><strong>FIT uploads on this website.</strong> A file you upload to "Try it on a run" is read once to work out EAP and isn't kept.</li>
+          <li><strong>Server logs.</strong> The service keeps short technical logs (time, page requested, errors, and your IP address for rate limiting). They can include a run's EAP summary line, but not the run itself.</li>
+          <li><strong>This website.</strong> Visits are counted with <a href="https://www.goatcounter.com/">GoatCounter</a>, which uses no cookies and doesn't track you across sites.</li>
+        </ul>
+        <p>Weight and height are used only to work out EAP for your runs. EAP doesn't collect heart rate.</p>
+        <h2>Who else sees it</h2>
+        <ul>
+          <li><strong>Weather.</strong> To get the weather for a run, EAP sends a single point near the middle of the run (to about 10 m) and the run's start and end times to <a href="https://open-meteo.com/">Open-Meteo</a>, or to Visual Crossing if Open-Meteo is down. No name or account details are sent with it.</li>
+          <li><strong>Hosting.</strong> The service and its database run on Google Cloud in Sydney (Cloud Run and Firestore). Emails are sent through Gmail.</li>
+          <li><strong>Strava.</strong> The EAP block is written to your own run's description, so it's seen by whoever can see that run on Strava, under your Strava privacy settings.</li>
+        </ul>
+        <p>EAP doesn't sell your data, share it with other users, use it for advertising, or use it to train AI models.</p>
+        <h2>How long it's kept</h2>
+        <ul>
+          <li>Strava sign-in and settings: until you disconnect. Disconnecting from EAP's settings page deletes them straight away. Removing EAP on Strava (Settings → My Apps) tells EAP to delete them too.</li>
+          <li>Waitlist entries: until you ask to be removed, or until EAP closes.</li>
+          <li>Server logs: about 30 days.</li>
+          <li>EAP blocks already added to your runs stay on Strava until you edit or delete them, because they're part of your run's description.</li>
+        </ul>
+        <h2>Your choices</h2>
+        <p>From EAP's settings page you can change your details, pause EAP, or disconnect and delete everything. To see what EAP holds about you, correct it, or have a waitlist entry removed, email <a data-email data-user="kasimir" data-domain="live.com.au" data-subject="EAP privacy" href="#contact">kasimir [at] live.com.au</a> and it will be done within 30 days, usually much sooner. You can also complain to the <a href="https://www.oaic.gov.au/">Office of the Australian Information Commissioner</a>.</p>
+        <h2>Estimates, not measurements</h2>
+        <p>EAP's numbers are estimates from published research on hills, altitude, wind and heat. They aren't medical or coaching advice.</p>
+        <h2>Changes</h2>
+        <p>If this page changes in a way that matters, the change will be noted here and on EAP's settings page. The date at the top shows the last update.</p>
+      </div>
+      <p class="post-back"><a href="../../running/#eap">← Back to EAP</a></p>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="cols">
+        <div><h3>Dr Kasimir Gregory</h3><p>Computational chemist and Lecturer in Chemistry at the University of New England, Armidale.</p></div>
+        <div><h3>On this site</h3><ul><li><a href="../../">Home</a></li><li><a href="../../papers/">Papers on disc</a></li><li><a href="../../blog/">Blog</a></li><li><a href="../../running/">Running</a></li></ul></div>
+        <div><h3>Elsewhere</h3><ul><li><a href="https://orcid.org/0000-0002-8055-370X">ORCID ↗</a></li><li><a href="https://open.spotify.com/show/17Def43GZ8wubUTK5jnaEU">Anion The Future ↗</a></li><li><a href="https://www.strava.com/athletes/49302230">Strava ↗</a></li></ul></div>
+      </div>
+      <p class="big" aria-hidden="true">Dr Kas</p>
+      <p class="fine">© <span data-year>2026</span> Kasimir Gregory · Armidale, Australia · Visits counted by <a href="https://www.goatcounter.com/">GoatCounter</a>, without cookies</p>
+    </div>
+  </footer>
+</body>
+</html>

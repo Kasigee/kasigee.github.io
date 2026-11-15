@@ -107,7 +107,7 @@ Km splits (EAP):
 
         <form class="eap-card" id="eap-waitlist" novalidate>
           <h3>Get it on every run</h3>
-          <p>A Strava plugin adds the EAP line to each run as it uploads, with nothing to do after connecting. It's in a private beta with ten runners for now. Join the list and I'll send you an invite when there's a place.</p>
+          <p>Connect EAP to Strava and it adds the EAP line to each run as it uploads, with nothing to do after connecting. It's in a private beta with ten runners for now. Join the list and you'll get an email with an invite, or a note if the beta is full.</p>
           <label class="eap-field">Email <input type="email" name="email" autocomplete="email" required></label>
           <label class="eap-field"><span>First name <small>(optional)</small></span> <input type="text" name="name" autocomplete="given-name" maxlength="80"></label>
           <label class="eap-field">Watch
@@ -126,14 +126,23 @@ Km splits (EAP):
           <p class="eap-status" role="status" aria-live="polite"></p>
           <p class="eap-small">Your email is used only for your invite and the odd EAP update. Reply to any of them to be removed.</p>
         </form>
+
+        <form class="eap-card" id="eap-connect" novalidate>
+          <h3>Got an invite?</h3>
+          <p>Enter your invite code (it's at the end of the link in your invite email), then connect your Strava account. Leave both boxes ticked when Strava asks, so EAP can read your runs and add the EAP block.</p>
+          <label class="eap-field">Invite code <input type="text" name="invite" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" required></label>
+          <button type="submit" class="eap-strava-btn" aria-label="Connect with Strava"><img src="../img/strava/btn_strava_connectwith_orange.svg" width="193" height="48" alt=""></button>
+          <p class="eap-status" role="status" aria-live="polite"></p>
+          <p class="eap-small"><a href="../eap/strava/">How EAP uses Strava data</a> · <a href="../eap/privacy/">Privacy</a></p>
+        </form>
       </div>
 
       <div class="eap-privacy">
         <h3>Privacy</h3>
         <p>Connecting EAP to Strava lets it read your runs and add a line to their descriptions. Each run is read when it uploads, used once and not stored; EAP keeps only your Strava sign-in and your settings (weight, height, and whether to show laps). You can change those, pause EAP, or disconnect and delete everything from its settings page, or remove it on Strava under Settings → My Apps. EAP's numbers are estimates from published research, not measurements.</p>
+        <p>Read the full <a href="../eap/privacy/">privacy policy</a> and exactly <a href="../eap/strava/">how EAP uses Strava data</a>.</p>
+        <img class="eap-strava-logo" src="../img/strava/api_logo_cptblWith_strava_horiz_light.svg" width="189" height="31" alt="Compatible with Strava">
       </div>
-      <!-- When EAP opens to everyone: add Strava's official "Connect with Strava" button (their brand rules
-           require it) linking to https://eap-strava-965027354537.australia-southeast1.run.app/connect -->
     </section>
 
     <section class="wrap run-notes" aria-labelledby="run-title">

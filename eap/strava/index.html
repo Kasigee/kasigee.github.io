@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>How EAP uses Strava data · Dr Kasimir Gregory · Dr Kasimir Gregory</title>
+  <meta name="description" content="Exactly what Environment Adjusted Pace reads from and writes to Strava, and what it never does.">
+  <meta property="og:title" content="How EAP uses Strava data · Dr Kasimir Gregory · Dr Kasimir Gregory">
+  <meta property="og:description" content="Exactly what Environment Adjusted Pace reads from and writes to Strava, and what it never does.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kasimirgregory.com/eap/strava/">
+  <meta property="og:image" content="https://kasimirgregory.com/img/og-eap.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#f3f2ee" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1312" media="(prefers-color-scheme: dark)">
+  <link rel="canonical" href="https://kasimirgregory.com/eap/strava/">
+  <link rel="icon" href="../../favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="../../img/favicon-192.png" type="image/png" sizes="192x192">
+  <link rel="icon" href="../../img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../img/apple-touch-icon.png">
+  <script data-goatcounter="https://kasimirgregory.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@800&text=Dr%20KasRAS&display=swap">
+  <link rel="stylesheet" href="../../css/site.css">
+  <script>document.documentElement.classList.add('js')</script>
+  <script type="module" src="../../js/chrome.js"></script>
+  </head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="logo" href="../../"><i aria-hidden="true"></i>Kasimir Gregory</a>
+    <nav class="top-nav" aria-label="Main">
+      <a href="../../#research">Research</a>
+      <a href="../../#publications">Publications</a>
+      <a href="../../blog/" >Blog</a>
+      <a href="../../running/" aria-current="page">Running</a>
+      <a class="tape-link" href="../../papers/">Papers on disc</a>
+      <a href="../../#contact">Contact</a>
+    </nav>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu">Menu <span aria-hidden="true">✦</span></button>
+  </header>
+
+  <nav class="overlay" id="menu" aria-label="Menu" hidden>
+    <button class="roll light close" type="button"><span data-text="Close">Close</span></button>
+    <ol>
+      <li><a href="../../">Home</a></li>
+      <li><a href="../../#research">Research</a></li>
+      <li><a href="../../#publications">Publications</a></li>
+      <li><a href="../../blog/" >Blog</a></li>
+      <li><a href="../../running/" aria-current="page">Running</a></li>
+      <li><a href="../../papers/">Papers on disc</a></li>
+      <li><a href="../../#contact">Contact</a></li>
+    </ol>
+    <p>Dr Kasimir Gregory · Computational chemistry · University of New England</p>
+  </nav>
+
+  <main id="main">
+    <article class="page wrap post" aria-labelledby="post-title">
+      <p class="post-meta">Environment Adjusted Pace · Updated <time datetime="2026-11-15">15 November 2026</time></p>
+      <h1 id="post-title">How EAP uses Strava data</h1>
+      <p class="lede">What EAP reads from Strava, what it writes back, and what it never does.</p>
+      <div class="post-body">
+        <p><img class="eap-strava-logo" src="../../img/strava/api_logo_cptblWith_strava_horiz_light.svg" width="189" height="31" alt="Compatible with Strava"></p>
+        <p>EAP is an independent service, not made or endorsed by Strava. This page sets out exactly what EAP does with the access you give it when you connect your Strava account. The full privacy policy is <a href="../privacy/">here</a>.</p>
+        <h2>What EAP asks for</h2>
+        <ul>
+          <li><strong>read</strong>: your first name, to greet you on the settings page.</li>
+          <li><strong>activity:read_all</strong>: to read each new run when it uploads, including runs you've set to private or followers-only, so every run gets EAP.</li>
+          <li><strong>activity:write</strong>: to add the EAP block to that run's description.</li>
+        </ul>
+        <h2>What EAP does with it</h2>
+        <ol>
+          <li>Strava tells EAP when you upload an activity. EAP only processes runs; other activities are ignored.</li>
+          <li>EAP reads that run's time, distance, GPS, elevation, speed and laps, gets the weather for it, and works out the adjusted pace.</li>
+          <li>EAP adds a short block to the run's description, keeping whatever you wrote there. It never comments, gives kudos or changes anything else.</li>
+          <li>The run data is then dropped. EAP keeps no copy of your runs, routes or results.</li>
+        </ol>
+        <p>"Add EAP to my runs from the last 7 days" on the settings page does the same for your recent runs, once, when you press it.</p>
+        <h2>What EAP never does</h2>
+        <ul>
+          <li>Store your Strava activities or build a history from them.</li>
+          <li>Show your data to anyone else: there are no leaderboards, club views or public pages built from Strava data.</li>
+          <li>Use Strava data in any AI model, for training or otherwise.</li>
+          <li>Charge for anything that uses Strava data. The Strava connection is free.</li>
+          <li>Share or sell Strava data to anyone.</li>
+        </ul>
+        <h2>Disconnecting</h2>
+        <p>Press Disconnect on EAP's settings page, or remove EAP in Strava under Settings → My Apps. Either way EAP's access ends and your sign-in tokens and settings are deleted straight away. EAP blocks already in your run descriptions stay until you edit them.</p>
+        <p>Questions: <a data-email data-user="kasimir" data-domain="live.com.au" data-subject="EAP and Strava" href="#contact">kasimir [at] live.com.au</a>.</p>
+      </div>
+      <p class="post-back"><a href="../../running/#eap">← Back to EAP</a></p>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="cols">
+        <div><h3>Dr Kasimir Gregory</h3><p>Computational chemist and Lecturer in Chemistry at the University of New England, Armidale.</p></div>
+        <div><h3>On this site</h3><ul><li><a href="../../">Home</a></li><li><a href="../../papers/">Papers on disc</a></li><li><a href="../../blog/">Blog</a></li><li><a href="../../running/">Running</a></li></ul></div>
+        <div><h3>Elsewhere</h3><ul><li><a href="https://orcid.org/0000-0002-8055-370X">ORCID ↗</a></li><li><a href="https://open.spotify.com/show/17Def43GZ8wubUTK5jnaEU">Anion The Future ↗</a></li><li><a href="https://www.strava.com/athletes/49302230">Strava ↗</a></li></ul></div>
+      </div>
+      <p class="big" aria-hidden="true">Dr Kas</p>
+      <p class="fine">© <span data-year>2026</span> Kasimir Gregory · Armidale, Australia · Visits counted by <a href="https://www.goatcounter.com/">GoatCounter</a>, without cookies</p>
+    </div>
+  </footer>
+</body>
+</html>
