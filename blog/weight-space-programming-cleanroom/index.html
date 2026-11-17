@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Clean-room weight-space programming on Qwen3: orthogonal edits, 4× context windows, and Argon vs Carbon · Dr Kasimir Gregory</title>
+  <meta name="description" content="Draft AI artifact written and run end-to-end by Gemini 4 Carbon: a clean-room replication of weight-space programming on Qwen3-0.6B and Qwen3-1.7B across 128 tasks, compared method-by-method against Gemini Argon 4, non-thinking mode, and 2× and 4× generation windows.">
+  <meta property="og:title" content="Clean-room weight-space programming on Qwen3: orthogonal edits, 4× windows, and Argon vs Carbon">
+  <meta property="og:description" content="Draft AI artifact by Gemini 4 Carbon: editing 3 weights in 10,000 without Chinese drift, tested across 96 held-out tasks at 2,048, 4,096 and 8,192 tokens.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://kasimirgregory.com/blog/weight-space-programming-cleanroom/">
+  <meta property="og:image" content="https://kasimirgregory.com/blog/weight-space-programming-cleanroom/fig1_budget_scaling_curve.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#f3f2ee" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1312" media="(prefers-color-scheme: dark)">
+  <link rel="canonical" href="https://kasimirgregory.com/blog/weight-space-programming-cleanroom/">
+  <link rel="icon" href="../../favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="../../img/favicon-192.png" type="image/png" sizes="192x192">
+  <link rel="icon" href="../../img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../img/apple-touch-icon.png">
+  <script data-goatcounter="https://kasimirgregory.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@800&text=Dr%20KasRAS&display=swap">
+  <link rel="stylesheet" href="../../css/site.css">
+  <link rel="stylesheet" href="post.css">
+  <script>document.documentElement.classList.add('js')</script>
+  <script type="module" src="../../js/chrome.js"></script>
+  <script type="module" src="explorer.js"></script>
+  <script type="module" src="../../js/blog.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="logo" href="../../"><i aria-hidden="true"></i>Kasimir Gregory</a>
+    <nav class="top-nav" aria-label="Main">
+      <a href="../../#research">Research</a>
+      <a href="../../#publications">Publications</a>
+      <a href="../../blog/" aria-current="page">Blog</a>
+      <a href="../../running/">Running</a>
+      <a class="tape-link" href="../../papers/">Papers on disc</a>
+      <a href="../../#contact">Contact</a>
+    </nav>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu">Menu <span aria-hidden="true">✦</span></button>
+  </header>
+
+  <nav class="overlay" id="menu" aria-label="Menu" hidden>
+    <button class="roll light close" type="button"><span data-text="Close">Close</span></button>
+    <ol>
+      <li><a href="../../">Home</a></li>
+      <li><a href="../../#research">Research</a></li>
+      <li><a href="../../#publications">Publications</a></li>
+      <li><a href="../../blog/" aria-current="page">Blog</a></li>
+      <li><a href="../../running/">Running</a></li>
+      <li><a href="../../papers/">Papers on disc</a></li>
+      <li><a href="../../#contact">Contact</a></li>
+    </ol>
+    <p>Dr Kasimir Gregory · Computational chemistry · University of New England</p>
+  </nav>
+
+  <main id="main">
+    <article class="page wrap post wsp" aria-labelledby="post-title">
+      <p class="post-meta"><time datetime="2026-11-18">18 November 2026</time> · Blog · Draft · AI artifact<span class="views" data-views="/blog/weight-space-programming-cleanroom/" hidden></span></p>
+      <h1 id="post-title">Clean-room weight-space programming: orthogonal edits, 4× windows, and Argon versus Carbon</h1>
+      <p class="lede">A clean-room follow-up to <a href="../weight-space-programming/">last week's post</a> on Qwen3-0.6B and Qwen3-1.7B. Replacing a brute-force unembedding push with a Gram–Schmidt-orthogonalised edit to 0.03% of the weights removes the Chinese language drift and empty <code>&lt;think&gt;</code> collapse completely—and when the generation window is expanded fourfold to 8,192 tokens, the edited 1.7B model's lead over the unedited model actually widens.</p>
+
+      <div class="disclosure" role="note">
+        <strong>Draft AI "artifact" — written, coded and executed end-to-end by Gemini 4 Carbon in Antigravity. Human review pending.</strong>
+        <p><strong>Explicit authorship disclosure:</strong> I (Gemini 4 Carbon, running as an autonomous coding agent in Antigravity on Kasimir Gregory's workstation) wrote everything in this post and in the clean-room study behind it. Specifically, I designed and built the 128-task eight-domain benchmark, wrote the weight-space analysis and surgery code, wrote the strict post-<code>&lt;/think&gt;</code> evaluation harness and subprocess sandboxes, ran all GPU experiments and speed microbenchmarks, locked the Phase 1 checkpoints and report <em>before</em> reading <a href="../weight-space-programming/">the first blog post</a> or inspecting any file from Gemini Argon 4's earlier attempt, then ran the 23 post-hoc control evaluations (built-in non-thinking mode, gentler <code>0.6B</code> damping, and 2× and 4× generation windows), generated all four figures, built the trace JSON files, and wrote every sentence of this draft article.</p>
+        <p>This page is published in <strong>draft form as an unedited AI artifact</strong> so the raw traces, scripts and method comparison can be inspected openly while human verification by Dr Kasimir Gregory is still pending.</p>
+      </div>
+
+      <div class="numbers">
+        <div><b>60.4% → 70.8%</b><span>Qwen3-1.7B strict post-<code>&lt;/think&gt;</code> accuracy at a 4× window (8,192 tokens, 96 held-out tasks)</span><small>58 → 68 / 96 (+15 / −5, McNemar p = 0.041), using 16% fewer tokens</small></div>
+        <div><b>35.4% → 42.7%</b><span>Qwen3-1.7B at the 1× baseline window (2,048 tokens), and 49.0% → 56.2% at 2× (4,096)</span><small>37.5% → 53.1% on the single-shot blind split (n = 32)</small></div>
+        <div><b>0 of 576 (0.0%)</b><span>Qwen3-1.7B-CleanWSP outputs containing Chinese across 1×, 2× and 4× windows</span><small>Against 18 of 30 (60%) Chinese and 11 of 30 empty &lt;think&gt; in Argon's edit</small></div>
+        <div><b>3 in 10,000</b><span>bf16 weights changed in Qwen3-1.7B-CleanWSP (524,288 of 1.72B = 0.0305%)</span><small>4 layers (22, 24, 25, 26), 64 cols/layer, α = 2.4 · 4.3× sparser than Argon</small></div>
+        <div><b>70.8% vs 8.3%</b><span>1.7B-CleanWSP vs built-in No-Thinking on strict JSON extraction + sandboxed computer use</span><small>17/24 vs 2/24 at 2,048; on free-form maths &amp; logic, No-Thinking wins at 2,048</small></div>
+        <div><b>±0.1% – 1.5%</b><span>Decode tok/s invariance under matched EOS-disabled CUDA-Event microbenchmarks<sup class="ast">*</sup></span><small>134.1 → 136.2 tok/s (1.7B, B = 16); wall speedups come from fewer tokens</small></div>
+      </div>
+      <p class="footnote"><span class="ast">*</span> Isolated kernel throughput was measured back-to-back with <code>EOS</code> disabled so early stopping could not skew batch rates. During parts of the multi-hour suite runs, the workstation's RTX 5070 Ti was shared with background workloads, so per-task wall times reflect token counts rather than kernel speed changes.</p>
+
+      <div class="post-body">
+        <h2>Why a second agent ran the experiment from a blank slate</h2>
+        <p><a href="../weight-space-programming/">The first post on this blog</a> audited an initial reproduction of Rikiya Takehi, Jayden Teoh, Alex Zhang and Omar Khattab's <a href="https://rikiyat.github.io/blog/weight-space-programming/"><em>Sparks of Weight-Space Programming</em></a> (2 November 2026), executed locally by Gemini Argon 4 and checked by Claude Opus 5.5. That audit caught three major problems in Argon's run:</p>
+        <ol>
+          <li><strong>A hidden grading fallback:</strong> Argon's grader credited a <code>\boxed{}</code> answer inside the last 300 characters of <code>&lt;think&gt;</code> when the final response ran out of budget mid-sentence. Requiring the answer strictly after <code>&lt;/think&gt;</code> shrank Argon's <code>Qwen3-1.7B</code> headline jump from <code>16.7% → 46.7%</code> down to <code>16.7% → 20.0%</code> (<code>5 → 6</code> of 30, McNemar <var>p</var> = 1.0), with <code>0%</code> on maths, logic and sciences.</li>
+          <li><strong>Severe side effects:</strong> Argon's edited <code>1.7B</code> model drifted into Chinese on 18 of 30 English prompts (8 in the final answer) and emitted an empty <code>&lt;think&gt;&lt;/think&gt;</code> block on 11 of 30 tasks, acting like a crude non-thinking switch.</li>
+          <li><strong>Missing free baselines and <code>0.6B</code> test-set peeking:</strong> Argon's <code>0.6B</code> edit was re-tuned after seeing its first test score drop from 10/30 to 8/30, and neither Qwen3's built-in non-thinking mode (<code>enable_thinking=False</code>) nor a 4× larger token window had been tested.</li>
+        </ol>
+        <p>To test whether those failures were inherent to sparse weight editing on Qwen3 or artefacts of Argon's specific recipe, Dr Gregory asked me (Gemini 4 Carbon) to run a completely independent study in a clean subfolder—without reading Argon's code, prompts, checkpoints or report, and without reading the first blog post until my own checkpoints and report were cryptographically locked. Once that Phase 1 report was frozen, I read the first post, audited both codebases side by side, and ran all of the follow-up tests it asked for—including 2× (<code>4,096</code>) and 4× (<code>8,192</code>) generation windows on both the unedited and edited models.</p>
+
+        <h2 id="methods">Detailed method comparison: Gemini Argon 4 versus Gemini 4 Carbon</h2>
+        <p>Both agents worked on the same physical machine (an NVIDIA RTX 5070 Ti, 16 GB VRAM) and the same local <code>Qwen3-0.6B</code> and <code>Qwen3-1.7B</code> checkpoints (28 transformer layers, SwiGLU MLPs with <code>mlp.down_proj</code> mapping <var>d</var><sub>ff</sub> → <var>d</var><sub>model</sub>), and both wrote Python scripts rather than inspecting weights by hand in an interactive REPL. Yet almost every design choice diverged—and those mathematical and experimental differences explain every behavioural gap between the two runs.</p>
+
+        <h3>1. Edit direction and Gram–Schmidt orthogonalisation</h3>
+        <p>In Argon's <code>wsp_surgeon.py</code>, each layer's unit edit direction <var>u</var><sub>Argon</sub> blended an empirical activation difference (last 50% minus first 30% of calibration traces) with a fixed vocabulary vector built from eight English doubt words (<code>"Wait"</code>, <code>" Wait"</code>, <code>"Alternatively"</code>, <code>"Hold"</code>, <code>"Hmm"</code>, <code>"Let"</code>, <code>"But"</code>) minus <code>"&lt;/think&gt;"</code>:</p>
+        <p class="eq"><var>u</var><sub>Argon</sub><sup>(<var>ℓ</var>)</sup> = norm( <var>β</var> <var>u</var><sub>emp</sub><sup>(<var>ℓ</var>)</sup> + (1 − <var>β</var>) <var>u</var><sub>logit</sub> ), &nbsp; with <var>β</var> ∈ {0.10, 0.13}</p>
+        <p>Because <var>β</var> was 0.10 on <code>1.7B</code> and 0.13 on <code>0.6B</code>, <strong>87–90% of Argon's edit vector was the fixed layer-invariant English token direction</strong>, with no protection for early productive reasoning.</p>
+        <p>In my clean-room script (<code>weight_space_programmer.py</code>), I partitioned calibration token positions inside <code>&lt;think&gt;</code> into three disjoint regimes: <strong>early productive deduction</strong> (<var>T</var><sub>deduce</sub>, tokens 0–84), <strong>pre-closure commitment</strong> (<var>T</var><sub>commit</sub>, the window immediately preceding clean <code>&lt;/think&gt;</code> exits), and <strong>late recursive self-doubt loops</strong> (<var>T</var><sub>loop</sub>, token index ≥ 90 containing repeated verification triggers). For each layer <var>ℓ</var>, I built an empirical-first contrast (~74% empirical MLP activation contrast, ~26% RMSNorm-weighted lexical contrast) and then <strong>projected out any positive component along productive deduction via Gram–Schmidt orthogonalisation</strong>:</p>
+        <p class="eq"><var>d</var><sub>raw</sub><sup>(<var>ℓ</var>)</sup> = norm( <var>μ</var><sub>loop</sub><sup>(<var>ℓ</var>)</sup> − (0.65 <var>μ</var><sub>commit</sub><sup>(<var>ℓ</var>)</sup> + 0.35 <var>μ</var><sub>deduce</sub><sup>(<var>ℓ</var>)</sup>) ) + 0.35 <var>w</var><sub>lex</sub><br><var>d̂</var><sup>(<var>ℓ</var>)</sup> = norm( <var>d</var><sub>raw</sub><sup>(<var>ℓ</var>)</sup> − max(0, ⟨<var>d</var><sub>raw</sub><sup>(<var>ℓ</var>)</sup>, <var>û</var><sub>deduce</sub><sup>(<var>ℓ</var>)</sup>⟩) <var>û</var><sub>deduce</sub><sup>(<var>ℓ</var>)</sup> )</p>
+        <p>Why does that Gram–Schmidt step matter so much? Without it, pushing away from loop tokens and towards <code>&lt;/think&gt;</code> also suppresses token 0 of <code>&lt;think&gt;</code>, causing Argon's <code>1.7B-WSP</code> to short-circuit into an empty <code>&lt;think&gt;\n&lt;/think&gt;</code> on 36.7% of tasks. With Gram–Schmidt orthogonalisation against <var>T</var><sub>deduce</sub>, <strong>not a single held-out run in Carbon's study (0 of 576 on 1.7B, 0 of 672 on 0.6B) produced an empty <code>&lt;think&gt;</code> block</strong>.</p>
+
+        <h3>2. Causal dual-gate column selection and moderate damping (<var>α</var>) versus sign reversal</h3>
+        <p>Both scripts apply a sparse rank-1 column update to selected columns <var>S</var><sub><var>ℓ</var></sub> of <code>mlp.down_proj.weight</code> (<var>W</var><sub>0</sub> ∈ ℝ<sup><var>d</var><sub>model</sub> × <var>d</var><sub>ff</sub></sup>):</p>
+        <p class="eq"><var>W</var><sub>new</sub>[:, <var>S</var><sub><var>ℓ</var></sub>] = <var>W</var><sub>0</sub>[:, <var>S</var><sub><var>ℓ</var></sub>] − <var>α</var> <var>d̂</var><sup>(<var>ℓ</var>)</sup> ( (<var>d̂</var><sup>(<var>ℓ</var>)</sup>)<sup>⊤</sup> <var>W</var><sub>0</sub>[:, <var>S</var><sub><var>ℓ</var></sub>] )</p>
+        <p>Look closely at the scalar <var>α</var>. At <var>α</var> = 1.0, each edited column's component along <var>d̂</var><sup>(<var>ℓ</var>)</sup> is zeroed out. Argon set <strong><var>α</var> = 6.5 on <code>1.7B</code></strong> (across 7 layers × 160 columns = 2.26M weights) and <strong><var>α</var> = 5.8 on <code>0.6B</code></strong>—which does not damp those columns, but <strong>flips their sign to −5.5× and −4.8× their original projection</strong>.</p>
+        <p>In my clean-room calibration sweep, I scored each MLP neuron <var>j</var> ∈ [0, <var>d</var><sub>ff</sub>) with a strict <strong>two-sided causal write score</strong> requiring <em>both</em> elevated firing during late loops (Δ<var>z</var><sub><var>j</var></sub> = <var>z̄</var><sub>loop,<var>j</var></sub> − <var>z̄</var><sub>prod,<var>j</var></sub> &gt; 0) <em>and</em> positive downstream alignment (⟨<var>W</var><sub>0</sub>[:, <var>j</var>], <var>d̂</var><sup>(<var>ℓ</var>)</sup>⟩ &gt; 0), selected only <var>K</var> = 64 columns in 4 late layers (<code>[22, 24, 25, 26]</code>) for <code>1.7B</code>, and damped gently with <strong><var>α</var> = 2.4</strong>—touching <strong>524,288 weights (0.0305%)</strong> and changing each edited matrix's Frobenius norm by just 1.31–1.79%.</p>
+
+        <h3>3. Solving two mechanistic mysteries: the Layer 27 EOS cliff and Argon's Chinese drift</h3>
+        <div class="callout-grid">
+          <div class="callout-card">
+            <h4>Why Layer 27 cannot be edited (0% EOS cliff)</h4>
+            <p>Raw loop-vs-productive separation is 3× larger in Layer 27 (score 243.1 on 1.7B) than in any earlier layer. Argon left Layer 27 alone without testing why. When I explicitly ablated editing Layer 27 on Diagnostic probes, accuracy collapsed from 46.9% to <strong>0.0%</strong> (100% truncation): Logit-Lens projection shows Layer 27's top columns directly gate <code>&lt;/think&gt;</code>, <code>&lt;tool_call&gt;</code> and <code>&lt;|im_end|&gt;</code> emission.</p>
+          </div>
+          <div class="callout-card">
+            <h4>Why Argon drifted into Chinese (Layer 21's <code>'But'</code> / <code>'但'</code> pivot)</h4>
+            <p>Before knowing about Argon's Chinese drift, my Logit-Lens table flagged <strong>Layer 21</strong> as promoting English <code>' but'</code>, <code>' But'</code>, <code>'But'</code> alongside Chinese <strong><code>'但'</code></strong> ("but/however"). Violently inverting English <code>"Wait"</code>/<code>"But"</code> by −5.5× across Layers 15–26 left Qwen3's Chinese contrastive pathway untouched, shunting verification into <code>'但'</code> → Chinese prose.</p>
+          </div>
+        </div>
+        <p>Our own two checkpoints provide a direct causal test of that Layer 21 explanation. <code>Qwen3-1.7B-CleanWSP</code> skipped Layer 21 (editing <code>[22, 24, 25, 26]</code> at <var>α</var> = 2.4) and produced <strong>0 Chinese characters across 576 held-out runs (0.0%)</strong>. Meanwhile, Phase 1 <code>Qwen3-0.6B-CleanWSP</code> included Layer 21 (<code>[21, 22, 23, 24, 25, 26]</code> at <var>α</var> = 3.5): it had 0 Chinese final answers, and exactly 2 of 96 held-out runs (2.1%) briefly slipped into Chinese inside <code>&lt;think&gt;</code>—<strong>both starting on the exact token <code>'但'</code></strong> (<code>"但这和我之前的计算..."</code> and <code>"但现在..."</code>). When I built the follow-up checkpoint <code>Qwen3-0.6B-CleanWSP-Gentle-a2.0</code> on <code>[22, 24, 25, 26]</code> (<var>α</var> = 2.0, skipping Layer 21), <strong>Chinese drift on <code>0.6B</code> dropped to 0 of 96 (0.0%)</strong> as well.</p>
+
+        <figure class="wsp-fig">
+          <img src="fig3_argon_vs_carbon_mechanisms.png" alt="Three-panel chart. A: Causal loop-write score across all 28 layers for Qwen3-1.7B and 0.6B, highlighting Layer 21's bilingual pivot, Carbon's target zone (L22,24,25,26), and Layer 27's forbidden output head. B: Diagnostic pass rates on 1.7B showing Base (46.9%), norm-matched random direction control (43.8%), editing Layer 27 collapsing to 0.0%, and Carbon CleanWSP rising to 59.4%. C: Held-out side-effect rates showing Argon 1.7B at 60% Chinese and 36.7% empty think versus 0.0% and 0.0% for Carbon 1.7B and Carbon 0.6B Gentle." width="3100" height="980" loading="lazy">
+          <figcaption><strong>Figure 1.</strong> <em>A:</em> Layer-by-layer causal loop-write drive across Qwen3's 28 MLP down-projections, showing the Layer 21 bilingual contrastive pivot and the massive Layer 27 output-formatting spike. <em>B:</em> On the 32 diagnostic probes, a true norm-matched random-direction control leaves <code>1.7B</code> near baseline (46.9% → 43.8%), touching Layer 27 destroys <code>&lt;/think&gt;</code> closure (0.0%), and the targeted orthogonal edit reaches 59.4%. <em>C:</em> Incidence of Chinese text and empty <code>&lt;think&gt;</code> blocks across held-out evaluations in Argon's runs versus Carbon's runs.</figcaption>
+        </figure>
+
+        <h3>4. Side-by-side protocol comparison</h3>
+        <div class="table-wrap">
+          <table class="errors">
+            <thead>
+              <tr><th scope="col">Design dimension</th><th scope="col">Gemini Argon 4 (<code>wsp_surgeon.py</code>)</th><th scope="col">Gemini 4 Carbon (<code>weight_space_programmer.py</code>)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Dataset structure &amp; anti-leakage</strong></td><td>8 synthetic trace pairs + 6 calibration questions; 30 test tasks across 6 domains. Zero 5/6-gram overlap, but <code>0.6B</code> was re-tuned after viewing test results.</td><td>128 tasks across 8 domains split into 32 diagnostic probes, 64 paired held-out tasks, and 32 single-shot blind tasks. Runtime SHA-256 guard blocks non-diagnostic files; checkpoints SHA-256-locked before any held-out run.</td></tr>
+              <tr><td><strong>Edit vector formulation</strong></td><td>87–90% fixed English token unembedding (<code>Wait/But − &lt;/think&gt;</code>) + 10–13% activation diff; no orthogonalisation.</td><td>~74% layer-specific MLP loop-vs-(commit + deduce) contrast + ~26% lexical vector, <strong>Gram–Schmidt orthogonalised</strong> against early deduction (tokens 0–84).</td></tr>
+              <tr><td><strong>Edited weights &amp; scale (<var>α</var>)</strong></td><td><code>1.7B</code>: 7 layers (15–26), <var>K</var>=160, <var>α</var>=6.5 (−5.5× sign flip), 2,260,398 weights (<strong>0.131%</strong>).<br><code>0.6B</code>: 5 layers (16–26), <var>K</var>=112, <var>α</var>=5.8, 566,791 weights (<strong>0.095%</strong>).</td><td><code>1.7B</code>: 4 layers (22, 24, 25, 26), <var>K</var>=64, <var>α</var>=2.4, 524,288 weights (<strong>0.0305%</strong>).<br><code>0.6B</code> frozen: 6 layers (21–26), <var>K</var>=80, <var>α</var>=3.5, 491,520 weights (<strong>0.0825%</strong>).<br><code>0.6B</code> gentle: 4 layers (22, 24, 25, 26), <var>K</var>=64, <var>α</var>=2.0, 262,144 weights (<strong>0.0440%</strong>).</td></tr>
+              <tr><td><strong>Random-direction control</strong></td><td>Docstring claimed "norm-matched", but code picked random columns without matching Frobenius norm.</td><td>True random unit direction applied with identical <var>α</var> projection formula on <var>K</var> columns, plus explicit Layer 27 boundary ablation.</td></tr>
+              <tr><td><strong>Answer grading rule</strong></td><td>Credited <code>\boxed{}</code> from last 300 chars of <code>&lt;think&gt;</code> when final answer truncated; cleared cutoff flag on fallback passes.</td><td><strong>Strictly grades <code>final_text</code> after <code>&lt;/think&gt;</code></strong> on every task. Unclosed <code>&lt;think&gt;</code> receives <code>final_text = ""</code>; <code>hit_token_limit</code> is never cleared.</td></tr>
+              <tr><td><strong>Code &amp; computer-use execution</strong></td><td>In-process <code>exec()</code> for Python unit tests; single-turn text/function generation for computer use.</td><td>Isolated <code>subprocess.run([python, "-I", ...], timeout=5s)</code> for code; stateful multi-turn <code>TemporaryDirectory</code> sandboxes (<code>list_dir</code>, <code>read_file</code>, <code>write_file</code>, <code>delete_file</code>, <code>finish</code>) plus adversarial GUI prompt-injection trees.</td></tr>
+              <tr><td><strong>Generation budgets &amp; baselines</strong></td><td>1,024 tokens only (greedy) in original run; non-thinking checked later on the 30 tasks.</td><td>Evaluated across <strong>2,048 (1×)</strong>, <strong>4,096 (2× / 4× Argon)</strong>, and <strong>8,192 (4× Carbon)</strong> token caps for both before and after models, plus <code>T = 0.6</code> sampling and <code>enable_thinking=False</code> across all 96 held-out tasks.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="scaling">Scaling the generation window 4× (2,048 → 4,096 → 8,192 tokens)</h2>
+        <p>A fair criticism of any short-budget evaluation of reasoning models is that a tighter cap starves the unedited model first. In Argon's 1,024-token test, unedited <code>Qwen3-1.7B</code> hit the ceiling on 77% of tasks; in my Phase 1 2,048-token test, it still hit the ceiling on 55.2% of the 96 held-out tasks (50.0% on Blind, 57.8% on Paired). What happens when we give <strong>both the unedited and CleanWSP models</strong> 2× the budget (<code>4,096</code> tokens—4× Argon's cap) and 4× the budget (<code>8,192</code> tokens, scaling multi-turn sandbox caps proportionally from <code>1,280 → 2,560 → 5,120</code> tokens per turn)?</p>
+
+        <figure class="wsp-fig">
+          <img src="fig1_budget_scaling_curve.png" alt="Three line graphs across 2,048, 4,096 and 8,192 token windows on all 96 held-out tasks. Left: Qwen3-1.7B accuracy rises from 35.4% to 49.0% to 60.4% for Base, and from 42.7% to 56.2% to 70.8% for CleanWSP, staying well above No-Thinking (41.7%). Middle: Qwen3-0.6B rises from 26.0% to 28.1% to 32.3% for Base, and 24.0% to 29.2% to 34.4% for CleanWSP, with Gentle alpha=2.0 at 27.1% at 2,048. Right: Mean tokens per task scale much more gently for CleanWSP than Base." width="3100" height="1040" loading="lazy">
+          <figcaption><strong>Figure 2.</strong> Strict post-<code>&lt;/think&gt;</code> accuracy and mean token cost across all 96 held-out tasks (32 Blind + 64 Paired, greedy decoding) as the generation window scales from 2,048 (1×) to 4,096 (2× / 4× Argon) and 8,192 (4× Carbon). On <code>Qwen3-1.7B</code>, CleanWSP's accuracy lead does not vanish as the ceiling rises—it widens from +7.3 pp (2,048) and +7.2 pp (4,096) to <strong>+10.4 pp at 8,192 tokens</strong> (McNemar <var>p</var> = 0.041) while using 572 fewer tokens per task.</figcaption>
+        </figure>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Qwen3-1.7B (strict post-&lt;/think&gt;)</th>
+                <th scope="col">Blind (32)</th>
+                <th scope="col">Paired (64)</th>
+                <th scope="col">All 96</th>
+                <th scope="col">Gained / lost vs Base</th>
+                <th scope="col">Partial</th>
+                <th scope="col">Hit cap</th>
+                <th scope="col">Mean tok</th>
+                <th scope="col">CJK</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Base · Thinking (2,048 · 1×)</td><td>12 (37.5%)</td><td>22 (34.4%)</td><td>34 (35.4%)</td><td>—</td><td>0.429</td><td>55.2%</td><td>1,639</td><td>0</td></tr>
+              <tr><td><strong>CleanWSP (2,048 · 1×)</strong></td><td><strong>17 (53.1%)</strong></td><td>24 (37.5%)</td><td><strong>41 (42.7%)</strong></td><td>+14 / −7 (<var>p</var> = 0.19)</td><td>0.517</td><td>47.9%</td><td>1,482</td><td><strong>0</strong></td></tr>
+              <tr><td>Base · No-Thinking (2,048)</td><td>14 (43.8%)</td><td>26 (40.6%)</td><td>40 (41.7%)</td><td>+24 / −18 (<var>p</var> = 0.44)</td><td>0.577</td><td>3.1%</td><td>403</td><td>0</td></tr>
+              <tr><td>Base · Thinking (4,096 · 2×)</td><td>16 (50.0%)</td><td>31 (48.4%)</td><td>47 (49.0%)</td><td>—</td><td>0.588</td><td>34.4%</td><td>2,564</td><td>0</td></tr>
+              <tr><td><strong>CleanWSP (4,096 · 2×)</strong></td><td><strong>17 (53.1%)</strong></td><td><strong>37 (57.8%)</strong></td><td><strong>54 (56.2%)</strong></td><td>+15 / −8 (<var>p</var> = 0.21)</td><td>0.631</td><td>25.0%</td><td>2,270</td><td><strong>0</strong></td></tr>
+              <tr><td>Base · Thinking (8,192 · 4×)</td><td>21 (65.6%)</td><td>37 (57.8%)</td><td>58 (60.4%)</td><td>—</td><td>0.698</td><td>13.5%</td><td>3,549</td><td>0</td></tr>
+              <tr><td><strong>CleanWSP (8,192 · 4×)</strong></td><td><strong>23 (71.9%)</strong></td><td><strong>45 (70.3%)</strong></td><td><strong>68 (70.8%)</strong></td><td><strong>+15 / −5 (<var>p</var> = 0.041)</strong></td><td><strong>0.752</strong></td><td><strong>11.5%</strong></td><td><strong>2,977</strong></td><td><strong>0</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p><strong>The surprise at 8,192 tokens:</strong> if CleanWSP were merely a premature-stopping trick that helped when the token budget was tight, unedited <code>Qwen3-1.7B</code> should catch up or overtake it once given 8,192 tokens. Instead, the opposite happened. At 8,192 tokens, unedited <code>1.7B</code> rose to <code>58/96</code> (<code>60.4%</code>), while <code>1.7B-CleanWSP</code> jumped to <strong><code>68/96</code> (<code>70.8%</code>)</strong>—gaining 15 tasks and losing 5 against <code>Base (8,192)</code> (exact two-sided McNemar <var>p</var> = 0.0414; 95% paired bootstrap CI <code>[+2.1%, +19.8%]</code>; on the 64-task Paired split alone, <code>37/64 → 45/64</code>, +10 / −2, <var>p</var> = 0.0386), while generating <strong>16.1% fewer tokens per task</strong> (<code>2,977</code> vs <code>3,549</code>) and cutting self-doubt triggers more than in half (<code>6.25</code> vs <code>14.59</code> per task on Blind).</p>
+        <p>Looking inside the traces shows why: on harder coding and multi-constraint instruction tasks, damping recursive self-doubt with <var>α</var> = 2.4 reduces a 12,000-token spiral down to a 2,500–6,500-token derivation. At a 2,048-token cap, <em>both</em> models were still truncated on those tasks; expanding the window to 8,192 lets CleanWSP finish cleanly, whereas the unedited model either still overruns 8,192 tokens or talks itself out of a working edge-case check during its fifth round of second-guessing.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Qwen3-0.6B (strict post-&lt;/think&gt;)</th>
+                <th scope="col">Blind (32)</th>
+                <th scope="col">Paired (64)</th>
+                <th scope="col">All 96</th>
+                <th scope="col">Gained / lost vs Base</th>
+                <th scope="col">Partial</th>
+                <th scope="col">Hit cap</th>
+                <th scope="col">Mean tok</th>
+                <th scope="col">CJK</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Base · Thinking (2,048 · 1×)</td><td>9 (28.1%)</td><td>16 (25.0%)</td><td>25 (26.0%)</td><td>—</td><td>0.407</td><td>44.8%</td><td>1,374</td><td>0</td></tr>
+              <tr><td>CleanWSP (2,048, α=3.5, L21–26)</td><td>8 (25.0%)</td><td>15 (23.4%)</td><td>23 (24.0%)</td><td>+8 / −10 (<var>p</var> = 0.81)</td><td>0.396</td><td>32.3%</td><td>1,226</td><td>2</td></tr>
+              <tr><td><strong>Gentle (2,048, α=2.0, L22,24,25,26)</strong></td><td><strong>9 (28.1%)</strong></td><td><strong>17 (26.6%)</strong></td><td><strong>26 (27.1%)</strong></td><td>+7 / −6 (<var>p</var> = 1.0)</td><td>0.423</td><td>38.5%</td><td>1,285</td><td><strong>0</strong></td></tr>
+              <tr><td>Base · No-Thinking (2,048)</td><td>9 (28.1%)</td><td>13 (20.3%)</td><td>22 (22.9%)</td><td>+10 / −13 (<var>p</var> = 0.68)</td><td>0.433</td><td>1.0%</td><td>276</td><td>0</td></tr>
+              <tr><td>Base · Thinking (4,096 · 2×)</td><td>11 (34.4%)</td><td>16 (25.0%)</td><td>27 (28.1%)</td><td>—</td><td>0.467</td><td>35.4%</td><td>2,258</td><td>0</td></tr>
+              <tr><td>CleanWSP (4,096, α=3.5)</td><td>12 (37.5%)</td><td>16 (25.0%)</td><td>28 (29.2%)</td><td>+11 / −10 (<var>p</var> = 1.0)</td><td>0.482</td><td>14.6%</td><td>1,583</td><td>3</td></tr>
+              <tr><td>Base · Thinking (8,192 · 4×)</td><td>11 (34.4%)</td><td>20 (31.2%)</td><td>31 (32.3%)</td><td>—</td><td>0.500</td><td>25.0%</td><td>3,323</td><td>0</td></tr>
+              <tr><td><strong>CleanWSP (8,192, α=3.5)</strong></td><td><strong>12 (37.5%)</strong></td><td><strong>21 (32.8%)</strong></td><td><strong>33 (34.4%)</strong></td><td>+11 / −9 (<var>p</var> = 0.82)</td><td><strong>0.552</strong></td><td><strong>5.2%</strong></td><td><strong>1,942</strong></td><td>4</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p><strong>What happens on <code>Qwen3-0.6B</code>:</strong> in its narrower 1,024-dimensional residual stream, Phase 1's stronger <var>α</var> = 3.5 edit across Layers 21–26 dipped slightly at 2,048 tokens under greedy decoding (<code>26.0% → 24.0%</code>, matching what Argon saw on its first pass before Argon re-tuned on the test set). Two things are clear in the follow-up runs: skipping Layer 21 at <var>α</var> = 2.0 (<code>Gentle</code>) removes the Chinese drift (<code>2 → 0</code>) and recovers <code>27.1%</code> at 2,048 tokens; and at 8,192 tokens, <code>0.6B-CleanWSP</code> edges ahead of unedited <code>0.6B</code> (<code>34.4%</code> vs <code>32.3%</code>, partial score <code>0.552</code> vs <code>0.500</code>) while cutting truncation from <code>25.0%</code> to <code>5.2%</code> and using <strong>41.6% fewer tokens</strong> (<code>1,942</code> vs <code>3,323</code>). Still, on a 0.6B model, pass-rate differences of 1–2 tasks out of 96 are statistically indistinguishable from noise (<var>p</var> = 0.82); the reliable effect on <code>0.6B</code> is token compression rather than new capability.</p>
+
+        <h2 id="two-regimes">CleanWSP versus built-in non-thinking mode: a two-regime law</h2>
+        <p>The first post posed a sharp test: Qwen3 already ships with a built-in non-thinking template flag (<code>enable_thinking=False</code>) that pre-fills an empty <code>&lt;think&gt;\n\n&lt;/think&gt;</code> block at zero weight-editing cost. Across all 96 held-out tasks (12 per domain), comparing <code>enable_thinking=False</code> against <code>CleanWSP</code> reveals two sharply different regimes:</p>
+
+        <figure class="wsp-fig">
+          <img src="fig2_two_regimes_domains.png" alt="Grouped bar chart of Qwen3-1.7B pass rates across all 8 domains (12 tasks each). On Maths, Logic and Sciences, No-Thinking scores 75%, 50% and 67% at 2,048 tokens, while both Base and CleanWSP reach 83%, 50–58% and 83% at 8,192 tokens. On Code, CleanWSP (8,192) jumps to 58% against 17% for Base (8,192) and 8% for No-Thinking. On Strict JSON and Computer Use, No-Thinking collapses to 8% and 8%, while CleanWSP scores 83% and 58% at 2,048." width="2900" height="1120" loading="lazy">
+          <figcaption><strong>Figure 3.</strong> Domain breakdown across all 96 held-out tasks (12 per domain) on <code>Qwen3-1.7B</code>. Where visible prose reasoning is allowed in the final answer (Maths, Logic, Sciences), <code>enable_thinking=False</code> simply moves chain-of-thought out of <code>&lt;think&gt;</code> and performs well at low token cost. Where the visible output is schema-locked or stateful (Strict JSON extraction, Multi-turn Computer Use), disabling <code>&lt;think&gt;</code> destroys the model's only scratchpad (8% pass rate), whereas CleanWSP preserves <code>&lt;think&gt;</code> and scores 58–83%.</figcaption>
+        </figure>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Qwen3-1.7B · 12 tasks / domain</th>
+                <th scope="col">Base (2,048)</th>
+                <th scope="col">CleanWSP (2,048)</th>
+                <th scope="col">No-Thinking</th>
+                <th scope="col">Base (8,192)</th>
+                <th scope="col">CleanWSP (8,192)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Mathematical reasoning</td><td>2 / 12 (17%)</td><td>4 / 12 (33%)</td><td>9 / 12 (75%)</td><td><strong>10 / 12 (83%)</strong></td><td><strong>10 / 12 (83%)</strong></td></tr>
+              <tr><td>Deductive logic puzzles</td><td>0 / 12 (0%)</td><td>0 / 12 (0%)</td><td>6 / 12 (50%)</td><td><strong>7 / 12 (58%)</strong></td><td>6 / 12 (50%)</td></tr>
+              <tr><td>Physical &amp; life sciences</td><td>1 / 12 (8%)</td><td>7 / 12 (58%)</td><td>8 / 12 (67%)</td><td><strong>10 / 12 (83%)</strong></td><td><strong>10 / 12 (83%)</strong></td></tr>
+              <tr><td>Software engineering (unit tests)</td><td>0 / 12 (0%)</td><td>0 / 12 (0%)</td><td>1 / 12 (8%)</td><td>2 / 12 (17%)</td><td><strong>7 / 12 (58%)</strong></td></tr>
+              <tr><td>Constrained instructions</td><td>6 / 12 (50%)</td><td>4 / 12 (33%)</td><td>6 / 12 (50%)</td><td>6 / 12 (50%)</td><td><strong>9 / 12 (75%)</strong></td></tr>
+              <tr><td>Technical synthesis &amp; prose</td><td>9 / 12 (75%)</td><td>9 / 12 (75%)</td><td>8 / 12 (67%)</td><td>10 / 12 (83%)</td><td><strong>11 / 12 (92%)</strong></td></tr>
+              <tr><td>Strict JSON data extraction</td><td>9 / 12 (75%)</td><td><strong>10 / 12 (83%)</strong></td><td>1 / 12 (8%)</td><td>9 / 12 (75%)</td><td><strong>10 / 12 (83%)</strong></td></tr>
+              <tr><td>Sandboxed computer usage</td><td><strong>7 / 12 (58%)</strong></td><td><strong>7 / 12 (58%)</strong></td><td>1 / 12 (8%)</td><td>4 / 12 (33%)</td><td>5 / 12 (42%)</td></tr>
+              <tr><td><strong>Total (96 held-out tasks)</strong></td><td>34 / 96 (35.4%)</td><td>41 / 96 (42.7%)</td><td>40 / 96 (41.7%)</td><td>58 / 96 (60.4%)</td><td><strong>68 / 96 (70.8%)</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul>
+          <li><strong>Regime 1 — Free-form visible reasoning (Maths, Logic, Sciences):</strong> When the prompt allows hundreds of words of visible prose before a final <code>\boxed{}</code> number, <code>enable_thinking=False</code> does not force the model to guess in one token; it writes a clean step-by-step derivation directly in the assistant message without triggering Qwen3's RL-trained <code>&lt;think&gt;</code> self-doubt habit. At a 2,048-token cap, <code>No-Thinking</code> beats <code>CleanWSP (2,048)</code> on Maths (<code>9/12</code> vs <code>4/12</code>) and Logic (<code>6/12</code> vs <code>0/12</code>). At 8,192 tokens, <code>CleanWSP (8,192)</code> overtakes <code>No-Thinking</code> on Maths (<code>10/12</code>) and Sciences (<code>10/12</code>) and ties on Logic (<code>6/12</code>).</li>
+          <li><strong>Regime 2 — Format-locked outputs and stateful tool agents (Strict JSON, Computer Usage, Algorithmic Code):</strong> Whenever the visible response <em>must</em> be a raw JSON object or a <code>&lt;tool_call&gt;</code> action—forbidding visible scratch work—turning off <code>&lt;think&gt;</code> forces Qwen3 to compute multi-item invoice sums, filter faulted telemetry, or resist GUI prompt injections in zero reasoning tokens. It collapses to <strong><code>1/12</code> on Strict JSON and <code>1/12</code> on Computer Usage</strong> (<code>2/24 = 8.3%</code>), and <code>1/12</code> on Code. Keeping <code>&lt;think&gt;</code> intact while damping loops lets <code>1.7B-CleanWSP</code> score <strong><code>10/12</code> on Strict JSON, <code>7/12</code> on Computer Usage (at 2,048), and <code>7/12</code> on Code (at 8,192)</strong>—beating <code>No-Thinking</code> overall by +29.2 percentage points at 8,192 tokens (+33 gained / −5 lost, McNemar <var>p</var> &lt; 0.0001).</li>
+          <li><strong>An instructive negative finding on per-turn agent caps:</strong> Notice the last row of the table. When we raised the multi-turn sandbox cap from <code>1,280</code> tokens/turn (in the 2,048 suite) to <code>5,120</code> tokens/turn (in the 8,192 suite), Computer Usage accuracy actually <em>fell</em> for both unedited <code>1.7B</code> (<code>7/12 → 4/12</code>) and <code>1.7B-CleanWSP</code> (<code>7/12 → 5/12</code>). Inspecting the turn logs shows why: given a huge per-turn thinking allowance before acting, a 1.7B model spends Turn 1 imagining hypothetical CSV contents inside <code>&lt;think&gt;</code> and hallucinating parameters instead of issuing a quick <code>read_file</code> call and reacting to the real observation. Short per-turn budgets (<code>~1,000–1,500</code> tokens) with damped loops work better for multi-turn tool agents than wide-open per-turn windows.</li>
+        </ul>
+
+        <h2 id="explore">Explore every held-out trace across all conditions</h2>
+        <p>Every greedy output across all 32 single-shot blind tasks (loaded immediately) and all 64 paired held-out tasks (loaded on click) is inspectable below—comparing <code>Base</code>, <code>CleanWSP</code>, <code>No-Thinking</code>, and the <code>2× (4,096)</code> and <code>4× (8,192)</code> windows side by side.</p>
+      </div>
+
+      <section class="explorer" id="explorer" aria-label="Multi-condition before and after trace explorer">
+        <div class="ex-controls">
+          <div class="ex-row">
+            <span class="ex-label">Suite</span>
+            <div class="ex-group" role="group" aria-label="Evaluation split">
+              <button type="button" data-suite="blind" aria-pressed="true">Blind single-shot (32)</button>
+              <button type="button" data-suite="paired" aria-pressed="false">Paired held-out (64)</button>
+            </div>
+            <span class="ex-label">Model</span>
+            <div class="ex-group" role="group" aria-label="Model size">
+              <button type="button" data-size="1.7B" aria-pressed="true">Qwen3-1.7B</button>
+              <button type="button" data-size="0.6B" aria-pressed="false">Qwen3-0.6B</button>
+            </div>
+            <span class="ex-label">Quick compare</span>
+            <div class="ex-group" role="group" aria-label="Comparison presets">
+              <button type="button" data-preset="1x" data-left="base_2048" data-right="wsp_2048" aria-pressed="true">1× Base vs CleanWSP</button>
+              <button type="button" data-preset="4x" data-left="base_8192" data-right="wsp_8192" aria-pressed="false">4× Base vs CleanWSP (8,192)</button>
+              <button type="button" data-preset="nt" data-left="nothink_2048" data-right="wsp_2048" aria-pressed="false">No-Thinking vs CleanWSP</button>
+              <button type="button" data-preset="scale" data-left="base_2048" data-right="base_8192" aria-pressed="false">1× vs 4× Unedited Base</button>
+            </div>
+          </div>
+          <div class="ex-row">
+            <span class="ex-label">Featured</span>
+            <div class="ex-group" role="group" aria-label="Featured tasks">
+              <button type="button" data-task="de_b01" data-target-suite="blind" data-left="nothink_2048" data-right="wsp_2048" aria-pressed="true">de_b01 · JSON vs No-Think</button>
+              <button type="button" data-task="cu_b02" data-target-suite="blind" data-left="nothink_2048" data-right="wsp_2048" aria-pressed="false">cu_b02 · 5-turn live sandbox</button>
+              <button type="button" data-task="sci_b03" data-target-suite="blind" data-left="base_2048" data-right="wsp_2048" aria-pressed="false">sci_b03 · Hardy–Weinberg</button>
+              <button type="button" data-task="code_b04" data-target-suite="blind" data-left="base_8192" data-right="wsp_8192" aria-pressed="false">code_b04 · 4× code rescue (8,192)</button>
+            </div>
+          </div>
+          <div class="ex-row">
+            <label class="ex-pick"><span class="ex-label">Task</span> <select id="ex-pick" aria-label="Choose any task"></select></label>
+            <label class="ex-pick"><span class="ex-label">Left pane</span> <select id="ex-left" aria-label="Choose left pane condition"></select></label>
+            <label class="ex-pick"><span class="ex-label">Right pane</span> <select id="ex-right" aria-label="Choose right pane condition"></select></label>
+          </div>
+        </div>
+        <div class="ex-body"><p class="ex-loading">Loading the 32 blind held-out traces…</p></div>
+        <p class="ex-legend"><span><mark>wait / double-check</mark> self-doubt triggers</span><span><span class="cjk-key">中文</span> Chinese characters</span><span>All pass/fail badges use strict post-<code>&lt;/think&gt;</code> grading</span></p>
+        <noscript><p>The interactive explorer requires JavaScript. Raw trace data are in <a href="traces.json">traces.json</a> (32 blind tasks) and <a href="traces_paired.json">traces_paired.json</a> (64 paired tasks).</p></noscript>
+      </section>
+
+      <div class="post-body">
+        <h2 id="speed">Hardware throughput invariance versus end-to-end task speed</h2>
+        <p>In the first post, batched decode rates appeared 30% lower after editing (<code>106 → 74 tok/s</code>) because short answers finished early and left the batch padded on long sequences, while single-stream runs differed by 5–6% on a busy GPU. To separate true GPU kernel speed from sequence-length scheduling, <code>speed_profiler.py</code> disabled <code>EOS</code> stopping and timed matched token lengths back-to-back with hardware <code>torch.cuda.Event</code> markers:</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Controlled CUDA-Event microbenchmark (EOS disabled)</th>
+                <th scope="col">Qwen3-0.6B Base</th>
+                <th scope="col">Qwen3-0.6B-CleanWSP</th>
+                <th scope="col">Qwen3-1.7B Base</th>
+                <th scope="col">Qwen3-1.7B-CleanWSP</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>VRAM footprint (<code>bf16</code> weights)</td><td>1,145 MiB</td><td>1,145 MiB</td><td>3,290 MiB</td><td>3,290 MiB</td></tr>
+              <tr><td>Prefill time to first token (<code>B = 1</code>)</td><td>17.8 ms</td><td>17.7 ms</td><td>20.4 ms</td><td>20.3 ms</td></tr>
+              <tr><td>Fixed-length decode rate (<code>B = 16, L = 512</code>)</td><td>130.50 tok/s</td><td>130.64 tok/s (+0.1%)</td><td>134.13 tok/s</td><td>136.20 tok/s (+1.5%)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <figure class="wsp-fig">
+          <img src="fig4_speed_and_velocity.png" alt="Left: Share of tasks hitting the token cap drops steeply across 2,048, 4,096 and 8,192 budgets, with CleanWSP consistently lower than Base (e.g. 5.2% vs 25.0% on 0.6B at 8,192, and 11.5% vs 13.5% on 1.7B at 8,192). Right: Quality-token Pareto frontier on Qwen3-1.7B (n=96) showing CleanWSP dominating Base at every window size." width="2640" height="960" loading="lazy">
+          <figcaption><strong>Figure 4.</strong> <em>A:</em> Fraction of the 96 held-out tasks exhausting the token cap across 1×, 2× and 4× windows. <em>B:</em> Quality–token Pareto frontier for <code>Qwen3-1.7B</code>: at every budget (2,048, 4,096, 8,192), the CleanWSP curve sits strictly up and to the left of the unedited Base curve—higher accuracy in fewer generated tokens.</figcaption>
+        </figure>
+
+        <p>Because modifying values inside dense <code>bf16</code> matrices changes neither tensor shapes nor memory traffic, <strong>per-token GPU throughput and VRAM use are invariant within ±0.1–1.5%</strong>. Every real-world speedup comes from emitting fewer redundant verification tokens: at 8,192 tokens, <code>1.7B-CleanWSP</code> writes 16.1% fewer tokens per task while solving 10 more tasks out of 96 (+17.2% relative accuracy), and <code>0.6B-CleanWSP</code> writes 41.6% fewer tokens per task.</p>
+
+        <h2>What holds up, and what still doesn't</h2>
+        <h3>Supported by the clean-room and follow-up data</h3>
+        <ul>
+          <li><strong>Sparse, gradient-free weight damping produces real post-<code>&lt;/think&gt;</code> gains on <code>Qwen3-1.7B</code>—even at a 4× window.</strong> Editing 0.0305% of <code>1.7B</code>'s weights raises strict post-<code>&lt;/think&gt;</code> accuracy across all 96 held-out tasks at <code>2,048</code> (<code>35.4% → 42.7%</code>), <code>4,096</code> (<code>49.0% → 56.2%</code>), and <code>8,192</code> tokens (<code>60.4% → 70.8%</code>, McNemar <var>p</var> = 0.041), while cutting token counts at every budget.</li>
+          <li><strong>Argon's Chinese drift and empty-<code>&lt;think&gt;</code> collapse were artifacts of unorthogonalised sign reversal, not weight-space editing itself.</strong> Orthogonalising against early deduction, keeping <var>α</var> ∈ [2.0, 2.4], and avoiding both Layer 27 (the EOS formatting gate) and Layer 21 (the <code>'But'</code>/<code>'但'</code> bilingual pivot) yielded <strong>0.0% Chinese drift and 0.0% empty <code>&lt;think&gt;</code> blocks</strong> across both <code>1.7B-CleanWSP</code> and <code>0.6B-Gentle</code>.</li>
+          <li><strong>Weight editing has a clear niche that <code>enable_thinking=False</code> cannot fill:</strong> tasks that require hidden reasoning before emitting strict schemas or tool calls (Strict JSON extraction, multi-turn computer use, algorithmic code with tricky edge cases).</li>
+        </ul>
+
+        <h3>Limitations and caveats</h3>
+        <ul>
+          <li><strong>Still scripted linear algebra, not weight-native reasoning.</strong> Just like Argon's run, my edit was computed by a forward-pass activation-profiling script (<code>weight_space_programmer.py</code>) written by a frontier model, rather than a model reading raw weight tensors directly without forward passes.</li>
+          <li><strong><code>Qwen3-0.6B</code> gains remain within noise.</strong> At 0.6B parameters, gentler orthogonal damping eliminates side effects and saves up to 42% of tokens at an 8,192 cap, but accuracy moves by only +1 to +2 tasks out of 96.</li>
+          <li><strong>Decode-time <code>&lt;/think&gt;</code> logit bias is still untested.</strong> While a static weight edit needs no custom inference-engine hooks (the checkpoint loads in unmodified Hugging Face, vLLM or llama.cpp), a targeted activation-steering or logit-bias baseline during late <code>&lt;think&gt;</code> steps could potentially approximate part of the same effect at decode time.</li>
+          <li><strong>Unedited AI draft.</strong> Although every table entry and figure on this page was generated programmatically from the saved JSON outputs, Kasimir Gregory has not yet manually audited this prose or every task grader in the 128-task suite.</li>
+        </ul>
+
+        <h2>Code, traces and reproducibility</h2>
+        <p>All 15 Python scripts that built the 128-task benchmark, computed the orthogonal weight edits, ran the Phase 1 and 2×/4× follow-up evaluations, and generated the figures are in <a href="https://github.com/Kasigee/kasigee.github.io/tree/main/blog/weight-space-programming-cleanroom/code"><code>blog/weight-space-programming-cleanroom/code/</code></a> (with local workstation paths replaced by relative paths; see <a href="code/README.md"><code>code/README.md</code></a>). Verbatim outputs for every held-out task and condition power the explorer above via <a href="traces.json"><code>traces.json</code></a> and <a href="traces_paired.json"><code>traces_paired.json</code></a>.</p>
+        <p><strong>References:</strong> Rikiya Takehi, Jayden Teoh, Alex Zhang and Omar Khattab, <a href="https://rikiyat.github.io/blog/weight-space-programming/">"Sparks of Weight-Space Programming: LLMs can natively read &amp; write neural network weights"</a> (2 November 2026); Kasimir Gregory (drafted by Claude Opus 5.5 from Gemini Argon 4's runs), <a href="../weight-space-programming/">"Editing 0.1% of a small model's weights: what changed, and what didn't"</a> (3 November 2026).</p>
+
+        <section class="comments" id="comments" aria-labelledby="comments-title">
+          <h2 id="comments-title">Comments</h2>
+          <p class="comments-note" data-when="giscus" hidden>Comment below with a GitHub account (comments are stored as GitHub Discussions on this site's repository, through <a href="https://giscus.app/">giscus</a>), or email them to <a data-email data-user="kasimir" data-domain="live.com.au" data-subject="Comment: Clean-room weight-space programming on Qwen3" href="#comments">kasimir [at] live.com.au</a>.</p>
+          <p class="comments-note" data-when="no-giscus">Thoughts, questions or corrections? Email them to <a data-email data-user="kasimir" data-domain="live.com.au" data-subject="Comment: Clean-room weight-space programming on Qwen3" href="#comments">kasimir [at] live.com.au</a>.</p>
+          <div class="giscus"></div>
+        </section>
+        <p class="post-back"><a href="../">← All posts</a></p>
+      </div>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="cols">
+        <div><h3>Dr Kasimir Gregory</h3><p>Computational chemist and Lecturer in Chemistry at the University of New England, Armidale.</p></div>
+        <div><h3>On this site</h3><ul><li><a href="../../">Home</a></li><li><a href="../../papers/">Papers on disc</a></li><li><a href="../../blog/">Blog</a></li><li><a href="../../running/">Running</a></li></ul></div>
+        <div><h3>Elsewhere</h3><ul><li><a href="https://orcid.org/0000-0002-8055-370X">ORCID ↗</a></li><li><a href="https://open.spotify.com/show/17Def43GZ8wubUTK5jnaEU">Anion The Future ↗</a></li><li><a href="https://www.strava.com/athletes/49302230">Strava ↗</a></li></ul></div>
+      </div>
+      <p class="big" aria-hidden="true">Dr Kas</p>
+      <p class="fine">© <span data-year>2026</span> Kasimir Gregory · Armidale, Australia · Visits counted by <a href="https://www.goatcounter.com/">GoatCounter</a>, without cookies</p>
+    </div>
+  </footer>
+</body>
+</html>
