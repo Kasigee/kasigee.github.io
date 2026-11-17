@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <title>UNE 2027 Interactive Course & Unit Planner — School of Science & Technology (Trial)</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="trial-banner" class="trial-banner">
+    <span>
+      <strong>🧪 Unofficial Trial Prototype</strong> — Interactive 2027 UNE School of Science &amp; Technology Course Planner (for internal feedback &amp; exploration). Always verify official rules at
+      <a href="https://handbook.une.edu.au" target="_blank" rel="noopener">handbook.une.edu.au</a>.
+    </span>
+    <button id="btn-dismiss-trial" class="trial-dismiss-btn" title="Dismiss banner for this session">Dismiss ✕</button>
+  </div>
+  <header id="app-header" class="app-header"></header>
+  <section id="config-ribbon" class="config-ribbon"></section>
+  <div id="preset-bar" class="preset-bar" style="display:none;"></div>
+
+  <main class="workspace">
+    <aside id="sidebar" class="sidebar"></aside>
+    <section id="board-area" class="board-area"></section>
+  </main>
+
+  <div id="modal-backdrop" class="modal-backdrop hidden"></div>
+
+  <script src="data/une_sst_2027.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
