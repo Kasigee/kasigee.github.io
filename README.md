@@ -1,6 +1,6 @@
 # kasigee.github.io
 Kasimir Gregory
-Kas obtained a Bachelor of Mathematics/Bachelor of Science (Hons – Chemistry and University Medal) from the University of Newcastle in 2018 and followed by undertaking a PhD there under the supervision of Prof. Alister Page, Prof. Erica Wanless and Prof. Grant Webber. During his PhD he investigated specific ion effects via computational and quantum chemistry. He then undertook a postdoctoral fellowship under the supervision of Prof. Vince Craigin Materials Physics at the Australian National University (ANU) to continue this project experimentally, by building a maximum bubble pressure surface tensiometer to use on nonaqueous electrolytes. Following this Kas moved across to the Division of Biomedical Sciences and Biochemistry in the Research School of Biology at ANU to work with Prof. Ben Corry. Primarily this project was investigating the thermodiffusion of salts with the purpose of optimising this potential new membrane free desalination method, as well as malarial protein transport mechanisms. Both via molecular dynamics simulations. Kas is now lecturing in Computational, Physical and Theoretical Chemistry at the University of New England. He also has a podcast, Anion the Future, for exploring Academics Novel Ideas, Origins and Networks.
+Kas obtained a Bachelor of Mathematics/Bachelor of Science (Hons – Chemistry and University Medal) from the University of Newcastle in 2018 and followed by undertaking a PhD there under the supervision of Prof. Alister Page, Prof. Erica Wanless and Prof. Grant Webber. During his PhD he investigated specific ion effects via computational and quantum chemistry. He then undertook a postdoctoral fellowship under the supervision of Prof. Vince Craig in Materials Physics at the Australian National University (ANU) to continue this project experimentally, by building a maximum bubble pressure surface tensiometer to use on nonaqueous electrolytes. Following this Kas moved across to the Division of Biomedical Sciences and Biochemistry in the Research School of Biology at ANU to work with Prof. Ben Corry. Primarily this project was investigating the thermodiffusion of salts with the purpose of optimising this potential new membrane free desalination method, as well as malarial protein transport mechanisms. Both via molecular dynamics simulations. Kas is now lecturing in Computational, Physical and Theoretical Chemistry at the University of New England. He also has a podcast, Anion the Future, for exploring Academics Novel Ideas, Origins and Networks.
 kasimirgregory.com
 
 ## About this site
@@ -35,15 +35,3 @@ python3 -m http.server 8000
 ```
 
 Then open http://localhost:8000. The pages use JavaScript modules, which browsers block on `file://`.
-
-### Still to confirm with Kas
-
-- The summaries on the 18 tapes without a handwritten page were written from each paper's title and its entry in the CV, not from the papers themselves. Check that each one says what its paper says (they are the `body` entries in `papers/tapes-data.js`).
-- The press links in "Now" (pv magazine, Sustainability Matters, Lab Next 70) are the ones you sent. They describe the project's leadership differently from the site.
-- The PAHAPS web app and code links (`pahaps.streamlit.app`, `github.com/Kasigee/PAH_Analysis`).
-- The podcast links go to the show's Spotify page. anionthefuture.com is to move to a kasimirgregory.com subdomain later.
-- The contact email is kasimir@live.com.au. Change `data-user` and `data-domain` in `index.html` to use another address.
-- Add LinkedIn, a tidied GitHub profile, and a CV PDF (see the TODO comments in `index.html`).
-- The Talks list follows the 2026 oral presentations in the October 2026 CV. Talks without a title in the CV are listed by event.
-- The CV lists the first author of the 2023 protic ionic liquid paper as Burke. The published paper says T. Bourke, and so does the site.
-- The 2026 Journal of Colloid and Interface Science paper on ion depth profiles (10.1016/j.jcis.2025.139019) isn't on the ORCID record yet.

@@ -47,7 +47,3 @@ Serve the site root (`python3 -m http.server 8000`) and open http://localhost:80
 ## Place in the site
 
 Each Research feature on the home page shows a still of one scene (`../img/*.webp`) that links to `papers/#hofmeister`, `papers/#pahaps` or `papers/#ionsolvr`, which turns to that disc and plays it. The same stills are the cover art of those three cases. If a scene changes, retake its still: with the site served locally, screenshot the scene's `.stage` at 2× in a 1360 px wide window, and save it as WebP at 1120 px wide in `../img/`.
-
-## Still to confirm with Kas
-
-- The PAHAPS web app and code links (`pahaps.streamlit.app` and `github.com/Kasigee/PAH_Analysis`).
