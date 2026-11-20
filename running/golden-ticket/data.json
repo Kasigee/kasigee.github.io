@@ -1,16 +1,14 @@
 {
-  "updated_at": "2026-11-20 12:14 AEDT",
+  "updated_at": "2026-11-20 12:30 AEDT",
   "today": "2026-11-20",
   "current_week": 6,
-  "total_weeks": 25,
+  "total_weeks": 22,
   "days_to_golden_ticket": 113,
-  "days_to_5k_hitout": 134,
   "goal": {
     "date": "2027-03-14",
     "event": "Armidale Running Festival — Golden Ticket (Sat 13 Mar: 1k+1k+1k+3k+5k+10k; Sun 14 Mar: Half Marathon)",
-    "a": "Peak cumulative time / podium & $1,000 Golden Ticket prize (target ~2:32–2:38 total across 42.1 km)",
-    "b": "Strong negative-split Half Marathon on Sunday & sub-16:30–17:00 5 km post-festival hitout (3 Apr 2027)",
-    "followup_5k_date": "2027-04-03"
+    "a": "Peak cumulative time / podium & $1,000 Golden Ticket prize (42.1 km across 7 weekend races)",
+    "b": "Controlled Saturday stack + strong negative-split Sunday Half Marathon on intact legs"
   },
   "phases": [
     {
@@ -69,16 +67,6 @@
         22
       ],
       "aim": "Cut volume ~35–50% while keeping crisp T/5K touch and heat acclimation. Peak fresh for Armidale Running Festival Golden Ticket (13–14 Mar 2027)."
-    },
-    {
-      "id": "sharpen5k",
-      "name": "Post-festival 5K peak",
-      "weeks": [
-        23,
-        24,
-        25
-      ],
-      "aim": "Recover cleanly from Golden Ticket (Week 23), re-awaken fast turnover (Week 24), and cash in the huge aerobic engine with an all-out 5 km hitout on Sat 3 Apr 2027."
     }
   ],
   "fitness": {
@@ -184,12 +172,6 @@
       "label": "Golden Ticket",
       "a": "Peak cumulative time (42.1 km weekend)",
       "b": "Fast Sunday HM on intact legs"
-    },
-    {
-      "date": "2027-04-03",
-      "label": "5K Hitout",
-      "a": "Sub-16:30 (EAP) / PB attack",
-      "b": "Sub-17:00"
     }
   ],
   "current_call": {
@@ -228,7 +210,7 @@
       "week": 6,
       "tag": "Plan Update",
       "title": "Block realigned for the Armidale Running Festival Golden Ticket",
-      "summary": "Instead of peaking for a standalone 5 km in March, the target for 13–14 March 2027 is now the Armidale Running Festival Golden Ticket: every race across the weekend combined for cumulative time — three 1 km dashes, 3 km, 5 km, and 10 km on Saturday afternoon (21 km stacked), followed 14 hours later by Sunday morning's Half Marathon (21.1 km). Because the 10 km and Half Marathon represent ~75% of total elapsed time, Weeks 10–22 shift toward bigger threshold cruise sets (up to 2 × 5 km), 20–22 km long runs with marathon/HM finishes, back-to-back weekend simulations, heat-acclimation saunas for March afternoon warmth, and rehearsing overnight glycogen reload. Three weeks later (3 April 2027), the plan adds a sharp 5 km hitout to cash in the aerobic engine.",
+      "summary": "Instead of peaking for a standalone 5 km in March, the entire 22-week block now peaks 100% for the Armidale Running Festival Golden Ticket (13–14 March 2027): every race across the weekend combined for cumulative time — three 1 km dashes, 3 km, 5 km, and 10 km on Saturday afternoon (21 km stacked), followed 14 hours later by Sunday morning's Half Marathon (21.1 km). Because the 10 km and Half Marathon represent ~75% of total elapsed time, Weeks 10–22 shift toward bigger threshold cruise sets (up to 2 × 5 km), 20–22 km long runs with marathon/HM finishes, back-to-back weekend simulations, heat-acclimation saunas for March afternoon warmth, and rehearsing overnight glycogen reload.",
       "metrics": [
         {
           "label": "Race weekend",
@@ -243,8 +225,8 @@
           "value": "70–73 km/wk"
         },
         {
-          "label": "Follow-up 5K",
-          "value": "3 Apr 2027"
+          "label": "Scoring",
+          "value": "Cumulative time"
         }
       ],
       "adaptation": "Weekend adjustment (20–22 Nov): Saturday parkrun downgraded from tempo + 200s to easy aerobic after stacking 3 hard sessions Tue–Thu (rolling 7-day volume 54.7 km), preserving Sunday's 14–15 km long run."
@@ -3334,324 +3316,6 @@
           "planned_km": 21,
           "optional_km": 0,
           "detail": "Sun 14 Mar (~7:00 am): 21.1 km Half Marathon (~51% of total Golden Ticket time!). Wake 2.5 h early, 1.5–2 g/kg low-fibre carb breakfast, caffeine ~200–250 mg 60 min pre, 10 min very easy warm-up. Start conservative for km 1–5 (let yesterday's legs open up), lock into goal HM pace km 6–15 (fuel 60–80 g/h carbs), and hunt down everyone who blew up Saturday over the last 6 km!",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        }
-      ]
-    },
-    {
-      "week": 23,
-      "start": "2027-03-15",
-      "phase": "sharpen5k",
-      "planned_km": 28,
-      "optional_km": 0,
-      "actual_km": 0,
-      "down": true,
-      "mark": null,
-      "days": [
-        {
-          "date": "2027-03-15",
-          "dow": 0,
-          "type": "rest",
-          "title": "Post-festival full rest",
-          "planned_km": 0,
-          "optional_km": 0,
-          "detail": "Day after 42.1 km weekend. Walk, eat well, celebrate!",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-16",
-          "dow": 1,
-          "type": "rest",
-          "title": "Rest / easy spin or swim",
-          "planned_km": 0,
-          "optional_km": 0,
-          "detail": "No running unless legs feel surprisingly good; 20–30 min easy spin or swim.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-17",
-          "dow": 2,
-          "type": "easy",
-          "title": "First recovery jog",
-          "planned_km": 5,
-          "optional_km": 0,
-          "detail": "5 km very easy @ {E} (HR ≤140). Stop early if anything niggles.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-18",
-          "dow": 3,
-          "type": "social",
-          "title": "Thursday easy social",
-          "planned_km": 6,
-          "optional_km": 0,
-          "detail": "12:30 pm ~6 km easy conversational.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-19",
-          "dow": 4,
-          "type": "rest",
-          "title": "Rest (optional swim)",
-          "planned_km": 0,
-          "optional_km": 0,
-          "detail": "No running. Let legs rebound completely.",
-          "extras": [
-            {
-              "kind": "swim",
-              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
-            }
-          ],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-20",
-          "dow": 5,
-          "type": "easy",
-          "title": "Easy parkrun jog",
-          "planned_km": 7,
-          "optional_km": 0,
-          "detail": "Easy 5 km parkrun + 1 km each way (strictly Z1–Z2, HR ≤145).",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-21",
-          "dow": 6,
-          "type": "long",
-          "title": "Easy aerobic run",
-          "planned_km": 10,
-          "optional_km": 0,
-          "detail": "10 km easy @ {E} + 4 light strides at the end if springy.",
-          "extras": [
-            {
-              "kind": "sauna",
-              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
-            }
-          ],
-          "actual_km": 0,
-          "actual_runs": []
-        }
-      ]
-    },
-    {
-      "week": 24,
-      "start": "2027-03-22",
-      "phase": "sharpen5k",
-      "planned_km": 48,
-      "optional_km": 0,
-      "actual_km": 0,
-      "down": false,
-      "mark": null,
-      "days": [
-        {
-          "date": "2027-03-22",
-          "dow": 0,
-          "type": "easy",
-          "title": "Easy run",
-          "planned_km": 6,
-          "optional_km": 0,
-          "detail": "6 km easy @ {E} + 4 × 20 s strides.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-23",
-          "dow": 1,
-          "type": "key",
-          "title": "5K speed re-awakener",
-          "planned_km": 10,
-          "optional_km": 0,
-          "detail": "2.5 km warm-up + strides, 6 × 600 m @ {3K}/{5K} (2 min jog) + 2 × 200 m @ {R}, 2 km cool-down. Sharp leg speed off your huge Golden Ticket aerobic base!",
-          "extras": [
-            {
-              "kind": "gym",
-              "text": "Gym A (taper primer): trap-bar deadlift 2 × 3 (~75% 1RM), light calf work."
-            }
-          ],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-24",
-          "dow": 2,
-          "type": "social",
-          "title": "Wednesday social",
-          "planned_km": 7,
-          "optional_km": 0,
-          "detail": "6:00 am social, ~7 km easy.",
-          "extras": [
-            {
-              "kind": "sauna",
-              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
-            }
-          ],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-25",
-          "dow": 3,
-          "type": "social",
-          "title": "Thursday social",
-          "planned_km": 6,
-          "optional_km": 0,
-          "detail": "12:30 pm social, ~6 km easy.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-26",
-          "dow": 4,
-          "type": "rest",
-          "title": "Rest (optional swim)",
-          "planned_km": 0,
-          "optional_km": 0,
-          "detail": "No running. Stay bouncy.",
-          "extras": [
-            {
-              "kind": "swim",
-              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
-            }
-          ],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-27",
-          "dow": 5,
-          "type": "key",
-          "title": "parkrun 3 + 200s",
-          "planned_km": 9,
-          "optional_km": 0,
-          "detail": "Jog there. 3 km @ {T}, 2 km easy, then 4 × 200 m @ {R} (200 m jog). Jog home.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-28",
-          "dow": 6,
-          "type": "long",
-          "title": "Easy run",
-          "planned_km": 10,
-          "optional_km": 0,
-          "detail": "10 km easy @ {E}.",
-          "extras": [
-            {
-              "kind": "sauna",
-              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
-            }
-          ],
-          "actual_km": 0,
-          "actual_runs": []
-        }
-      ]
-    },
-    {
-      "week": 25,
-      "start": "2027-03-29",
-      "phase": "sharpen5k",
-      "planned_km": 36,
-      "optional_km": 0,
-      "actual_km": 0,
-      "down": true,
-      "mark": "5K",
-      "days": [
-        {
-          "date": "2027-03-29",
-          "dow": 0,
-          "type": "easy",
-          "title": "Easy run",
-          "planned_km": 5,
-          "optional_km": 0,
-          "detail": "5 km easy @ {E} + 4 × 20 s strides.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-30",
-          "dow": 1,
-          "type": "key",
-          "title": "5K race-week primer",
-          "planned_km": 8,
-          "optional_km": 0,
-          "detail": "2.5 km warm-up, 4 × 800 m @ {5K} (2 min jog) + 2 × 200 m @ {R}, 2 km cool-down.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-03-31",
-          "dow": 2,
-          "type": "social",
-          "title": "Wednesday social",
-          "planned_km": 6,
-          "optional_km": 0,
-          "detail": "6:00 am social, ~6 km very easy.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-04-01",
-          "dow": 3,
-          "type": "social",
-          "title": "Thursday shakeout",
-          "planned_km": 4,
-          "optional_km": 0,
-          "detail": "4 km very easy @ {E}.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-04-02",
-          "dow": 4,
-          "type": "rest",
-          "title": "Rest",
-          "planned_km": 0,
-          "optional_km": 0,
-          "detail": "Full rest. Hydrate, carb-top.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-04-03",
-          "dow": 5,
-          "type": "race",
-          "title": "5 KM HITOUT (PB ATTACK!)",
-          "planned_km": 9,
-          "optional_km": 0,
-          "detail": "All-out 5 km hitout (Armidale parkrun or fast flat course). Race shoes, breakfast 2–3 h pre, caffeine 60 min pre, 2.5 km WU + strides + 2 × 1 min @ {5K}. Cash in the Golden Ticket engine! 1.5 km CD.",
-          "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
-        },
-        {
-          "date": "2027-04-04",
-          "dow": 6,
-          "type": "easy",
-          "title": "Post-5K easy shakeout",
-          "planned_km": 4,
-          "optional_km": 0,
-          "detail": "Optional 4–6 km easy jog or rest.",
           "extras": [],
           "actual_km": 0,
           "actual_runs": []

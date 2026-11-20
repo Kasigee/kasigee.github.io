@@ -35,7 +35,7 @@ function resolvePaces(text, paces, mode) {
 function renderHero(data) {
   document.getElementById('gt-updated').textContent = data.updated_at;
   document.getElementById('kpi-days').textContent = `${data.days_to_golden_ticket} days`;
-  document.getElementById('kpi-days-sub').textContent = `13–14 Mar 2027 · 5K hitout in ${data.days_to_5k_hitout} d`;
+  document.getElementById('kpi-days-sub').textContent = `13–14 Mar 2027 · 42.1 km across 7 races`;
 
   document.getElementById('kpi-block').textContent = `${data.summary.block_km} km`;
   document.getElementById('kpi-block-sub').textContent = `${data.summary.block_runs} runs · ${data.summary.rolling_7d_km} km last 7 d`;
@@ -125,7 +125,7 @@ function renderVolumeChart(data) {
   }).join('');
 
   const wrap = document.getElementById('gt-volume-chart');
-  wrap.innerHTML = `<svg class="gt-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly actual vs planned kilometres across 25 weeks">${gridLines}${bars}</svg>`;
+  wrap.innerHTML = `<svg class="gt-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly actual vs planned kilometres across ${weeks.length} weeks">${gridLines}${bars}</svg>`;
 
   wrap.querySelectorAll('.gt-bar-group').forEach((g) => {
     const jump = () => jumpToWeek(Number(g.dataset.week));
@@ -152,7 +152,7 @@ function renderPaces(data) {
   document.getElementById('pace-vdot').textContent = data.fitness.vdot;
   const isArm = state.paceMode === 'armidale';
   document.getElementById('pace-caption').textContent = isArm
-    ? 'Showing Armidale (~990 m altitude, cool/calm flat) watch target paces — switching updates every pace token inside the 25-week schedule below.'
+    ? 'Showing Armidale (~990 m altitude, cool/calm flat) watch target paces — switching updates every pace token inside the 22-week schedule below.'
     : 'Showing flat, calm, cool sea-level EAP reference paces (VDOT 53.6 from TT1; recent threshold work trending ~55–56).';
 
   const order = ['E', 'M', 'T', 'CV', '5K', 'I', '3K', 'R'];
@@ -223,7 +223,7 @@ function renderReports(data) {
 
 function renderPhaseTabs(data) {
   const tabs = document.getElementById('gt-phase-tabs');
-  const allBtn = `<button type="button" class="gt-phase-tab ${state.phaseFilter === 'all' ? 'active' : ''}" data-phase="all">All 25 weeks</button>`;
+  const allBtn = `<button type="button" class="gt-phase-tab ${state.phaseFilter === 'all' ? 'active' : ''}" data-phase="all">All ${data.total_weeks} weeks</button>`;
   const phaseBtns = data.phases.map((ph) =>
     `<button type="button" class="gt-phase-tab ${state.phaseFilter === ph.id ? 'active' : ''}" data-phase="${esc(ph.id)}">${esc(ph.name)} (W${ph.weeks[0]}–${ph.weeks[ph.weeks.length - 1]})</button>`
   ).join('');
@@ -232,7 +232,7 @@ function renderPhaseTabs(data) {
   const activePhase = data.phases.find((p) => p.id === state.phaseFilter);
   document.getElementById('gt-phase-aim').textContent = activePhase
     ? activePhase.aim
-    : 'Full 25-week build from October re-entry through Armidale Running Festival Golden Ticket (Weeks 21–22) and the 3 April 5 km peak (Weeks 23–25).';
+    : 'Full 22-week build from October re-entry to peak form for the Armidale Running Festival Golden Ticket (13–14 March 2027).';
 
   tabs.querySelectorAll('.gt-phase-tab').forEach((btn) => {
     btn.addEventListener('click', () => {
