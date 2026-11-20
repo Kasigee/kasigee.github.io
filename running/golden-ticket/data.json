@@ -1,0 +1,3662 @@
+{
+  "updated_at": "2026-11-20 12:14 AEDT",
+  "today": "2026-11-20",
+  "current_week": 6,
+  "total_weeks": 25,
+  "days_to_golden_ticket": 113,
+  "days_to_5k_hitout": 134,
+  "goal": {
+    "date": "2027-03-14",
+    "event": "Armidale Running Festival — Golden Ticket (Sat 13 Mar: 1k+1k+1k+3k+5k+10k; Sun 14 Mar: Half Marathon)",
+    "a": "Peak cumulative time / podium & $1,000 Golden Ticket prize (target ~2:32–2:38 total across 42.1 km)",
+    "b": "Strong negative-split Half Marathon on Sunday & sub-16:30–17:00 5 km post-festival hitout (3 Apr 2027)",
+    "followup_5k_date": "2027-04-03"
+  },
+  "phases": [
+    {
+      "id": "reentry",
+      "name": "Re-entry",
+      "weeks": [
+        1,
+        2,
+        3
+      ],
+      "aim": "Rebuild running volume from ~19 km/wk. Strides, light fartlek and controlled threshold only."
+    },
+    {
+      "id": "base",
+      "name": "Base + threshold",
+      "weeks": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "aim": "Raise volume to the mid-50s. Two threshold-led sessions a week (Norwegian-style, controlled). First VO2 work in week 8. Time trials 7 Nov and 12 Dec."
+    },
+    {
+      "id": "dev",
+      "name": "Threshold + durability",
+      "weeks": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "aim": "Build peak aerobic volume (65–73 km/wk), 20–22 km long runs with MP/HM finishes, repeatable 1k–5k threshold/CV reps, and first back-to-back weekend durability blocks. 10K / stacked checkpoint 30 Jan."
+    },
+    {
+      "id": "specific",
+      "name": "Golden Ticket specific",
+      "weeks": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "aim": "Multi-race Saturday turnaround simulations (1k/3k/5k stacks with carb fueling & rapid lactate clearance) + tired-leg Sunday HM-pace runs. Tarawera T21 (Sat 13 Feb) as controlled durability race, followed by heat-acclimation sauna block and final Golden Ticket dress rehearsal (27–28 Feb)."
+    },
+    {
+      "id": "taper",
+      "name": "Taper + Golden Ticket",
+      "weeks": [
+        21,
+        22
+      ],
+      "aim": "Cut volume ~35–50% while keeping crisp T/5K touch and heat acclimation. Peak fresh for Armidale Running Festival Golden Ticket (13–14 Mar 2027)."
+    },
+    {
+      "id": "sharpen5k",
+      "name": "Post-festival 5K peak",
+      "weeks": [
+        23,
+        24,
+        25
+      ],
+      "aim": "Recover cleanly from Golden Ticket (Week 23), re-awaken fast turnover (Week 24), and cash in the huge aerobic engine with an all-out 5 km hitout on Sat 3 Apr 2027."
+    }
+  ],
+  "fitness": {
+    "vdot": 53.6,
+    "vdot_trend": "55.0–56.0 (from 17 Nov 5x1.6km @ 3:51.6 EAP, 160 bpm)",
+    "est_5k_eap": "18:47",
+    "est_5k_raw": "19:33",
+    "est_5k_sea_level": "18:30",
+    "tested_date": "2026-11-07",
+    "paces": {
+      "E": {
+        "label": "Easy",
+        "base": "4:52–5:22",
+        "armidale": "5:02–5:33",
+        "hr": "≤150 bpm (Z1–Z2)"
+      },
+      "M": {
+        "label": "Marathon",
+        "base": "4:15",
+        "armidale": "4:24",
+        "hr": "152–158 bpm"
+      },
+      "T": {
+        "label": "Threshold",
+        "base": "4:01",
+        "armidale": "4:09",
+        "hr": "158–168 bpm (Z3)"
+      },
+      "CV": {
+        "label": "Critical Vel. / 10K",
+        "base": "3:54",
+        "armidale": "4:02",
+        "hr": "165–173 bpm"
+      },
+      "5K": {
+        "label": "5K Race",
+        "base": "3:45",
+        "armidale": "3:53",
+        "hr": "170–182 bpm (Z4)"
+      },
+      "I": {
+        "label": "VO2max",
+        "base": "3:40",
+        "armidale": "3:48",
+        "hr": "174–185 bpm"
+      },
+      "3K": {
+        "label": "3K",
+        "base": "3:35",
+        "armidale": "3:43",
+        "hr": "176–186 bpm"
+      },
+      "R": {
+        "label": "Repetition",
+        "base": "3:23",
+        "armidale": "3:30",
+        "hr": "Neuromuscular"
+      }
+    }
+  },
+  "summary": {
+    "block_km": 211.1,
+    "block_runs": 30,
+    "current_week_actual_km": 33.67,
+    "current_week_planned_km": 56,
+    "rolling_7d_km": 54.7,
+    "rolling_28d_avg_km": 36.3
+  },
+  "checkpoints": [
+    {
+      "date": "2026-11-07",
+      "label": "TT1 (5K)",
+      "a": "18:30",
+      "b": "19:15",
+      "result": "19:32.6 raw / 18:47.2 EAP acclim (VDOT 53.6)"
+    },
+    {
+      "date": "2026-12-12",
+      "label": "TT2 (5K)",
+      "a": "17:30",
+      "b": "18:15"
+    },
+    {
+      "date": "2027-01-30",
+      "label": "TT3 (10K / Stacked)",
+      "a": "Sub-36:30 EAP 10K",
+      "b": "Sub-38:00 EAP 10K"
+    },
+    {
+      "date": "2027-02-13",
+      "label": "Tarawera T21",
+      "a": "Controlled aerobic durability race",
+      "b": "Finish strong + 60g/h fueling"
+    },
+    {
+      "date": "2027-02-27",
+      "label": "Golden Ticket Sim",
+      "a": "Sat stack (1k+1k+3k+5k) + Sun 18k w/ 8k @ HM",
+      "b": "Dial pacing, cooling & 14h carb reload"
+    },
+    {
+      "date": "2027-03-14",
+      "label": "Golden Ticket",
+      "a": "Peak cumulative time (42.1 km weekend)",
+      "b": "Fast Sunday HM on intact legs"
+    },
+    {
+      "date": "2027-04-03",
+      "label": "5K Hitout",
+      "a": "Sub-16:30 (EAP) / PB attack",
+      "b": "Sub-17:00"
+    }
+  ],
+  "current_call": {
+    "date": "2026-11-20",
+    "verdict": "Adjusted",
+    "headline": "Rest Friday, Easy Parkrun Saturday, 14–15 km Long Run Sunday",
+    "summary": "After three consecutive high-output days (Tuesday's 5 × 1.6 km threshold breakthrough + gym, Wednesday Ultimate Frisbee, and Thursday HIIT) and 54.7 km over the rolling 7 days, Saturday's scheduled parkrun tempo + 200s is adjusted to an easy 8–10 km aerobic run (5:04–5:36/km watch, HR ≤150). That protects absorption and sets up Sunday's 14–15 km long run to finish Week 6 right on target (~56–58 km).",
+    "next_three_days": [
+      {
+        "date": "2026-11-20",
+        "day": "Fri 20 Nov",
+        "status": "As planned",
+        "title": "Rest (optional easy swim)",
+        "target": "No running; optional 20–30 min easy recovery swim"
+      },
+      {
+        "date": "2026-11-21",
+        "day": "Sat 21 Nov",
+        "status": "Adjusted",
+        "title": "Easy Aerobic Parkrun (8–10 km total)",
+        "target": "5:04–5:36/km watch · HR ≤150 (14–15 °C, NW 14 km/h, showers likely)"
+      },
+      {
+        "date": "2026-11-22",
+        "day": "Sun 22 Nov",
+        "status": "As planned",
+        "title": "Long Run (14–15 km) + Sauna",
+        "target": "5:04–5:36/km watch · HR ≤150 (14–19 °C, dry 0% rain, light WNW breeze)"
+      }
+    ]
+  },
+  "reports": [
+    {
+      "id": "2026-11-20-golden-ticket-pivot",
+      "date": "2026-11-20",
+      "week": 6,
+      "tag": "Plan Update",
+      "title": "Block realigned for the Armidale Running Festival Golden Ticket",
+      "summary": "Instead of peaking for a standalone 5 km in March, the target for 13–14 March 2027 is now the Armidale Running Festival Golden Ticket: every race across the weekend combined for cumulative time — three 1 km dashes, 3 km, 5 km, and 10 km on Saturday afternoon (21 km stacked), followed 14 hours later by Sunday morning's Half Marathon (21.1 km). Because the 10 km and Half Marathon represent ~75% of total elapsed time, Weeks 10–22 shift toward bigger threshold cruise sets (up to 2 × 5 km), 20–22 km long runs with marathon/HM finishes, back-to-back weekend simulations, heat-acclimation saunas for March afternoon warmth, and rehearsing overnight glycogen reload. Three weeks later (3 April 2027), the plan adds a sharp 5 km hitout to cash in the aerobic engine.",
+      "metrics": [
+        {
+          "label": "Race weekend",
+          "value": "13–14 Mar 2027"
+        },
+        {
+          "label": "Total race dist.",
+          "value": "42.1 km (7 races)"
+        },
+        {
+          "label": "Peak volume",
+          "value": "70–73 km/wk"
+        },
+        {
+          "label": "Follow-up 5K",
+          "value": "3 Apr 2027"
+        }
+      ],
+      "adaptation": "Weekend adjustment (20–22 Nov): Saturday parkrun downgraded from tempo + 200s to easy aerobic after stacking 3 hard sessions Tue–Thu (rolling 7-day volume 54.7 km), preserving Sunday's 14–15 km long run."
+    },
+    {
+      "id": "2026-11-17-threshold-miles",
+      "date": "2026-11-17",
+      "week": 6,
+      "tag": "Breakthrough",
+      "title": "5 × 1.6 km Threshold Miles: 3:51.6/km EAP at 160 bpm",
+      "summary": "Biggest aerobic jump of the block so far. Ten days after TT1 anchored threshold pace at 4:01/km EAP (4:09–4:10/km Armidale watch), 8.0 km of threshold miles with 60 s jog recoveries averaged 4:02.9/km watch — 3:51.6/km EAP v2.0 acclimatised — while keeping heart rate strictly inside Z3 (160 bpm average, 169 max). Reps 1–2 opened slightly hot (3:47–3:48/km EAP), settling smoothly into 3:52–3:56/km EAP across Reps 3–5.",
+      "metrics": [
+        {
+          "label": "Total / Work",
+          "value": "13.22 km / 7.98 km"
+        },
+        {
+          "label": "Work Watch",
+          "value": "4:02.9/km"
+        },
+        {
+          "label": "Work EAP v2.0",
+          "value": "3:51.6/km"
+        },
+        {
+          "label": "Work Avg HR",
+          "value": "160 bpm (max 169)"
+        },
+        {
+          "label": "Work Power",
+          "value": "457 W"
+        },
+        {
+          "label": "Conditions",
+          "value": "13.6 °C · DP 8.4 °C · 13 km/h"
+        }
+      ],
+      "splits": [
+        {
+          "rep": "Rep 1 (1.60 km)",
+          "time": "6:22",
+          "watch": "3:59.1/km",
+          "eap": "3:48.0/km",
+          "hr": "154 / 162",
+          "power": "482 W"
+        },
+        {
+          "rep": "Rep 2 (1.60 km)",
+          "time": "6:17",
+          "watch": "3:56.4/km",
+          "eap": "3:46.8/km",
+          "hr": "160 / 166",
+          "power": "456 W"
+        },
+        {
+          "rep": "Rep 3 (1.60 km)",
+          "time": "6:31",
+          "watch": "4:04.4/km",
+          "eap": "3:51.8/km",
+          "hr": "162 / 167",
+          "power": "449 W"
+        },
+        {
+          "rep": "Rep 4 (1.60 km)",
+          "time": "6:34",
+          "watch": "4:07.0/km",
+          "eap": "3:55.0/km",
+          "hr": "161 / 167",
+          "power": "446 W"
+        },
+        {
+          "rep": "Rep 5 (1.60 km)",
+          "time": "6:35",
+          "watch": "4:07.5/km",
+          "eap": "3:56.4/km",
+          "hr": "163 / 169",
+          "power": "452 W"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-15-week5-wrap-milk-km",
+      "date": "2026-11-15",
+      "week": 5,
+      "tag": "Long Run",
+      "title": "Week 5 closed at 47.1 km — plus biomechanics of the 'Milk Kilometer'",
+      "summary": "Wrapped Week 5 cleanly at 47.05 km against 48 km planned with a relaxed 8.44 km Sunday morning run (5:17.3/km watch → 4:48.9/km EAP v2.0, avg HR 131, 99.4% Z1–Z2). Fun data-nerd highlight: an 8:20 shop stop at 7.26 km turned the final 1.18 km (+27 m climb) home into a ~1.5 kg hand-carried milk run (~0.75 kg per hand). Wrist running dynamics caught it immediately — cadence rose +3.5 spm (to 173 spm at the finish), step length shortened −7.4 cm, and vertical oscillation flattened by −4.6 mm to stop the milk sloshing. Unloaded EAP on that final climb was 4:27.4/km (~4:14–4:18/km effort-equivalent accounting for distal hand load and restricted arm swing).",
+      "metrics": [
+        {
+          "label": "Distance",
+          "value": "8.44 km"
+        },
+        {
+          "label": "Watch Pace",
+          "value": "5:17.3/km"
+        },
+        {
+          "label": "EAP v2.0",
+          "value": "4:48.9/km"
+        },
+        {
+          "label": "Avg HR",
+          "value": "131 bpm (max 149)"
+        },
+        {
+          "label": "Week 5 Total",
+          "value": "47.05 / 48.0 km"
+        },
+        {
+          "label": "Conditions",
+          "value": "21.8 °C · DP 15.5 °C · 17 km/h"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-14-parkrun-tempo",
+      "date": "2026-11-14",
+      "week": 5,
+      "tag": "Tempo",
+      "title": "Textbook controlled Parkrun tempo inside 12.58 km total",
+      "summary": "Ran 3.84 km warm-up to Armidale parkrun, executed a disciplined 4.98 km threshold tempo in 21:17.5 (4:16.3/km watch → 3:54.1/km EAP v2.0 acclimatised, 162 bpm avg HR, 444 W), and jogged 3.75 km back. Every single kilometre of the 5 km negative-split in EAP effort (3:57.8 → 3:57.0 → 3:54.0 → 3:51.6 → 3:50.1/km) without ever racing the clock.",
+      "metrics": [
+        {
+          "label": "Total / Tempo",
+          "value": "12.58 km / 4.98 km"
+        },
+        {
+          "label": "Tempo Watch",
+          "value": "21:17.5 (4:16.3/km)"
+        },
+        {
+          "label": "Tempo EAP v2.0",
+          "value": "3:54.1/km (19:31 eq.)"
+        },
+        {
+          "label": "Tempo Avg HR",
+          "value": "162 bpm"
+        },
+        {
+          "label": "Tempo Power",
+          "value": "444 W"
+        },
+        {
+          "label": "Conditions",
+          "value": "18.5 °C · DP 16.2 °C · 17 km/h"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-10-3x10-threshold",
+      "date": "2026-11-10",
+      "week": 5,
+      "tag": "Threshold",
+      "title": "3 × 10 min @ Threshold: 7.0 km work at 4:09/km EAP",
+      "summary": "First Week 5 quality session following TT1: 10.93 km total with 30 minutes (7.00 km) of threshold cruising at 4:17.3/km watch → 4:09.1/km EAP v2.0, holding 166 bpm avg HR and 438 W before an afternoon gym session.",
+      "metrics": [
+        {
+          "label": "Total / Work",
+          "value": "10.93 km / 7.00 km"
+        },
+        {
+          "label": "Work Watch",
+          "value": "4:17.3/km"
+        },
+        {
+          "label": "Work EAP v2.0",
+          "value": "4:09.1/km"
+        },
+        {
+          "label": "Work Avg HR",
+          "value": "166 bpm"
+        },
+        {
+          "label": "Work Power",
+          "value": "438 W"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-07-tt1-5k",
+      "date": "2026-11-07",
+      "week": 4,
+      "tag": "Time Trial",
+      "title": "TT1 (5 km Checkpoint): 19:32.6 raw → 18:47.2 EAP (VDOT 53.6)",
+      "summary": "First benchmark time trial of the block at Armidale parkrun (~990 m altitude, hilly out-and-back). Clocked 19:32.6 raw (3:54.4/km) at 171 bpm average HR (183 max) and 478 W. Environment Adjusted Pace put the effort at 18:47.2 acclimatised (3:45.4/km) and 18:29.9 sea-level equivalent (3:42.0/km), lifting block VDOT from the 51.3 starting estimate to 53.6.",
+      "metrics": [
+        {
+          "label": "Raw 5 km",
+          "value": "19:32.6 (3:54.4/km)"
+        },
+        {
+          "label": "EAP Acclim",
+          "value": "18:47.2 (3:45.4/km)"
+        },
+        {
+          "label": "EAP Sea-Level",
+          "value": "18:29.9 (3:42.0/km)"
+        },
+        {
+          "label": "Avg / Max HR",
+          "value": "171 / 183 bpm"
+        },
+        {
+          "label": "Avg Power",
+          "value": "478 W"
+        },
+        {
+          "label": "VDOT Update",
+          "value": "51.3 → 53.6"
+        }
+      ]
+    }
+  ],
+  "race_weekend": {
+    "event": "Armidale Running Festival — Golden Ticket",
+    "dates": "13–14 March 2027",
+    "location": "Civic Park, Armidale NSW (~990 m)",
+    "total_km": 42.1,
+    "format": "Cumulative combined finishing time across all 7 weekend races",
+    "races": [
+      {
+        "day": "Sat ~12:00–1:30 pm",
+        "event": "1 km × 3",
+        "km": 3.0,
+        "clock_pct": 6.5,
+        "effort": "Controlled 5K (~93–95%)",
+        "note": "Zero redline. Stay aerobic; save legs and glycogen for the afternoon."
+      },
+      {
+        "day": "Sat ~2:15 pm",
+        "event": "3 km",
+        "km": 3.0,
+        "clock_pct": 6.5,
+        "effort": "5K to CV rhythm",
+        "note": "Smooth cruise; 3–5 min flush jog, shade, ice towel, 30–40 g carbs right after."
+      },
+      {
+        "day": "Sat ~3:00 pm",
+        "event": "5 km",
+        "km": 5.0,
+        "clock_pct": 11.5,
+        "effort": "CV / 10K effort",
+        "note": "~35 min turnaround from 3 km. Even pacing, zero sprint finish."
+      },
+      {
+        "day": "Sat ~4:00 pm",
+        "event": "10 km",
+        "km": 10.0,
+        "clock_pct": 24.0,
+        "effort": "Disciplined T / HM+",
+        "note": "Late-afternoon warmth + 11 km already in legs. Protect quads; immediate 4 h carb reload at finish."
+      },
+      {
+        "day": "Sun ~7:00 am",
+        "event": "Half Marathon",
+        "km": 21.1,
+        "clock_pct": 51.5,
+        "effort": "Goal HM (negative split)",
+        "note": "Half the entire scoreboard on 14 h turnaround. Conservative km 1–5, fuel 60–80 g/h carbs, hunt late."
+      }
+    ]
+  },
+  "weeks": [
+    {
+      "week": 1,
+      "start": "2026-10-12",
+      "phase": "reentry",
+      "planned_km": 33,
+      "optional_km": 0,
+      "actual_km": 51.33,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-10-12",
+          "dow": 0,
+          "type": "rest",
+          "title": "Rest day.",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "Rest day.",
+          "extras": [],
+          "actual_km": 4.23,
+          "actual_runs": [
+            {
+              "km": 4.23,
+              "duration_min": 22.4,
+              "pace": "5:18/km",
+              "avg_hr": 144,
+              "elev_m": 80,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-13",
+          "dow": 1,
+          "type": "key",
+          "title": "Easy + strides",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6 km easy @ {E}, then 6 × 20 s strides (quick, relaxed, full walk-back recovery).",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 7.56,
+          "actual_runs": [
+            {
+              "km": 7.56,
+              "duration_min": 39.7,
+              "pace": "5:15/km",
+              "avg_hr": 149,
+              "elev_m": 0,
+              "surface": "Treadmill"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-14",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy).",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 10–15 min after the run (start short given the recent workup). Hydrate with ~500 ml + salt; sit up slowly; not alone."
+            }
+          ],
+          "actual_km": 6.73,
+          "actual_runs": [
+            {
+              "km": 6.73,
+              "duration_min": 37.0,
+              "pace": "5:30/km",
+              "avg_hr": 131,
+              "elev_m": 53,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-15",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~6 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 7.24,
+          "actual_runs": [
+            {
+              "km": 7.24,
+              "duration_min": 40.7,
+              "pace": "5:38/km",
+              "avg_hr": 138,
+              "elev_m": 151,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-16",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-10-17",
+          "dow": 5,
+          "type": "steady",
+          "title": "parkrun steady",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "Relaxed parkrun, HR at or under Z2 (≤153). Ride there; 1 km jog after.",
+          "extras": [],
+          "actual_km": 6.04,
+          "actual_runs": [
+            {
+              "km": 1.02,
+              "duration_min": 5.9,
+              "pace": "5:46/km",
+              "avg_hr": 138,
+              "elev_m": 6,
+              "surface": "Road"
+            },
+            {
+              "km": 5.02,
+              "duration_min": 21.4,
+              "pace": "4:16/km",
+              "avg_hr": 159,
+              "elev_m": 42,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-18",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "8 km easy @ {E}. Trails or soft surfaces are fine.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 10–15 min after the run (start short given the recent workup). Hydrate with ~500 ml + salt; sit up slowly; not alone."
+            }
+          ],
+          "actual_km": 19.53,
+          "actual_runs": [
+            {
+              "km": 19.53,
+              "duration_min": 120.6,
+              "pace": "6:11/km",
+              "avg_hr": 137,
+              "elev_m": 498,
+              "surface": "Trail"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "week": 2,
+      "start": "2026-10-19",
+      "phase": "reentry",
+      "planned_km": 38,
+      "optional_km": 0,
+      "actual_km": 19.39,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-10-19",
+          "dow": 0,
+          "type": "rest",
+          "title": "Rest day",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Mobility 10 min if you like.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-10-20",
+          "dow": 1,
+          "type": "key",
+          "title": "Fartlek",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "2 km easy, 8 × 1 min @ {CV} with 1 min easy jog, 2 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 7.51,
+          "actual_runs": [
+            {
+              "km": 7.51,
+              "duration_min": 36.1,
+              "pace": "4:48/km",
+              "avg_hr": 150,
+              "elev_m": 118,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-21",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy).",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 10–15 min after the run (start short given the recent workup). Hydrate with ~500 ml + salt; sit up slowly; not alone."
+            }
+          ],
+          "actual_km": 6.85,
+          "actual_runs": [
+            {
+              "km": 6.85,
+              "duration_min": 37.4,
+              "pace": "5:28/km",
+              "avg_hr": 133,
+              "elev_m": 28,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-22",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-10-23",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest day.",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "Rest day.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-10-24",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun progression",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "1 km jog there. First 2 km easy, then quicker each km; last km around {T}. 1 km jog after.",
+          "extras": [],
+          "actual_km": 5.03,
+          "actual_runs": [
+            {
+              "km": 5.03,
+              "duration_min": 25.5,
+              "pace": "5:04/km",
+              "avg_hr": 129,
+              "elev_m": 42,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-25",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "10 km easy @ {E}. Trails or soft surfaces are fine.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 10–15 min after the run (start short given the recent workup). Hydrate with ~500 ml + salt; sit up slowly; not alone."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 3,
+      "start": "2026-10-26",
+      "phase": "reentry",
+      "planned_km": 44,
+      "optional_km": 5,
+      "actual_km": 36.19,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-10-26",
+          "dow": 0,
+          "type": "rest",
+          "title": "Rest day",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Mobility 10 min if you like.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-10-27",
+          "dow": 1,
+          "type": "key",
+          "title": "Threshold intro",
+          "planned_km": 9,
+          "optional_km": 0,
+          "detail": "2 km warm-up, 4 × 6 min @ {T} (2 min jog), 2 km cool-down. Controlled: HR should sit in Z3 (154–168), not Z4.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 10.87,
+          "actual_runs": [
+            {
+              "km": 10.2,
+              "duration_min": 48.5,
+              "pace": "4:46/km",
+              "avg_hr": 144,
+              "elev_m": 0,
+              "surface": "Treadmill"
+            },
+            {
+              "km": 0.67,
+              "duration_min": 3.2,
+              "pace": "4:45/km",
+              "avg_hr": 115,
+              "elev_m": 0,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-28",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy). Optional +5 km from 5:30 if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 15–20 min after the run. Hydrate with ~500 ml + salt."
+            }
+          ],
+          "actual_km": 7.4,
+          "actual_runs": [
+            {
+              "km": 7.4,
+              "duration_min": 37.9,
+              "pace": "5:07/km",
+              "avg_hr": 132,
+              "elev_m": 91,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-29",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-10-30",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 8.37,
+          "actual_runs": [
+            {
+              "km": 8.37,
+              "duration_min": 45.5,
+              "pace": "5:26/km",
+              "avg_hr": 131,
+              "elev_m": 41,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-31",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun tempo",
+          "planned_km": 9,
+          "optional_km": 0,
+          "detail": "2 km jog there + strides. 5 km controlled @ {T}: threshold, not a race. 2 km jog home.",
+          "extras": [],
+          "actual_km": 9.55,
+          "actual_runs": [
+            {
+              "km": 9.55,
+              "duration_min": 46.3,
+              "pace": "4:51/km",
+              "avg_hr": 151,
+              "elev_m": 96,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-01",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "12 km easy @ {E}. Trails or soft surfaces are fine.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 15–20 min after the run. Hydrate with ~500 ml + salt."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 4,
+      "start": "2026-11-02",
+      "phase": "base",
+      "planned_km": 40,
+      "optional_km": 5,
+      "actual_km": 23.46,
+      "down": true,
+      "mark": "TT",
+      "days": [
+        {
+          "date": "2026-11-02",
+          "dow": 0,
+          "type": "rest",
+          "title": "Rest day",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Mobility 10 min if you like.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-03",
+          "dow": 1,
+          "type": "key",
+          "title": "Threshold kms",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "2 km warm-up, 5 × 1 km @ {T} (60 s jog), 1.5 km cool-down. Keep it smooth; TT is Saturday.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 9.17,
+          "actual_runs": [
+            {
+              "km": 9.17,
+              "duration_min": 46.5,
+              "pace": "5:04/km",
+              "avg_hr": 149,
+              "elev_m": 98,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-04",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy). Optional +5 km from 5:30 if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 7.75,
+          "actual_runs": [
+            {
+              "km": 7.75,
+              "duration_min": 41.1,
+              "pace": "5:18/km",
+              "avg_hr": 126,
+              "elev_m": 106,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-05",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-06",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-07",
+          "dow": 5,
+          "type": "tt",
+          "title": "TT1: 5 km time trial",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "All-out 5 km. 2.5 km warm-up incl. 4 strides; 2.5 km cool-down. Optional caffeine ~230 mg (3 mg/kg) 60 min before.",
+          "extras": [],
+          "actual_km": 6.54,
+          "actual_runs": [
+            {
+              "km": 5.0,
+              "duration_min": 19.5,
+              "pace": "3:54/km",
+              "avg_hr": 171,
+              "elev_m": 45,
+              "surface": "Road"
+            },
+            {
+              "km": 1.54,
+              "duration_min": 8.3,
+              "pace": "5:23/km",
+              "avg_hr": 124,
+              "elev_m": 9,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-08",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "8 km easy @ {E}. Trails or soft surfaces are fine.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 5,
+      "start": "2026-11-09",
+      "phase": "base",
+      "planned_km": 48,
+      "optional_km": 11,
+      "actual_km": 47.05,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-11-09",
+          "dow": 0,
+          "type": "rest",
+          "title": "Rest day",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Mobility 10 min if you like.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-10",
+          "dow": 1,
+          "type": "key",
+          "title": "Threshold blocks",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "2 km warm-up, 3 × 10 min @ {T} (2 min jog), 2 km cool-down.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 10.93,
+          "actual_runs": [
+            {
+              "km": 10.93,
+              "duration_min": 51.6,
+              "pace": "4:43/km",
+              "avg_hr": 156,
+              "elev_m": 49,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-11",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy). Optional +5 km from 5:30 if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 7.98,
+          "actual_runs": [
+            {
+              "km": 0.68,
+              "duration_min": 3.2,
+              "pace": "4:41/km",
+              "avg_hr": 134,
+              "elev_m": 0,
+              "surface": "Road"
+            },
+            {
+              "km": 7.3,
+              "duration_min": 38.7,
+              "pace": "5:18/km",
+              "avg_hr": 124,
+              "elev_m": 86,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-12",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 7.12,
+          "actual_runs": [
+            {
+              "km": 7.12,
+              "duration_min": 40.7,
+              "pace": "5:43/km",
+              "avg_hr": 137,
+              "elev_m": 93,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-13",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-14",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun tempo",
+          "planned_km": 10,
+          "optional_km": 6,
+          "detail": "2.5 km jog there. 5 km @ {T}. 2.5 km jog home. Optional 5:45 social +6 km first, if feeling fresh.",
+          "extras": [],
+          "actual_km": 12.58,
+          "actual_runs": [
+            {
+              "km": 12.58,
+              "duration_min": 60.0,
+              "pace": "4:46/km",
+              "avg_hr": 147,
+              "elev_m": 84,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-15",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 14,
+          "optional_km": 0,
+          "detail": "14 km easy @ {E}. Trails or soft surfaces are fine.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 8.44,
+          "actual_runs": [
+            {
+              "km": 8.44,
+              "duration_min": 44.5,
+              "pace": "5:17/km",
+              "avg_hr": 131,
+              "elev_m": 90,
+              "surface": "Road"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "week": 6,
+      "start": "2026-11-16",
+      "phase": "base",
+      "planned_km": 56,
+      "optional_km": 11,
+      "actual_km": 33.67,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-11-16",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6 km easy @ {E}.",
+          "extras": [],
+          "actual_km": 6.02,
+          "actual_runs": [
+            {
+              "km": 6.02,
+              "duration_min": 32.7,
+              "pace": "5:26/km",
+              "avg_hr": 131,
+              "elev_m": 111,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-17",
+          "dow": 1,
+          "type": "key",
+          "title": "Threshold miles",
+          "planned_km": 11,
+          "optional_km": 0,
+          "detail": "2 km warm-up, 5 × 1.6 km @ {T} (60 s jog), 1.5 km cool-down.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 13.23,
+          "actual_runs": [
+            {
+              "km": 13.23,
+              "duration_min": 61.9,
+              "pace": "4:41/km",
+              "avg_hr": 147,
+              "elev_m": 69,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-18",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy). Optional +5 km from 5:30 if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 7.71,
+          "actual_runs": [
+            {
+              "km": 0.69,
+              "duration_min": 2.8,
+              "pace": "4:03/km",
+              "avg_hr": 137,
+              "elev_m": 0,
+              "surface": "Road"
+            },
+            {
+              "km": 7.02,
+              "duration_min": 36.9,
+              "pace": "5:15/km",
+              "avg_hr": 121,
+              "elev_m": 54,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-19",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 6.71,
+          "actual_runs": [
+            {
+              "km": 6.71,
+              "duration_min": 39.7,
+              "pace": "5:55/km",
+              "avg_hr": 127,
+              "elev_m": 98,
+              "surface": "Road"
+            }
+          ]
+        },
+        {
+          "date": "2026-11-20",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-21",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun tempo + 200s",
+          "planned_km": 10,
+          "optional_km": 6,
+          "detail": "2.5 km jog there. 5 km @ {T}, then 4 × 200 m @ {R} (200 m jog). Jog home. Optional 5:45 social +6 km first, if feeling fresh.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-22",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 15,
+          "optional_km": 0,
+          "detail": "15 km easy @ {E}. Trails or soft surfaces are fine.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 7,
+      "start": "2026-11-23",
+      "phase": "base",
+      "planned_km": 58,
+      "optional_km": 11,
+      "actual_km": 0,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-11-23",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6 km easy @ {E}.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-24",
+          "dow": 1,
+          "type": "key",
+          "title": "Norwegian kms",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "2 km warm-up, 10 × 1 km @ {T} (60 s jog), 1.5 km cool-down. Same pace every rep; finish feeling you had 2–3 more.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-25",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy). Optional +5 km from 5:30 if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-26",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-27",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-28",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun split",
+          "planned_km": 10,
+          "optional_km": 6,
+          "detail": "2.5 km jog there. First 3 km @ {T}, last 2 km @ {CV}. Jog home. Optional 5:45 social +6 km first, if feeling fresh.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-11-29",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 16,
+          "optional_km": 0,
+          "detail": "16 km easy @ {E}. Trails or soft surfaces are fine.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 8,
+      "start": "2026-11-30",
+      "phase": "base",
+      "planned_km": 43,
+      "optional_km": 5,
+      "actual_km": 0,
+      "down": true,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-11-30",
+          "dow": 0,
+          "type": "rest",
+          "title": "Rest day",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Mobility 10 min if you like.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-01",
+          "dow": 1,
+          "type": "key",
+          "title": "VO2 intro",
+          "planned_km": 9,
+          "optional_km": 0,
+          "detail": "2 km warm-up + 4 strides, 6 × 800 m @ {I} (2 min jog), 2 km cool-down.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-02",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy). Optional +5 km from 5:30 if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-03",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-04",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-05",
+          "dow": 5,
+          "type": "steady",
+          "title": "parkrun progression",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "Lighter week. 1.5 km jog there; start easy, finish the last km at {T}. Jog home.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-06",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "12 km easy @ {E}. Trails or soft surfaces are fine.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 9,
+      "start": "2026-12-07",
+      "phase": "base",
+      "planned_km": 54,
+      "optional_km": 5,
+      "actual_km": 0,
+      "down": false,
+      "mark": "TT",
+      "days": [
+        {
+          "date": "2026-12-07",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6 km easy @ {E}.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-08",
+          "dow": 1,
+          "type": "key",
+          "title": "Threshold 2 km reps",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "2 km warm-up, 4 × 2 km @ {T} (90 s jog), 2 km cool-down.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-09",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy). Optional +5 km from 5:30 if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-10",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-11",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-12",
+          "dow": 5,
+          "type": "tt",
+          "title": "TT2: 5 km time trial",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "All-out 5 km. 2.5 km warm-up incl. strides; 2.5 km cool-down. Caffeine optional; try beetroot juice (~6–8 mmol nitrate, 2–3 h before) here if you want to test it.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-13",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "12 km easy @ {E}. Trails or soft surfaces are fine.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 10,
+      "start": "2026-12-14",
+      "phase": "dev",
+      "planned_km": 62,
+      "optional_km": 10,
+      "actual_km": 0,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-12-14",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "7 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-15",
+          "dow": 1,
+          "type": "key",
+          "title": "Threshold 2.5 km reps",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 3 × 2.5 km @ {T} (90 s jog), 2 km cool-down. Smooth, controlled Z3 effort.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-16",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy. Optional +5 km from 5:30 if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-17",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-18",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-19",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun + 2 × 1 km stack",
+          "planned_km": 11,
+          "optional_km": 5,
+          "detail": "2 km jog there. 5 km parkrun @ {T}, 5 min easy jog + sip carb drink, then 2 × 1 km @ {CV}/{5K} (2 min jog). Jog home. First mini-taste of Saturday Golden Ticket turnaround.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-20",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run (MP finish)",
+          "planned_km": 18,
+          "optional_km": 0,
+          "detail": "18 km: 15 km easy @ {E}, last 3 km smooth @ {M}. Practice 1–2 gels (45–60 g/h carbs).",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 11,
+      "start": "2026-12-21",
+      "phase": "dev",
+      "planned_km": 60,
+      "optional_km": 10,
+      "actual_km": 0,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-12-21",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "7 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-22",
+          "dow": 1,
+          "type": "key",
+          "title": "Repeatable 1 km sets",
+          "planned_km": 11,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 2 sets of 3 × 1 km @ {CV}/{5K} (90 s jog), 4 min easy walk/jog between sets, 2 km cool-down. Trains Saturday's 3 × 1 km lactate clearance without redlining.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-23",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy. Optional +5 km from 5:30 if fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-24",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "Christmas Eve. 12:30 social if on, otherwise 7 km easy anytime.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-25",
+          "dow": 4,
+          "type": "rest",
+          "title": "Christmas Day: rest",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "Christmas Day. Rest (or easy social jog if Christmas parkrun is on).",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-26",
+          "dow": 5,
+          "type": "key",
+          "title": "Boxing Day parkrun 2-1-2",
+          "planned_km": 10,
+          "optional_km": 5,
+          "detail": "Jog there. 2 km @ {T}, 1 km easy, 2 km @ {CV}. Jog home.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-27",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 18,
+          "optional_km": 0,
+          "detail": "18 km easy @ {E} on trails or rolling roads. Take 1–2 gels to keep gut trained.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 12,
+      "start": "2026-12-28",
+      "phase": "dev",
+      "planned_km": 48,
+      "optional_km": 5,
+      "actual_km": 0,
+      "down": true,
+      "mark": null,
+      "days": [
+        {
+          "date": "2026-12-28",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-29",
+          "dow": 1,
+          "type": "key",
+          "title": "VO2 ceiling touch",
+          "planned_km": 9,
+          "optional_km": 0,
+          "detail": "2 km warm-up, 5 × 3 min @ {I} (2 min jog), 2 km cool-down. Keeps VO2max sharp during down week.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-30",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2026-12-31",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-01",
+          "dow": 4,
+          "type": "rest",
+          "title": "New Year's Day: rest",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "New Year's Day. Rest or easy swim/walk.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-02",
+          "dow": 5,
+          "type": "steady",
+          "title": "parkrun steady",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "Lighter week. Relaxed parkrun with the last km @ {T}. Short jog either side.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-03",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "12 km easy @ {E}. Absorb December's base work.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 13,
+      "start": "2027-01-04",
+      "phase": "dev",
+      "planned_km": 70,
+      "optional_km": 10,
+      "actual_km": 0,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2027-01-04",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "8 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-05",
+          "dow": 1,
+          "type": "key",
+          "title": "Threshold 3 km reps",
+          "planned_km": 14,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 3 × 3 km @ {T} (2 min jog), 2 km cool-down. 9 km of controlled Z3 threshold — core engine for 10K + HM.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-06",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy. Optional +5 km from 5:30 if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-07",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-08",
+          "dow": 4,
+          "type": "easy",
+          "title": "Easy shakeout (or rest)",
+          "planned_km": 4,
+          "optional_km": 0,
+          "detail": "4 km very easy @ {E} + 4 strides. Skip and rest/swim if legs feel heavy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-09",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun progressive",
+          "planned_km": 10,
+          "optional_km": 5,
+          "detail": "Jog there. 3 km @ {T}, last 2 km @ {CV}. Jog home.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-10",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run (MP finish)",
+          "planned_km": 20,
+          "optional_km": 0,
+          "detail": "20 km: 16 km easy @ {E}, last 4 km smooth @ {M}. Fuel 60 g/h carbs.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 14,
+      "start": "2027-01-11",
+      "phase": "dev",
+      "planned_km": 71,
+      "optional_km": 5,
+      "actual_km": 0,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2027-01-11",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "8 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-12",
+          "dow": 1,
+          "type": "key",
+          "title": "VO2 kms (short rest)",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 6 × 1 km @ {I}/{5K} (90 s jog), 2 km cool-down. Controlled, repeatable.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-13",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy. Optional +5 km from 5:30 if fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-14",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-15",
+          "dow": 4,
+          "type": "easy",
+          "title": "Easy shakeout (or rest)",
+          "planned_km": 4,
+          "optional_km": 0,
+          "detail": "4 km very easy @ {E} or rest/swim ahead of back-to-back weekend.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-16",
+          "dow": 5,
+          "type": "key",
+          "title": "Golden Ticket stack #1",
+          "planned_km": 13,
+          "optional_km": 0,
+          "detail": "2 km jog there. 5 km parkrun @ {T}, 10 min active jog + 30 g carb gel/drink, then 3 × 1 km @ {CV}/{5K} (90 s jog). Jog home. Carb-rich dinner tonight!",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-17",
+          "dow": 6,
+          "type": "long",
+          "title": "Tired-legs trail long run",
+          "planned_km": 20,
+          "optional_km": 0,
+          "detail": "20 km easy @ {E} on hilly trails (controlled descents). Builds quad durability for both Tarawera and Sunday's Half Marathon. Fuel 60 g/h.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 15,
+      "start": "2027-01-18",
+      "phase": "dev",
+      "planned_km": 73,
+      "optional_km": 5,
+      "actual_km": 0,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2027-01-18",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "8 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-19",
+          "dow": 1,
+          "type": "key",
+          "title": "2 × 5 km threshold cruise",
+          "planned_km": 15,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 2 × 5 km @ {T} (3 min easy jog), 2 km cool-down. 10 km threshold volume; keep HR capped in Z3 (≤168).",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-20",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy. Optional +5 km only if fully recovered.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-21",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-22",
+          "dow": 4,
+          "type": "easy",
+          "title": "Easy shakeout (or rest)",
+          "planned_km": 4,
+          "optional_km": 0,
+          "detail": "4 km very easy @ {E} or full rest.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-23",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun tempo + 400s",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "Jog there. 5 km @ {T}, then 4 × 400 m @ {3K}/{R} (200 m jog). Jog home.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-24",
+          "dow": 6,
+          "type": "long",
+          "title": "Peak long run (HM/M finish)",
+          "planned_km": 22,
+          "optional_km": 0,
+          "detail": "22 km: 16 km easy @ {E}, final 6 km @ {M} to steady HM effort on tired legs. Practice 60–75 g/h carbs & hydration.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 16,
+      "start": "2027-01-25",
+      "phase": "dev",
+      "planned_km": 54,
+      "optional_km": 0,
+      "actual_km": 0,
+      "down": true,
+      "mark": "TT3",
+      "days": [
+        {
+          "date": "2027-01-25",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-26",
+          "dow": 1,
+          "type": "key",
+          "title": "Australia Day speed 400s",
+          "planned_km": 9,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 8 × 400 m @ {R} (400 m jog), 2 km cool-down. Crisp leg speed, low aerobic drain.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (maintenance): trap-bar deadlift or squat 3 × 4 (~80% 1RM), split squat 2 × 5/leg, calf raises."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-27",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-28",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~6 km easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-29",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Hydrate and carb-top before Saturday checkpoint.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-30",
+          "dow": 5,
+          "type": "tt",
+          "title": "TT3: 10 km checkpoint",
+          "planned_km": 14,
+          "optional_km": 0,
+          "detail": "2 km warm-up + strides, 10 km strong time trial (or 5 km parkrun + 5 km loop @ 10K effort) to re-anchor VDOT for Golden Ticket pacing. 2 km cool-down.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-01-31",
+          "dow": 6,
+          "type": "long",
+          "title": "Easy recovery long run",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "12 km very easy @ {E} on soft surfaces.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 17,
+      "start": "2027-02-01",
+      "phase": "specific",
+      "planned_km": 69,
+      "optional_km": 5,
+      "actual_km": 0,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2027-02-01",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "8 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-02",
+          "dow": 1,
+          "type": "key",
+          "title": "Threshold miles",
+          "planned_km": 13,
+          "optional_km": 0,
+          "detail": "2 km warm-up, 5 × 1.6 km @ {T} (60 s jog), 2 km cool-down. Compare EAP & HR against Nov 17 benchmark!",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (maintenance): trap-bar deadlift or squat 3 × 4 (~80% 1RM), split squat 2 × 5/leg, calf raises."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-03",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 5,
+          "detail": "6:00 am social, ~7 km easy. Optional +5 km if feeling fresh.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-04",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-05",
+          "dow": 4,
+          "type": "easy",
+          "title": "Easy shakeout (or rest)",
+          "planned_km": 4,
+          "optional_km": 0,
+          "detail": "4 km easy @ {E} or rest/swim.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-06",
+          "dow": 5,
+          "type": "key",
+          "title": "Golden Ticket stack #2",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "2 km warm-up. 2 × 1 km @ controlled {5K} (3 min jog), 10 min break + 30 g carb drink + cool down, then 5 km parkrun @ {T}/{CV}. 2 km cool-down. Practice Saturday night carb reload!",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-07",
+          "dow": 6,
+          "type": "long",
+          "title": "Tired-legs trail + HM finish",
+          "planned_km": 18,
+          "optional_km": 0,
+          "detail": "18 km: 14 km easy on trails (~300 m climb for Tarawera), final 4 km smooth @ {M}/HM effort on the flat. Fuel 60 g/h.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 18,
+      "start": "2027-02-08",
+      "phase": "specific",
+      "planned_km": 61,
+      "optional_km": 0,
+      "actual_km": 0,
+      "down": false,
+      "mark": "T21",
+      "days": [
+        {
+          "date": "2027-02-08",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "8 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-09",
+          "dow": 1,
+          "type": "key",
+          "title": "Controlled 1k touch (race wk)",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 4 × 1 km @ {T}/{CV} (90 s jog), 2 km cool-down. Sharp, not draining: Tarawera is Saturday.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (maintenance): trap-bar deadlift or squat 3 × 4 (~80% 1RM), split squat 2 × 5/leg, calf raises."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-10",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-11",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-12",
+          "dow": 4,
+          "type": "easy",
+          "title": "Shakeout in Rotorua",
+          "planned_km": 4,
+          "optional_km": 0,
+          "detail": "Travel day. 4 km very easy @ {E} + 4 relaxed strides. Carb-up dinner (~8 g/kg carbs).",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-13",
+          "dow": 5,
+          "type": "race",
+          "title": "Tarawera T21: durability race",
+          "planned_km": 25,
+          "optional_km": 0,
+          "detail": "Tarawera T21, Rotorua (~23 km, ~400 m climb). Run as a strong controlled training race: first half steady ({M} effort on flat, Z3 climbs), protect quads on descents, strong {T} finish from 15 km if feeling great. Rehearse 60 g/h carbs & hydration. 2 km easy warm-up.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-14",
+          "dow": 6,
+          "type": "rest",
+          "title": "Rotorua: recovery day",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "Day after Tarawera. Rest, easy walk or lake dip. High-carb + ~30 g protein meals.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 19,
+      "start": "2027-02-15",
+      "phase": "specific",
+      "planned_km": 48,
+      "optional_km": 0,
+      "actual_km": 0,
+      "down": true,
+      "mark": null,
+      "days": [
+        {
+          "date": "2027-02-15",
+          "dow": 0,
+          "type": "rest",
+          "title": "Rest: travel home",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "Two days after Tarawera. No running; walk around airport, 10 min mobility.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-16",
+          "dow": 1,
+          "type": "easy",
+          "title": "Easy + strides (post-T21)",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "8 km easy @ {E} + 6 × 20 s strides only if quads have settled (otherwise 5–6 km easy).",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (maintenance): trap-bar deadlift or squat 3 × 4 (~80% 1RM), split squat 2 × 5/leg, calf raises."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-17",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social + heat sauna",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~7 km easy. Begin 3-week heat-acclimation sauna block for March afternoon races.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Heat-acclimation sauna: 25–30 min post-run (builds plasma volume & heat tolerance for Saturday afternoon Golden Ticket races). Rehydrate 750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-18",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~7 km easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-19",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional 20–30 min easy swim.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-20",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun 4 + 1 (return to T)",
+          "planned_km": 11,
+          "optional_km": 0,
+          "detail": "First quality since Tarawera. Jog there. 4 km @ {T}, last 1 km @ {5K} (or all @ {T} if legs still feel Rotorua). Jog home.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Heat-acclimation sauna: 25–30 min post-run (builds plasma volume & heat tolerance for Saturday afternoon Golden Ticket races). Rehydrate 750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-21",
+          "dow": 6,
+          "type": "long",
+          "title": "Long run + heat sauna",
+          "planned_km": 15,
+          "optional_km": 0,
+          "detail": "15 km easy @ {E}. Trails or soft surfaces.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Heat-acclimation sauna: 25–30 min post-run (builds plasma volume & heat tolerance for Saturday afternoon Golden Ticket races). Rehydrate 750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 20,
+      "start": "2027-02-22",
+      "phase": "specific",
+      "planned_km": 64,
+      "optional_km": 0,
+      "actual_km": 0,
+      "down": false,
+      "mark": "SIM",
+      "days": [
+        {
+          "date": "2027-02-22",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "7 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-23",
+          "dow": 1,
+          "type": "key",
+          "title": "Threshold + 3K pop",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 3 × 2 km @ {T} (90 s jog) + 3 × 400 m @ {3K} (90 s jog), 2 km cool-down. Last heavy gym lift PM.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (maintenance): trap-bar deadlift or squat 3 × 4 (~80% 1RM), split squat 2 × 5/leg, calf raises."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-24",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social + heat sauna",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Heat-acclimation sauna: 25–30 min post-run (builds plasma volume & heat tolerance for Saturday afternoon Golden Ticket races). Rehydrate 750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-25",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~6 km easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-26",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (pre-simulation)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "Full rest. Hydrate & eat normal-high carbs ahead of Golden Ticket dress rehearsal.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-27",
+          "dow": 5,
+          "type": "tt",
+          "title": "GOLDEN TICKET SIM — DAY 1",
+          "planned_km": 14,
+          "optional_km": 0,
+          "detail": "Full dress rehearsal (ideal in midday/afternoon warmth if schedule allows!): 2 km WU → 2 × 1 km @ controlled {5K} (5 min easy) → 15 min break (30 g carb drink + cold towel) → 3 km @ {CV} → 20 min break (30 g carb gel/drink + legs up) → 5 km @ {T}/HM+. 1 km CD. IMMEDIATELY execute the 14 h overnight turnaround: 300–350 g low-fibre carbs + 35 g protein + heavy electrolytes between finish and bedtime!",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-02-28",
+          "dow": 6,
+          "type": "long",
+          "title": "GOLDEN TICKET SIM — DAY 2",
+          "planned_km": 18,
+          "optional_km": 0,
+          "detail": "Start at ~7:00 am on Saturday's tired legs! 10 km easy @ {E}, then 8 km locked onto Goal Half Marathon pace ({M} to {T}−5s). Rehearse race breakfast (2 h pre), caffeine, shoes, and 60–75 g/h gels. Proves your overnight turnaround!",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Heat-acclimation sauna: 25–30 min post-run (builds plasma volume & heat tolerance for Saturday afternoon Golden Ticket races). Rehydrate 750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 21,
+      "start": "2027-03-01",
+      "phase": "taper",
+      "planned_km": 50,
+      "optional_km": 0,
+      "actual_km": 0,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2027-03-01",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-02",
+          "dow": 1,
+          "type": "key",
+          "title": "Taper threshold + 400s",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 3 × 1.6 km @ {T} (90 s jog) + 2 × 400 m @ {5K}, 2 km cool-down. Smooth and snappy.",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (taper primer): trap-bar deadlift 2 × 3 (~75% 1RM), light calf work."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-03",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social + heat sauna",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Heat-acclimation sauna: 25–30 min post-run (builds plasma volume & heat tolerance for Saturday afternoon Golden Ticket races). Rehydrate 750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-04",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~6 km easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-05",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Optional easy 20 min swim.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-06",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun touch-up",
+          "planned_km": 9,
+          "optional_km": 0,
+          "detail": "Jog there. 2 km @ {T}, 1 km easy, 1 km @ {5K}, 1 km easy. Jog home. Stay relaxed.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-07",
+          "dow": 6,
+          "type": "long",
+          "title": "Taper long run (last sauna)",
+          "planned_km": 12,
+          "optional_km": 0,
+          "detail": "12 km easy @ {E}. Final 20–25 min heat-acclimation sauna — maintain plasma volume without fatigue.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Heat-acclimation sauna: 25–30 min post-run (builds plasma volume & heat tolerance for Saturday afternoon Golden Ticket races). Rehydrate 750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 22,
+      "start": "2027-03-08",
+      "phase": "taper",
+      "planned_km": 66,
+      "optional_km": 0,
+      "actual_km": 0,
+      "down": false,
+      "mark": "RACE",
+      "days": [
+        {
+          "date": "2027-03-08",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 5,
+          "optional_km": 0,
+          "detail": "5 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-09",
+          "dow": 1,
+          "type": "key",
+          "title": "Race-week primer",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "2 km warm-up, 3 × 1 km @ {T} (90 s jog) + 2 × 400 m @ {5K} (90 s), 2 km cool-down. Fast, light, zero strain.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-10",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social (light)",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~6 km very easy. Optional final 15–20 min sauna (≥72 h pre-race).",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-11",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday easy shakeout",
+          "planned_km": 5,
+          "optional_km": 0,
+          "detail": "12:30 pm ~5 km very easy. Begin carb-loading tomorrow.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-12",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest + Bib Pickup + Carb Load",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "Full rest (skip or walk the 5 pm shakeout). Carb-load ~8–10 g/kg (~620–750 g low-fibre carbs), hydrate with electrolytes.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-13",
+          "dow": 5,
+          "type": "race",
+          "title": "GOLDEN TICKET DAY 1 (21 km)",
+          "planned_km": 21,
+          "optional_km": 0,
+          "detail": "Armidale Running Festival Sat 13 Mar: 1k + 1k + 1k (~12:00–1:30 pm), 3k (~2:15 pm), 5k (~3:00 pm), 10k (~4:00 pm). STRATEGY: Run the three 1ks & 3k controlled (~93–95%, ZERO redline), 5k @ strong {CV}/10K, 10k @ disciplined {T}/HM+. Between races: 3–5 min easy flush jog, legs up in shade, ice/cold towel on neck, 30–40 g carbs + sodium per gap. AT 4:40 PM FINISH: immediate 80–90 g/h carb + 35 g protein + heavy fluid/sodium reload for 4 h!",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-14",
+          "dow": 6,
+          "type": "race",
+          "title": "GOLDEN TICKET DAY 2: HALF MARATHON",
+          "planned_km": 21,
+          "optional_km": 0,
+          "detail": "Sun 14 Mar (~7:00 am): 21.1 km Half Marathon (~51% of total Golden Ticket time!). Wake 2.5 h early, 1.5–2 g/kg low-fibre carb breakfast, caffeine ~200–250 mg 60 min pre, 10 min very easy warm-up. Start conservative for km 1–5 (let yesterday's legs open up), lock into goal HM pace km 6–15 (fuel 60–80 g/h carbs), and hunt down everyone who blew up Saturday over the last 6 km!",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 23,
+      "start": "2027-03-15",
+      "phase": "sharpen5k",
+      "planned_km": 28,
+      "optional_km": 0,
+      "actual_km": 0,
+      "down": true,
+      "mark": null,
+      "days": [
+        {
+          "date": "2027-03-15",
+          "dow": 0,
+          "type": "rest",
+          "title": "Post-festival full rest",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "Day after 42.1 km weekend. Walk, eat well, celebrate!",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-16",
+          "dow": 1,
+          "type": "rest",
+          "title": "Rest / easy spin or swim",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running unless legs feel surprisingly good; 20–30 min easy spin or swim.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-17",
+          "dow": 2,
+          "type": "easy",
+          "title": "First recovery jog",
+          "planned_km": 5,
+          "optional_km": 0,
+          "detail": "5 km very easy @ {E} (HR ≤140). Stop early if anything niggles.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-18",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday easy social",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "12:30 pm ~6 km easy conversational.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-19",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Let legs rebound completely.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-20",
+          "dow": 5,
+          "type": "easy",
+          "title": "Easy parkrun jog",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "Easy 5 km parkrun + 1 km each way (strictly Z1–Z2, HR ≤145).",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-21",
+          "dow": 6,
+          "type": "long",
+          "title": "Easy aerobic run",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "10 km easy @ {E} + 4 light strides at the end if springy.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 24,
+      "start": "2027-03-22",
+      "phase": "sharpen5k",
+      "planned_km": 48,
+      "optional_km": 0,
+      "actual_km": 0,
+      "down": false,
+      "mark": null,
+      "days": [
+        {
+          "date": "2027-03-22",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-23",
+          "dow": 1,
+          "type": "key",
+          "title": "5K speed re-awakener",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up + strides, 6 × 600 m @ {3K}/{5K} (2 min jog) + 2 × 200 m @ {R}, 2 km cool-down. Sharp leg speed off your huge Golden Ticket aerobic base!",
+          "extras": [
+            {
+              "kind": "gym",
+              "text": "Gym A (taper primer): trap-bar deadlift 2 × 3 (~75% 1RM), light calf work."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-24",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 7,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~7 km easy.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-25",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday social",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "12:30 pm social, ~6 km easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-26",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest (optional swim)",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "No running. Stay bouncy.",
+          "extras": [
+            {
+              "kind": "swim",
+              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-27",
+          "dow": 5,
+          "type": "key",
+          "title": "parkrun 3 + 200s",
+          "planned_km": 9,
+          "optional_km": 0,
+          "detail": "Jog there. 3 km @ {T}, 2 km easy, then 4 × 200 m @ {R} (200 m jog). Jog home.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-28",
+          "dow": 6,
+          "type": "long",
+          "title": "Easy run",
+          "planned_km": 10,
+          "optional_km": 0,
+          "detail": "10 km easy @ {E}.",
+          "extras": [
+            {
+              "kind": "sauna",
+              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+            }
+          ],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    },
+    {
+      "week": 25,
+      "start": "2027-03-29",
+      "phase": "sharpen5k",
+      "planned_km": 36,
+      "optional_km": 0,
+      "actual_km": 0,
+      "down": true,
+      "mark": "5K",
+      "days": [
+        {
+          "date": "2027-03-29",
+          "dow": 0,
+          "type": "easy",
+          "title": "Easy run",
+          "planned_km": 5,
+          "optional_km": 0,
+          "detail": "5 km easy @ {E} + 4 × 20 s strides.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-30",
+          "dow": 1,
+          "type": "key",
+          "title": "5K race-week primer",
+          "planned_km": 8,
+          "optional_km": 0,
+          "detail": "2.5 km warm-up, 4 × 800 m @ {5K} (2 min jog) + 2 × 200 m @ {R}, 2 km cool-down.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-03-31",
+          "dow": 2,
+          "type": "social",
+          "title": "Wednesday social",
+          "planned_km": 6,
+          "optional_km": 0,
+          "detail": "6:00 am social, ~6 km very easy.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-04-01",
+          "dow": 3,
+          "type": "social",
+          "title": "Thursday shakeout",
+          "planned_km": 4,
+          "optional_km": 0,
+          "detail": "4 km very easy @ {E}.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-04-02",
+          "dow": 4,
+          "type": "rest",
+          "title": "Rest",
+          "planned_km": 0,
+          "optional_km": 0,
+          "detail": "Full rest. Hydrate, carb-top.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-04-03",
+          "dow": 5,
+          "type": "race",
+          "title": "5 KM HITOUT (PB ATTACK!)",
+          "planned_km": 9,
+          "optional_km": 0,
+          "detail": "All-out 5 km hitout (Armidale parkrun or fast flat course). Race shoes, breakfast 2–3 h pre, caffeine 60 min pre, 2.5 km WU + strides + 2 × 1 min @ {5K}. Cash in the Golden Ticket engine! 1.5 km CD.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        },
+        {
+          "date": "2027-04-04",
+          "dow": 6,
+          "type": "easy",
+          "title": "Post-5K easy shakeout",
+          "planned_km": 4,
+          "optional_km": 0,
+          "detail": "Optional 4–6 km easy jog or rest.",
+          "extras": [],
+          "actual_km": 0,
+          "actual_runs": []
+        }
+      ]
+    }
+  ]
+}
