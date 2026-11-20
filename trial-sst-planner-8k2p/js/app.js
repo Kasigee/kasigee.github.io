@@ -68,6 +68,8 @@ window.initUNEPlannerApp = function () {
     finderSort: "relevance",
     finderLimit: 48,
     finderActiveTopic: -1,
+    finderFacetsOpenMobile: false,
+    finderInstantDismissed: false,
 
     // Planner sidebar & slot picker state
     sidebarTab: "requirements", // 'slot' | 'requirements' | 'catalog'
@@ -659,16 +661,25 @@ window.initUNEPlannerApp = function () {
             </p>
 
             <div class="finder-search-wrap">
-              <span class="finder-search-icon" aria-hidden="true">🔍</span>
-              <input
-                type="search"
-                id="inp-finder-search"
-                class="finder-search-input"
-                placeholder="Search degrees, majors, careers, or unit codes (press / to search)…"
-                value="${esc(state.finderQuery)}"
-                autocomplete="off"
-              />
-              <button class="finder-clear-btn ${state.finderQuery ? "" : "hidden"}" id="btn-clear-finder-q" title="Clear search" type="button">✕</button>
+              <form class="finder-search-form" id="form-finder-search" action="javascript:void(0)" role="search">
+                <div class="finder-search-field">
+                  <span class="finder-search-icon" aria-hidden="true">🔍</span>
+                  <input
+                    type="search"
+                    id="inp-finder-search"
+                    class="finder-search-input"
+                    placeholder="Search degrees, majors, careers, or units (e.g. BEXSS, Zoology, Law)…"
+                    value="${esc(state.finderQuery)}"
+                    autocomplete="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                    enterkeyhint="search"
+                  />
+                  <button class="finder-clear-btn ${state.finderQuery ? "" : "hidden"}" id="btn-clear-finder-q" title="Clear search" type="button">✕</button>
+                </div>
+                <button class="finder-submit-btn" id="btn-submit-finder-q" type="submit">Search</button>
+              </form>
+              <div id="finder-instant-box" class="finder-instant-box hidden"></div>
             </div>
 
             <div class="finder-topic-chips" id="finder-topic-chips">
@@ -700,7 +711,12 @@ window.initUNEPlannerApp = function () {
               .join("")}
           </div>
 
-          <div class="finder-facets-bar">
+          <button class="finder-facets-toggle-mobile" id="btn-finder-facets-mobile" type="button">
+            <span id="finder-facets-toggle-lbl">⚙ Filter &amp; Sort (School, Mode, ATAR)</span>
+            <span id="finder-facets-toggle-arrow" style="color:var(--primary);">${state.finderFacetsOpenMobile ? "Hide ▴" : "Show ▾"}</span>
+          </button>
+
+          <div class="finder-facets-bar ${state.finderFacetsOpenMobile ? "open-mobile" : ""}" id="finder-facets-bar">
             <select class="select-input finder-school-sel" id="sel-finder-school" aria-label="Filter by School">
               <option value="ALL">All 11 UNE Schools</option>
               ${DATA.meta.schools
@@ -756,20 +772,56 @@ window.initUNEPlannerApp = function () {
       `;
 
       // Bind persistent shell controls once
+      const searchForm = document.getElementById("form-finder-search");
       const searchInp = document.getElementById("inp-finder-search");
-      searchInp.oninput = (e) => {
-        state.finderQuery = e.target.value;
-        state.finderActiveTopic = -1;
+
+      function handleSearchTextChange() {
+        const val = searchInp.value;
+        // If user previously clicked a Topic chip (which locked School/Faculty), clear that lock when typing a new query!
+        if (state.finderActiveTopic !== -1) {
+          state.finderActiveTopic = -1;
+          state.finderSchool = "ALL";
+          state.finderFaculty = "ALL";
+          state.finderLevel = "ALL";
+        }
+        state.finderQuery = val;
         state.finderLimit = 48;
+        state.finderInstantDismissed = false;
         renderCourseFinder(true);
+      }
+
+      searchInp.addEventListener("input", handleSearchTextChange);
+      searchInp.addEventListener("search", handleSearchTextChange);
+      searchInp.addEventListener("change", handleSearchTextChange);
+      searchInp.addEventListener("compositionend", handleSearchTextChange);
+
+      searchForm.onsubmit = (e) => {
+        e.preventDefault();
+        state.finderQuery = searchInp.value;
+        state.finderInstantDismissed = true;
+        searchInp.blur(); // Dismiss mobile keyboard so results take full screen!
+        renderCourseFinder(true);
+        const resEl = document.getElementById("finder-results-area");
+        if (resEl) {
+          resEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
       };
 
       document.getElementById("btn-clear-finder-q").onclick = () => {
         state.finderQuery = "";
         state.finderActiveTopic = -1;
+        state.finderInstantDismissed = false;
         searchInp.value = "";
         renderCourseFinder(true);
         searchInp.focus();
+      };
+
+      document.getElementById("btn-finder-facets-mobile").onclick = () => {
+        state.finderFacetsOpenMobile = !state.finderFacetsOpenMobile;
+        const bar = document.getElementById("finder-facets-bar");
+        const arr = document.getElementById("finder-facets-toggle-arrow");
+        if (bar) bar.classList.toggle("open-mobile", state.finderFacetsOpenMobile);
+        if (arr) arr.textContent = state.finderFacetsOpenMobile ? "Hide ▴" : "Show ▾";
       };
 
       fv.querySelectorAll("[data-topic-idx]").forEach((btn) => {
@@ -790,6 +842,7 @@ window.initUNEPlannerApp = function () {
             state.finderQuery = t.query || "";
           }
           state.finderLimit = 48;
+          state.finderInstantDismissed = true;
           searchInp.value = state.finderQuery;
           renderCourseFinder(true);
         };
@@ -866,6 +919,20 @@ window.initUNEPlannerApp = function () {
       btn.classList.toggle("active", btn.dataset.flvl === state.finderLevel);
     });
 
+    const activeFacetCount = [
+      state.finderSchool !== "ALL",
+      state.finderMode !== "ALL",
+      state.finderIntake !== "ALL",
+      state.finderAtar !== "ALL",
+      state.finderSort !== "relevance",
+    ].filter(Boolean).length;
+    const facetLbl = document.getElementById("finder-facets-toggle-lbl");
+    if (facetLbl) {
+      facetLbl.textContent = activeFacetCount
+        ? `⚙ Filter & Sort (${activeFacetCount} active)`
+        : "⚙ Filter & Sort (School, Mode, ATAR)";
+    }
+
     // Compute and render matching course cards into #finder-results-area
     const results = Engine.searchCourses(
       state.finderQuery,
@@ -880,6 +947,86 @@ window.initUNEPlannerApp = function () {
       },
       DATA
     );
+
+    // Live Instant Matches Dropdown directly underneath search bar (so mobile users see matches immediately above keyboard!)
+    const instantBox = document.getElementById("finder-instant-box");
+    const qTrim = state.finderQuery.trim();
+    if (instantBox) {
+      if (qTrim.length >= 2 && !state.finderInstantDismissed) {
+        instantBox.classList.remove("hidden");
+        if (results.length === 0) {
+          instantBox.innerHTML = `
+            <div class="finder-instant-hdr">
+              <span>No matches for "${esc(qTrim)}"${hasActiveFilters ? " with current filters" : ""}</span>
+              <button class="btn btn-sm" id="btn-instant-reset" type="button">Reset Filters</button>
+            </div>
+          `;
+          instantBox.querySelector("#btn-instant-reset").onclick = resetFinderFilters;
+        } else {
+          const topInstant = results.slice(0, 5);
+          instantBox.innerHTML = `
+            <div class="finder-instant-hdr">
+              <span>✨ ${results.length} matching UNE degree${results.length === 1 ? "" : "s"} for "${esc(qTrim)}"</span>
+              <button class="btn btn-sm" id="btn-instant-hide" type="button" style="min-height:24px;padding:1px 7px;font-size:11px;">Hide ✕</button>
+            </div>
+            ${topInstant
+              .map((r) => {
+                const c = r.course;
+                const m0 = r.matchedMajors && r.matchedMajors[0];
+                const subBits = [
+                  c.school.replace(/^School of /, ""),
+                  `${c.totalCp} CP`,
+                  r.matchedUnit ? `Includes ${r.matchedUnit}` : "",
+                  m0 ? `${m0.isMinor ? "Minor" : "Major"}: ${m0.title}` : "",
+                ].filter(Boolean);
+                const launchAttr = m0
+                  ? `data-instant-aos="${esc(c.code)}||${esc(m0.code)}||${esc(m0.title)}||${esc(m0.containerTitle || "")}"`
+                  : `data-instant-course="${esc(c.code)}"`;
+                return `
+                  <button class="finder-instant-row" type="button" ${launchAttr}>
+                    <span class="course-code-pill teal">${esc(c.code)}</span>
+                    <div class="finder-instant-main">
+                      <div class="finder-instant-title">${esc(c.title)}</div>
+                      <div class="finder-instant-sub">${esc(subBits.join(" · "))}</div>
+                    </div>
+                    <span style="color:var(--primary);font-weight:800;font-size:12px;flex-shrink:0;">Plan →</span>
+                  </button>
+                `;
+              })
+              .join("")}
+            <button class="finder-instant-footer" id="btn-instant-jump-all" type="button">
+              View all ${results.length} matching course card${results.length === 1 ? "" : "s"} ↓
+            </button>
+          `;
+
+          instantBox.querySelector("#btn-instant-hide").onclick = () => {
+            state.finderInstantDismissed = true;
+            instantBox.classList.add("hidden");
+          };
+          instantBox.querySelector("#btn-instant-jump-all").onclick = () => {
+            state.finderInstantDismissed = true;
+            instantBox.classList.add("hidden");
+            document.getElementById("inp-finder-search")?.blur();
+            document.getElementById("finder-results-area")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          };
+          instantBox.querySelectorAll("[data-instant-course]").forEach((btn) => {
+            btn.onclick = () => {
+              state.finderInstantDismissed = true;
+              openCourseInPlanner(btn.dataset.instantCourse);
+            };
+          });
+          instantBox.querySelectorAll("[data-instant-aos]").forEach((btn) => {
+            btn.onclick = () => {
+              state.finderInstantDismissed = true;
+              const [cCode, aosCode, aosTitle, containerTitle] = btn.dataset.instantAos.split("||");
+              openCourseInPlanner(cCode, { code: aosCode, title: aosTitle, containerTitle });
+            };
+          });
+        }
+      } else {
+        instantBox.classList.add("hidden");
+      }
+    }
 
     const resArea = document.getElementById("finder-results-area");
     resArea.innerHTML = `
@@ -954,6 +1101,7 @@ window.initUNEPlannerApp = function () {
     state.finderAtar = "ALL";
     state.finderActiveTopic = -1;
     state.finderLimit = 48;
+    state.finderInstantDismissed = false;
     const inp = document.getElementById("inp-finder-search");
     if (inp) inp.value = "";
     renderCourseFinder(true);
@@ -1516,37 +1664,9 @@ window.initUNEPlannerApp = function () {
           </div>
         </div>
 
-        <div class="elig-category-hdr">
-          <span>✅ Eligible for Y${slotEval.yearNum} · T${slotEval.triNum}</span>
-          <span>${filteredEligible.length} unit${filteredEligible.length === 1 ? "" : "s"}</span>
+        <div id="slot-results-wrap" style="display:flex;flex-direction:column;gap:8px;">
+          ${renderSlotListInner(slotEval, filteredEligible, filteredIneligible, autoExpandInelig)}
         </div>
-
-        ${
-          filteredEligible.length === 0
-            ? `<div style="padding:12px;border:1px dashed var(--border-strong);border-radius:8px;font-size:12px;color:var(--text-subtle);text-align:center;">
-                No eligible units match for Y${slotEval.yearNum} · T${slotEval.triNum}. See reasons in the Ineligible section below.
-              </div>`
-            : filteredEligible.slice(0, 100).map((item) => renderSlotEligibleCard(item)).join("")
-        }
-
-        ${
-          filteredIneligible.length > 0
-            ? `
-              <button class="inelig-category-toggle" id="btn-toggle-slot-inelig">
-                <span>🚫 Ineligible for Y${slotEval.yearNum} · T${slotEval.triNum} (${filteredIneligible.length})</span>
-                <span style="font-size:11px;">${autoExpandInelig ? "Hide ▴" : "Show why ▾"}</span>
-              </button>
-              ${
-                autoExpandInelig
-                  ? filteredIneligible
-                      .slice(0, 80)
-                      .map((item) => renderIneligibleUnitCard(item.code, item.unit, item.reasons, item.poolLabel, true))
-                      .join("")
-                  : ""
-              }
-            `
-            : ""
-        }
       `;
     } else if (state.sidebarTab === "requirements") {
       bodyHtml = buckets
@@ -1702,35 +1822,14 @@ window.initUNEPlannerApp = function () {
             </select>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--text-subtle);">
-            <span>${topUnits.length} eligible${bottomInelig.length ? ` · ${bottomInelig.length} restricted below` : ""}</span>
+            <span id="cat-count-lbl">${topUnits.length} eligible${bottomInelig.length ? ` · ${bottomInelig.length} restricted below` : ""}</span>
             <button class="btn btn-sm" id="btn-open-custom-unit-2">+ Custom Unit</button>
           </div>
         </div>
 
-        ${topUnits.slice(0, 80).map((u) => renderPoolUnitCard(u.code, plan, majorCoreHints)).join("")}
-
-        ${
-          bottomInelig.length > 0
-            ? `
-              <button class="inelig-category-toggle" id="btn-toggle-cat-inelig">
-                <span>🚫 ${
-                  state.targetSlot
-                    ? `Ineligible for Y${plan.years[state.targetSlot.yearIdx]?.yearNum || 1} · T${state.targetSlot.triNum}`
-                    : `Restricted / Not Eligible for ${course.code}`
-                } (${bottomInelig.length})</span>
-                <span style="font-size:11px;">${showCatInelig ? "Hide ▴" : "Show reasons ▾"}</span>
-              </button>
-              ${
-                showCatInelig
-                  ? bottomInelig
-                      .slice(0, 60)
-                      .map((it) => renderIneligibleUnitCard(it.unit.code, it.unit, it.reasons, null, false))
-                      .join("")
-                  : ""
-              }
-            `
-            : ""
-        }
+        <div id="catalog-results-wrap" style="display:flex;flex-direction:column;gap:8px;">
+          ${renderCatalogListInner(topUnits, bottomInelig, showCatInelig, course, plan, majorCoreHints)}
+        </div>
       `;
     }
 
@@ -1801,17 +1900,38 @@ window.initUNEPlannerApp = function () {
     }
 
     const slotSearchInp = document.getElementById("inp-slot-search");
-    if (slotSearchInp) {
-      slotSearchInp.oninput = (e) => {
-        state.slotQuery = e.target.value;
-        const caret = e.target.selectionStart;
-        renderSidebar(course, plan, report, { resetScroll: true });
-        const nextInp = document.getElementById("inp-slot-search");
-        if (nextInp) {
-          nextInp.focus();
-          nextInp.setSelectionRange(caret, caret);
+    if (slotSearchInp && slotEval) {
+      const updateSlotInPlace = () => {
+        state.slotQuery = slotSearchInp.value;
+        const wrap = document.getElementById("slot-results-wrap");
+        if (!wrap) return;
+        const q2 = state.slotQuery.trim().toLowerCase();
+        const hasBoth2 = slotEval.spec.allowsElectives && slotEval.spec.coursePoolMap && slotEval.spec.coursePoolMap.size > 0;
+        const filter2 = (item) => {
+          if (state.slotLevelFilter !== "all" && String(item.unit.level) !== state.slotLevelFilter) return false;
+          if (hasBoth2) {
+            if (state.slotPoolFilter === "course" && !item.inCoursePool) return false;
+            if (state.slotPoolFilter === "elective" && item.inCoursePool) return false;
+          }
+          if (q2 && !`${item.code} ${item.unit.title} ${item.poolLabel} ${item.unit.school}`.toLowerCase().includes(q2)) return false;
+          return true;
+        };
+        const fe = slotEval.eligible.filter(filter2);
+        const fi = slotEval.ineligible.filter(filter2);
+        const autoExp = state.slotShowIneligible || fe.length === 0 || q2.length > 0;
+        wrap.innerHTML = renderSlotListInner(slotEval, fe, fi, autoExp);
+        const tBtn = document.getElementById("btn-toggle-slot-inelig");
+        if (tBtn) {
+          tBtn.onclick = () => {
+            state.slotShowIneligible = !state.slotShowIneligible;
+            updateSlotInPlace();
+          };
         }
+        bindUnitTriggers(wrap, plan);
       };
+      slotSearchInp.addEventListener("input", updateSlotInPlace);
+      slotSearchInp.addEventListener("search", updateSlotInPlace);
+      slotSearchInp.addEventListener("compositionend", updateSlotInPlace);
     }
     const slotLvlSel = document.getElementById("sel-slot-level");
     if (slotLvlSel) {
@@ -1871,16 +1991,58 @@ window.initUNEPlannerApp = function () {
 
     const searchInp = document.getElementById("inp-catalog-search");
     if (searchInp) {
-      searchInp.oninput = (e) => {
-        state.catalogQuery = e.target.value;
-        const caret = e.target.selectionStart;
-        renderSidebar(course, plan, report, { resetScroll: true });
-        const nextInp = document.getElementById("inp-catalog-search");
-        if (nextInp) {
-          nextInp.focus();
-          nextInp.setSelectionRange(caret, caret);
+      const updateCatInPlace = () => {
+        state.catalogQuery = searchInp.value;
+        const wrap = document.getElementById("catalog-results-wrap");
+        if (!wrap) return;
+        const q2 = state.catalogQuery.trim().toLowerCase();
+        const allList2 = [
+          ...Object.values(DATA.units),
+          ...Object.values(plan.customUnits || {}).filter((cu) => !DATA.units[cu.code]),
+        ].filter((u) => {
+          if (state.catalogLevel !== "all" && String(u.level) !== state.catalogLevel) return false;
+          if (state.catalogTri !== "all" && !(u.trimesters || []).includes(parseInt(state.catalogTri, 10))) return false;
+          if (state.catalogPrefix !== "all" && u.prefix !== state.catalogPrefix) return false;
+          if (q2 && !`${u.code} ${u.title} ${u.school}`.toLowerCase().includes(q2)) return false;
+          return true;
+        });
+        const top2 = [];
+        const bot2 = [];
+        for (const u of allList2) {
+          if (state.targetSlot) {
+            if (isUnitPlanned(u.code, plan)) top2.push(u);
+            else if (slotIneligMap.has(u.code)) bot2.push({ unit: u, reasons: slotIneligMap.get(u.code) });
+            else top2.push(u);
+          } else {
+            const reasons = [];
+            if (u.offered2027 === false) reasons.push("Not offered in 2027 (archived unit)");
+            const pm = u.prereqMeta;
+            if (course.studyLevel === "Undergraduate" && u.level >= 500) reasons.push(`Restricted to Postgraduate candidature (${u.level}-level)`);
+            else if (pm?.pgOnly && course.studyLevel !== "Postgraduate") reasons.push("Restricted to Postgraduate candidature");
+            else if (pm?.honoursOnly && course.studyLevel !== "Bachelor Honours") reasons.push("Restricted to Honours candidature");
+            else if (pm?.courseRestricted) reasons.push(`Restricted candidature (${pm.courseRestricted})`);
+            if (reasons.length > 0) bot2.push({ unit: u, reasons });
+            else top2.push(u);
+          }
         }
+        top2.sort((a, b) => a.code.localeCompare(b.code));
+        bot2.sort((a, b) => a.unit.code.localeCompare(b.unit.code));
+        const showIn = state.catalogShowIneligible || top2.length === 0 || q2.length > 0;
+        const cLbl = document.getElementById("cat-count-lbl");
+        if (cLbl) cLbl.textContent = `${top2.length} eligible${bot2.length ? ` · ${bot2.length} restricted below` : ""}`;
+        wrap.innerHTML = renderCatalogListInner(top2, bot2, showIn, course, plan, majorCoreHints);
+        const tBtn = document.getElementById("btn-toggle-cat-inelig");
+        if (tBtn) {
+          tBtn.onclick = () => {
+            state.catalogShowIneligible = !state.catalogShowIneligible;
+            updateCatInPlace();
+          };
+        }
+        bindUnitTriggers(wrap, plan);
       };
+      searchInp.addEventListener("input", updateCatInPlace);
+      searchInp.addEventListener("search", updateCatInPlace);
+      searchInp.addEventListener("compositionend", updateCatInPlace);
     }
     const lvlSel = document.getElementById("sel-cat-level");
     if (lvlSel) {
@@ -1905,6 +2067,71 @@ window.initUNEPlannerApp = function () {
     }
 
     bindUnitTriggers(sb, plan);
+  }
+
+  function renderSlotListInner(slotEval, filteredEligible, filteredIneligible, autoExpandInelig) {
+    return `
+      <div class="elig-category-hdr">
+        <span>✅ Eligible for Y${slotEval.yearNum} · T${slotEval.triNum}</span>
+        <span>${filteredEligible.length} unit${filteredEligible.length === 1 ? "" : "s"}</span>
+      </div>
+
+      ${
+        filteredEligible.length === 0
+          ? `<div style="padding:12px;border:1px dashed var(--border-strong);border-radius:8px;font-size:12px;color:var(--text-subtle);text-align:center;">
+              No eligible units match for Y${slotEval.yearNum} · T${slotEval.triNum}. See reasons in the Ineligible section below.
+            </div>`
+          : filteredEligible.slice(0, 100).map((item) => renderSlotEligibleCard(item)).join("")
+      }
+
+      ${
+        filteredIneligible.length > 0
+          ? `
+            <button class="inelig-category-toggle" id="btn-toggle-slot-inelig">
+              <span>🚫 Ineligible for Y${slotEval.yearNum} · T${slotEval.triNum} (${filteredIneligible.length})</span>
+              <span style="font-size:11px;">${autoExpandInelig ? "Hide ▴" : "Show why ▾"}</span>
+            </button>
+            ${
+              autoExpandInelig
+                ? filteredIneligible
+                    .slice(0, 80)
+                    .map((item) => renderIneligibleUnitCard(item.code, item.unit, item.reasons, item.poolLabel, true))
+                    .join("")
+                : ""
+            }
+          `
+          : ""
+      }
+    `;
+  }
+
+  function renderCatalogListInner(topUnits, bottomInelig, showCatInelig, course, plan, majorCoreHints) {
+    return `
+      ${topUnits.slice(0, 80).map((u) => renderPoolUnitCard(u.code, plan, majorCoreHints)).join("")}
+
+      ${
+        bottomInelig.length > 0
+          ? `
+            <button class="inelig-category-toggle" id="btn-toggle-cat-inelig">
+              <span>🚫 ${
+                state.targetSlot
+                  ? `Ineligible for Y${plan.years[state.targetSlot.yearIdx]?.yearNum || 1} · T${state.targetSlot.triNum}`
+                  : `Restricted / Not Eligible for ${course.code}`
+              } (${bottomInelig.length})</span>
+              <span style="font-size:11px;">${showCatInelig ? "Hide ▴" : "Show reasons ▾"}</span>
+            </button>
+            ${
+              showCatInelig
+                ? bottomInelig
+                    .slice(0, 60)
+                    .map((it) => renderIneligibleUnitCard(it.unit.code, it.unit, it.reasons, null, false))
+                    .join("")
+                : ""
+            }
+          `
+          : ""
+      }
+    `;
   }
 
   function renderSlotEligibleCard(item) {

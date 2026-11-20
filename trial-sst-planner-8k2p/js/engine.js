@@ -1029,21 +1029,24 @@
       });
     }
 
-    // Trimester overload checks (> 24 CP)
+    // Trimester overload checks (> 24 CP; year-long 24+ CP theses span 2 trimesters so count half toward single-trimester overload)
     const trimesterLoads = {};
     (plan.years || []).forEach((yr, yIdx) => {
       for (const tNum of [1, 2, 3]) {
         const slots = yr.trimesters[tNum] || [];
         let cpSum = 0;
+        let effLoadSum = 0;
         let intensives = 0;
         for (const s of slots) {
           const u = s.type === "unit" ? getUnit(s.code, data, plan.customUnits) : null;
-          cpSum += u ? u.cp : (s.cp || 6);
+          const uCp = u ? u.cp : (s.cp || 6);
+          cpSum += uCp;
+          effLoadSum += u && (u.yearLong || uCp >= 24) ? Math.ceil(uCp / 2) : uCp;
           if (u && u.intensive === "Mandatory") intensives++;
         }
         const key = `${yIdx}_${tNum}`;
         trimesterLoads[key] = { cp: cpSum, intensives };
-        if (cpSum > 24) {
+        if (effLoadSum > 24) {
           globalIssues.push({
             severity: "warning",
             text: `${yr.name} Trimester ${tNum} has ${cpSum} CP (exceeds standard 24 CP full-time load; requires UNE overload approval).`,
@@ -1092,31 +1095,85 @@
   }
 
   /**
-   * Smart Auto-Scheduler: selects required/recommended units from active buckets and places them
-   * into valid 2027 trimesters respecting offerings, prerequisites, and full-time/part-time load!
+   * Smart Auto-Scheduler: selects required/recommended units from active buckets with T1/T2 trimester
+   * balancing, then schedules chronologically using critical-path prerequisite DAG depth so long
+   * prerequisite chains (like BEXSS/BCEP) finish in standard duration without artificial year spills!
    */
   function autoSchedulePlan(course, plan, data) {
     const nextPlan = JSON.parse(JSON.stringify(plan));
     const resolved = resolveCurriculumBuckets(course, nextPlan, data);
     const targetStudyCp = Math.max(0, (course.totalCp || 144) - resolved.advancedStandingCp);
+    const strategy = nextPlan.t3Strategy || (nextPlan.includeT3InAuto ? "accelerate" : "none");
+    const allowT3Pick = strategy !== "none" || (nextPlan.commencingTrimester || 1) === 3;
+    const stdYears = Math.max(1, Math.ceil(targetStudyCp / 48));
+    const perTriBudget = Math.min(stdYears * 24, Math.ceil(targetStudyCp / 2) + 6);
+
+    const max100Rule = (course.levelRules || []).find(
+      (r) => r.levels && r.levels.length === 1 && r.levels[0] === 100 && r.maxCp && (!r.onlyRules || r.onlyRules.includes(nextPlan.admissionRule))
+    );
+    const min300Rule = (course.levelRules || []).find(
+      (r) => r.levels && r.levels.includes(300) && r.minCp && (!r.onlyRules || r.onlyRules.includes(nextPlan.admissionRule))
+    );
+    const min500Rule = (course.levelRules || []).find(
+      (r) => r.levels && r.levels.includes(500) && r.minCp && (!r.onlyRules || r.onlyRules.includes(nextPlan.admissionRule))
+    );
+
     const chosenSet = new Set();
     const chosenList = [];
+    let t1OnlyCp = 0;
+    let t2OnlyCp = 0;
+    let upperT1OnlyCp = 0;
+    let upperT2OnlyCp = 0;
+    let t1PrefCp = 0;
+    let t2PrefCp = 0;
+    const chosenPrefixCp = {};
+
+    function getLvlCp(lvl) {
+      return chosenList.filter((u) => u.level === lvl).reduce((s, u) => s + u.cp, 0);
+    }
+
+    function isUnitLockedT1(u) {
+      const ts = u.trimesters || [];
+      return ts.includes(1) && !ts.includes(2) && (allowT3Pick ? !ts.includes(3) : true);
+    }
+    function isUnitLockedT2(u) {
+      const ts = u.trimesters || [];
+      return ts.includes(2) && !ts.includes(1) && (allowT3Pick ? !ts.includes(3) : true);
+    }
+    function isUnitT3Only(u) {
+      const ts = u.trimesters || [];
+      return ts.length === 1 && ts[0] === 3;
+    }
 
     function tryPick(code) {
       if (chosenSet.has(code)) return false;
       const u = getUnit(code, data, nextPlan.customUnits);
       if (!u || u.offered2027 === false) return false;
-      // Avoid picking mutually restricted units or redundant intro/standard pairs in auto-fill
       for (const rCode of u.restrictedUnits || []) {
         if (chosenSet.has(rCode)) return false;
       }
       for (const existing of chosenList) {
-        if ((existing.restrictedUnits || []).includes(code)) {
-          return false;
-        }
+        if ((existing.restrictedUnits || []).includes(code)) return false;
       }
       chosenSet.add(code);
       chosenList.push(u);
+      if (u.prefix) chosenPrefixCp[u.prefix] = (chosenPrefixCp[u.prefix] || 0) + u.cp;
+      const ts = u.trimesters || [];
+      const isUpper = (u.level || 100) >= 200;
+      if (isUnitLockedT1(u)) {
+        t1OnlyCp += u.cp;
+        if (isUpper) upperT1OnlyCp += u.cp;
+      }
+      if (isUnitLockedT2(u)) {
+        t2OnlyCp += u.cp;
+        if (isUpper) upperT2OnlyCp += u.cp;
+      }
+      if (ts.includes(1) && !ts.includes(2)) t1PrefCp += u.cp;
+      else if (ts.includes(2) && !ts.includes(1)) t2PrefCp += u.cp;
+      else if (ts.includes(1) && ts.includes(2)) {
+        t1PrefCp += u.cp / 2;
+        t2PrefCp += u.cp / 2;
+      }
       return true;
     }
 
@@ -1131,42 +1188,152 @@
       if (avail) preSeededCore.add(avail);
     }
 
-    // 2. Walk buckets in priority order and pick units up to each bucket's cpMin
+    // Pre-scan which unit codes are referenced as prerequisites by mandatory core/major units so choice pools pick them!
+    const neededByMandatory = new Set();
     for (const b of resolved.buckets) {
       if (b.category === "elective" || !b.cpMin) continue;
-      let bucketCp = 0;
-      // Sort candidate units: Major-required first, then lower level, then more trimester offerings
-      const candidates = [...b.units].sort((a, c) => {
-        const aReq = preSeededCore.has(a) ? 0 : 1;
-        const cReq = preSeededCore.has(c) ? 0 : 1;
-        if (aReq !== cReq) return aReq - cReq;
-        const uA = getUnit(a, data, nextPlan.customUnits);
-        const uC = getUnit(c, data, nextPlan.customUnits);
-        return (uA?.level || 100) - (uC?.level || 100);
-      });
-
-      // Count any already-picked unit that belongs to this bucket only if not attributed earlier
-      for (const code of candidates) {
-        if (bucketCp >= b.cpMin || accCp >= targetStudyCp) break;
+      for (const code of b.units) {
         const u = getUnit(code, data, nextPlan.customUnits);
-        if (!u || u.offered2027 === false) continue;
-        if (accCp + u.cp > targetStudyCp) continue;
-        if (tryPick(code)) {
-          bucketCp += u.cp;
-          accCp += u.cp;
+        if (!u || !u.prereqMeta || (u.prereqMeta.pgWaiver && course.studyLevel === "Postgraduate")) continue;
+        for (const req of u.prereqMeta.codes || []) neededByMandatory.add(req);
+      }
+    }
+
+    // Score a candidate unit when picking from a choice pool (balancing T1/T2 offerings, level rules & prereqs)
+    function scoreChoiceCandidate(code, preferUpper) {
+      const u = getUnit(code, data, nextPlan.customUnits);
+      if (!u || u.offered2027 === false) return 1e9;
+      let sc = 0;
+      if (preSeededCore.has(code)) sc -= 1000;
+      if (neededByMandatory.has(code)) sc -= 160;
+      if (!allowT3Pick && isUnitT3Only(u)) sc += 500;
+
+      // Respect 100-level maximum cap when picking choices
+      if (max100Rule && u.level === 100 && getLvlCp(100) + u.cp > max100Rule.maxCp) sc += 400;
+
+      // Satisfy upper-level minimums if needed
+      if (preferUpper) {
+        if (min500Rule && getLvlCp(500) < min500Rule.minCp && u.level === 500) sc -= 120;
+        if (min300Rule && getLvlCp(300) < min300Rule.minCp && u.level === 300) sc -= 120;
+      }
+
+      // Strongly prefer units whose unit-code & prefixCp prereqs are already in chosenSet (or empty),
+      // and avoid picking same-trimester chained prereqs in 1-year degrees (e.g. NEUR545 -> NEUR535 both T2-only!)
+      const pm = u.prereqMeta;
+      if (pm && !(pm.pgWaiver && course.studyLevel === "Postgraduate")) {
+        if (pm.prefixCp) {
+          const prefs = pm.prefixCp.prefixes || [pm.prefixCp.prefix];
+          const haveP = prefs.reduce((s, pr) => s + (chosenPrefixCp[pr] || 0), 0);
+          if (haveP < pm.prefixCp.cp) sc += 260;
+        }
+        if (pm.tokens && pm.tokens.length > 0) {
+          const okNow = evalPrereqTokens(pm.tokens, chosenSet);
+          if (!okNow) sc += 220;
+          else if (stdYears === 1) {
+            const uTris = u.trimesters || [];
+            const hasSameTriChain = (pm.codes || []).some((req) => {
+              if (!chosenSet.has(req)) return false;
+              const ru = getUnit(req, data, nextPlan.customUnits);
+              const rTris = ru?.trimesters || [];
+              return uTris.length === 1 && rTris.length === 1 && uTris[0] === rTris[0];
+            });
+            if (hasSameTriChain) sc += 350;
+          }
+        }
+      }
+
+      // Balance T1 vs T2 (including upper-year 200/300-level T1/T2 slots!) so optional picks never spill an extra year!
+      const ts = u.trimesters || [];
+      const hasT1 = ts.includes(1);
+      const hasT2 = ts.includes(2);
+      const upperPerTriBudget = stdYears >= 2 ? (stdYears - 1) * 24 : 24;
+      const isUpper = (u.level || 100) >= 200;
+      if (isUnitLockedT1(u)) {
+        if (t1OnlyCp + u.cp > perTriBudget || (isUpper && upperT1OnlyCp + u.cp > upperPerTriBudget)) sc += 340;
+        else if (t1PrefCp > t2PrefCp + 6) sc += 65;
+        else if (t1PrefCp < t2PrefCp - 6) sc -= 35;
+      } else if (isUnitLockedT2(u)) {
+        if (t2OnlyCp + u.cp > perTriBudget || (isUpper && upperT2OnlyCp + u.cp > upperPerTriBudget)) sc += 340;
+        else if (t2PrefCp > t1PrefCp + 6) sc += 65;
+        else if (t2PrefCp < t1PrefCp - 6) sc -= 35;
+      } else if (hasT1 && hasT2) {
+        sc -= 25; // Flexible T1/T2 units are always great!
+      }
+
+      // Mild tie-breaker: lower level in core/major buckets, mid/upper in listed buckets
+      sc += preferUpper ? (u.level || 200) / 100 : (u.level || 100) / 50;
+      return sc;
+    }
+
+    // 2. Walk buckets in priority order and pick units up to each bucket's cpMin
+    // Respect parent AOS totalCp so mutually-exclusive Streams (like Biological Science's 3x36 CP streams inside a 42 CP Major) pick ONE stream!
+    const aosPickedCp = {};
+    for (const b of resolved.buckets) {
+      if (b.category === "elective" || !b.cpMin) continue;
+      const aosMatch = (b.id || "").match(/^aos_([^_]+)_/);
+      const aosCode = aosMatch ? aosMatch[1] : null;
+      const aosCap = aosCode && data.aos[aosCode]?.totalCp ? data.aos[aosCode].totalCp : null;
+      if (aosCap && (aosPickedCp[aosCode] || 0) >= aosCap) continue;
+
+      const effectiveMin = aosCap ? Math.min(b.cpMin, Math.max(0, aosCap - (aosPickedCp[aosCode] || 0))) : b.cpMin;
+      let bucketCp = 0;
+      const availUnits = b.units.filter((code) => {
+        const u = getUnit(code, data, nextPlan.customUnits);
+        return u && u.offered2027 !== false;
+      });
+      const availTotalCp = availUnits.reduce((s, c) => s + (getUnit(c, data, nextPlan.customUnits)?.cp || 6), 0);
+      const isChoicePool = availTotalCp > effectiveMin;
+
+      if (!isChoicePool) {
+        // Mandatory bucket: pick all units
+        for (const code of availUnits) {
+          if (bucketCp >= effectiveMin || accCp >= targetStudyCp) break;
+          const u = getUnit(code, data, nextPlan.customUnits);
+          if (accCp + u.cp > targetStudyCp) continue;
+          if (tryPick(code)) {
+            bucketCp += u.cp;
+            accCp += u.cp;
+            if (aosCode) aosPickedCp[aosCode] = (aosPickedCp[aosCode] || 0) + u.cp;
+          }
+        }
+      } else {
+        // Choice pool: pick greedily one-by-one re-evaluating T1/T2 balance & prereqs after each pick!
+        const remainingPool = [...availUnits];
+        while (bucketCp < effectiveMin && accCp < targetStudyCp && remainingPool.length > 0) {
+          remainingPool.sort((a, c) => {
+            const sa = scoreChoiceCandidate(a, b.category === "listed" || b.category === "capstone");
+            const sc = scoreChoiceCandidate(c, b.category === "listed" || b.category === "capstone");
+            if (sa !== sc) return sa - sc;
+            return a.localeCompare(c);
+          });
+          let pickedAny = false;
+          for (let i = 0; i < remainingPool.length; i++) {
+            const code = remainingPool[i];
+            const u = getUnit(code, data, nextPlan.customUnits);
+            if (!u || accCp + u.cp > targetStudyCp) {
+              remainingPool.splice(i, 1);
+              i--;
+              continue;
+            }
+            if (tryPick(code)) {
+              bucketCp += u.cp;
+              accCp += u.cp;
+              if (aosCode) aosPickedCp[aosCode] = (aosPickedCp[aosCode] || 0) + u.cp;
+              remainingPool.splice(i, 1);
+              pickedAny = true;
+              break;
+            } else {
+              remainingPool.splice(i, 1);
+              i--;
+            }
+          }
+          if (!pickedAny) break;
         }
       }
     }
 
-    // 3. Fill remaining non-elective shortfall from Listed / Capstone buckets if needed (respecting level rules!)
+    // 3. Fill remaining non-elective shortfall from Listed / Capstone buckets if needed (respecting level rules & T1/T2 balance!)
     if (accCp < targetStudyCp) {
-      const max100Rule = (course.levelRules || []).find((r) => r.levels && r.levels.length === 1 && r.levels[0] === 100 && r.maxCp);
-      const min300Rule = (course.levelRules || []).find((r) => r.levels && r.levels.includes(300) && r.minCp);
-      const min500Rule = (course.levelRules || []).find((r) => r.levels && r.levels.includes(500) && r.minCp);
-
-      const getLvlCp = (lvl) => chosenList.filter((u) => u.level === lvl).reduce((s, u) => s + u.cp, 0);
-
-      // Reserve elective space only if course has explicit open electives, otherwise fill from Listed/Capstone
       const electiveBucket = resolved.buckets.find((b) => b.category === "elective");
       const maxElectiveReserve = electiveBucket
         ? Math.min(electiveBucket.cpMax !== null ? electiveBucket.cpMax : 24, 24)
@@ -1175,36 +1342,66 @@
       const poolBuckets = resolved.buckets.filter((b) => b.category === "capstone" || b.category === "listed");
       const poolUnits = [];
       for (const b of poolBuckets) {
-        for (const c of b.units) if (!poolUnits.includes(c)) poolUnits.push(c);
+        for (const c of b.units) {
+          if (!chosenSet.has(c) && !poolUnits.includes(c)) poolUnits.push(c);
+        }
       }
 
-      // Sort pool to prioritize needed upper-level minimums (300 or 500) first, avoiding 100-level cap breach
-      poolUnits.sort((a, b) => {
-        const uA = getUnit(a, data, nextPlan.customUnits);
-        const uB = getUnit(b, data, nextPlan.customUnits);
-        const need300 = min300Rule && getLvlCp(300) < min300Rule.minCp;
-        const need500 = min500Rule && getLvlCp(500) < min500Rule.minCp;
-        if (need500) return (uB?.level === 500 ? 1 : 0) - (uA?.level === 500 ? 1 : 0);
-        if (need300) return (uB?.level === 300 ? 1 : 0) - (uA?.level === 300 ? 1 : 0);
-        return (uA?.level || 200) - (uB?.level || 200);
-      });
-
       const listedTarget = targetStudyCp - maxElectiveReserve;
-      for (const code of poolUnits) {
-        if (accCp >= listedTarget) break;
-        const u = getUnit(code, data, nextPlan.customUnits);
-        if (!u || u.offered2027 === false) continue;
-        if (max100Rule && u.level === 100 && getLvlCp(100) + u.cp > max100Rule.maxCp) continue;
-        if (accCp + u.cp > targetStudyCp) continue;
-        // Prefer units whose unit-code prereqs are already in chosenSet or empty
-        const reqCodes = u.prereqMeta?.codes || [];
-        if (reqCodes.length > 0 && !(u.prereqMeta?.pgWaiver && course.studyLevel === "Postgraduate")) {
-          const tokensOk = evalPrereqTokens(u.prereqMeta.tokens || [], chosenSet);
-          if (!tokensOk) continue;
+      while (accCp < listedTarget && poolUnits.length > 0) {
+        poolUnits.sort((a, b) => {
+          const sa = scoreChoiceCandidate(a, true);
+          const sb = scoreChoiceCandidate(b, true);
+          if (sa !== sb) return sa - sb;
+          return a.localeCompare(b);
+        });
+        let pickedAny = false;
+        for (let i = 0; i < poolUnits.length; i++) {
+          const code = poolUnits[i];
+          const u = getUnit(code, data, nextPlan.customUnits);
+          if (!u || u.offered2027 === false || accCp + u.cp > targetStudyCp) {
+            poolUnits.splice(i, 1);
+            i--;
+            continue;
+          }
+          if (!allowT3Pick && isUnitT3Only(u)) {
+            poolUnits.splice(i, 1);
+            i--;
+            continue;
+          }
+          if (max100Rule && u.level === 100 && getLvlCp(100) + u.cp > max100Rule.maxCp) {
+            poolUnits.splice(i, 1);
+            i--;
+            continue;
+          }
+          const pm3 = u.prereqMeta;
+          if (pm3 && !(pm3.pgWaiver && course.studyLevel === "Postgraduate")) {
+            if (pm3.codes?.length > 0 && !evalPrereqTokens(pm3.tokens || [], chosenSet)) {
+              poolUnits.splice(i, 1);
+              i--;
+              continue;
+            }
+            if (pm3.prefixCp) {
+              const prefs = pm3.prefixCp.prefixes || [pm3.prefixCp.prefix];
+              const haveP = prefs.reduce((s, pr) => s + (chosenPrefixCp[pr] || 0), 0);
+              if (haveP < pm3.prefixCp.cp) {
+                poolUnits.splice(i, 1);
+                i--;
+                continue;
+              }
+            }
+          }
+          if (tryPick(code)) {
+            accCp += u.cp;
+            poolUnits.splice(i, 1);
+            pickedAny = true;
+            break;
+          } else {
+            poolUnits.splice(i, 1);
+            i--;
+          }
         }
-        if (tryPick(code)) {
-          accCp += u.cp;
-        }
+        if (!pickedAny) break;
       }
     }
 
@@ -1246,15 +1443,96 @@
       remCp -= 6;
     }
 
-    // 5. Chronological Trimester Scheduling (supporting 'none' [Standard T1/T2], 'spread' [3+3+2 Lighter Load], and 'accelerate' [Fast-Track where genuinely possible])
-    const strategy = nextPlan.t3Strategy || (nextPlan.includeT3InAuto ? "accelerate" : "none");
+    // Helper: compute minimum calendar-trimester distance from taking unit at `fromTri` to dependent `depUnit`
+    function minTriStepGap(fromTri, depUnit, allowT3) {
+      const depTris = depUnit.trimesters && depUnit.trimesters.length ? depUnit.trimesters : [1, 2];
+      let best = 99;
+      for (const dt of depTris) {
+        if (dt === 3 && !allowT3 && depTris.length > 1) continue;
+        if (allowT3) {
+          const diff = dt > fromTri ? dt - fromTri : 3 - fromTri + dt;
+          if (diff < best) best = diff;
+        } else {
+          // 2 active periods per year: T1=0, T2=1
+          const a = fromTri === 1 ? 0 : 1;
+          const b = dt === 1 ? 0 : 1;
+          const diff = b > a ? b - a : 2 - a + b;
+          if (diff < best) best = diff;
+        }
+      }
+      return best === 99 ? 1 : best;
+    }
 
+    // Compute transitive critical-path span (in active trimesters) for every remaining unit!
+    function computeCriticalSpans(remUnits, doneSet, allowT3) {
+      const remByCode = new Map(remUnits.map((u) => [u.code, u]));
+      const depEdges = new Map(); // prereqCode -> [dependentUnit, ...]
+      for (const v of remUnits) {
+        const pm = v.prereqMeta;
+        if (pm && pm.codes && pm.codes.length && !(pm.pgWaiver && course.studyLevel === "Postgraduate")) {
+          if (!(pm.tokens && pm.tokens.length && evalPrereqTokens(pm.tokens, doneSet))) {
+            for (const reqCode of pm.codes) {
+              if (remByCode.has(reqCode)) {
+                if (!depEdges.has(reqCode)) depEdges.set(reqCode, []);
+                depEdges.get(reqCode).push(v);
+              }
+            }
+          }
+        }
+        // Also prioritize active co-requisites (e.g. COSC110 for COSC510 in MIT Rule A, LAW100 for LAW102/131/162!)
+        const cm = v.coreqMeta;
+        if (cm && cm.codes && cm.codes.length) {
+          const courseApplies = !cm.onlyCourses || cm.onlyCourses.includes(course.code);
+          const ruleApplies = !cm.onlyRulePattern || (nextPlan.admissionRule || "").includes(cm.onlyRulePattern);
+          const waived = cm.pgWaiver && course.studyLevel === "Postgraduate";
+          if (courseApplies && ruleApplies && !waived && !(cm.tokens && cm.tokens.length && evalPrereqTokens(cm.tokens, doneSet))) {
+            for (const reqCode of cm.codes) {
+              if (remByCode.has(reqCode)) {
+                if (!depEdges.has(reqCode)) depEdges.set(reqCode, []);
+                depEdges.get(reqCode).push(v);
+              }
+            }
+          }
+        }
+      }
+
+      const memo = new Map();
+      const visiting = new Set();
+      function dfs(code, curTriHint) {
+        const key = `${code}_${curTriHint || 0}`;
+        if (memo.has(key)) return memo.get(key);
+        if (visiting.has(code)) return 1;
+        visiting.add(code);
+        const u = remByCode.get(code);
+        const uTris = u?.trimesters && u.trimesters.length ? u.trimesters : [1, 2];
+        const fromTri = curTriHint || uTris[0] || 1;
+        let maxSpan = 1;
+        for (const dep of depEdges.get(code) || []) {
+          const gap = minTriStepGap(fromTri, dep, allowT3);
+          const depFirstTri = (dep.trimesters || []).find((t) => allowT3 || t !== 3) || dep.trimesters?.[0] || 1;
+          const sub = gap + dfs(dep.code, depFirstTri);
+          if (sub > maxSpan) maxSpan = sub;
+        }
+        visiting.delete(code);
+        memo.set(key, maxSpan);
+        return maxSpan;
+      }
+
+      const spans = {};
+      for (const u of remUnits) {
+        spans[u.code] = dfs(u.code, null);
+      }
+      return { spans, depEdges };
+    }
+
+    // 5. Chronological Trimester Scheduling ('none' | 'spread' | 'accelerate')
     function simulateSchedule(mode, capYear1To2At18) {
       const baseMax = nextPlan.studyLoad === "Part-time" ? 12 : 24;
       const remUnits = chosenList.map((u) => u);
       const remPh = placeholders.map((p) => ({ ...p, id: uid("ph") }));
       const doneSet = new Set();
       let doneCp = resolved.advancedStandingCp;
+      const donePrefixCp = {};
       const simYears = [];
       const safetyYears = nextPlan.studyLoad === "Part-time" ? 10 : 6;
       const startTri = nextPlan.commencingTrimester || 1;
@@ -1274,14 +1552,9 @@
 
           const allowGeneralT3 = mode === "accelerate" || mode === "spread" || (y === 1 && startTri === 3);
 
-          // In 'spread' mode for Full-time, target 18 CP (3 units) in T1/T2 and up to 12 CP (2 units) in T3
-          // ONLY in years where at least 12 CP of T3-ready units or placeholders exist (so upper years with
-          // T1/T2-only 300-level units still run at 24 CP and never delay graduation!).
           let maxThisTri = baseMax;
           if (mode === "spread" && nextPlan.studyLoad !== "Part-time") {
-            const stdYearsTotal = Math.max(1, Math.ceil(targetStudyCp / 48));
-            const yearsRemainingInclThis = Math.max(1, stdYearsTotal - y + 1);
-            // Count remaining units that can ONLY be taken in tNum (or not in T3)
+            const yearsRemainingInclThis = Math.max(1, stdYears - y + 1);
             const lockedToThisTriCount = remUnits.filter(
               (u) => !(u.trimesters || []).includes(3) && (!u.trimesters || !u.trimesters.length || u.trimesters.includes(tNum)) && (u.trimesters?.length || 1) === 1
             ).length;
@@ -1304,13 +1577,8 @@
             }
           }
 
-          let triCp = 0;
-          const dependentsCount = {};
-          for (const u of remUnits) {
-            for (const dep of u.prereqMeta?.codes || []) {
-              dependentsCount[dep] = (dependentsCount[dep] || 0) + 1;
-            }
-          }
+          let triEffCp = 0;
+          const { spans: critSpans, depEdges } = computeCriticalSpans(remUnits, doneSet, allowGeneralT3);
 
           const eligible = remUnits.filter((u) => {
             const offeredHere = !u.trimesters || u.trimesters.length === 0 || u.trimesters.includes(tNum);
@@ -1324,50 +1592,80 @@
             return true;
           });
 
-          // When T3 is active ('spread' or 'accelerate'), in T1/T2 prioritize units NOT offered in T3 first
-          // so T3-capable units (like STAT100, MTHS130, BIOL120, CHEM120) remain available to fill T3!
+          // Sort Priority:
+          // 1. Prereq ready NOW
+          // 2. Longest critical-path prerequisite DAG span (so EXSC360/EXSC370 run in Y2 ahead of leaf 100-level units!)
+          // 3. Trimester scarcity (T1-only beats T1+T2 flexible units in T1!)
+          // 4. T3 preservation when T3 is active (non-T3 leaf units first in T1/T2)
+          // 5. Lower unit level (natural 100 -> 200 -> 300 progression among equal-priority units)
+          const otherMainTri = tNum === 1 ? 2 : 1;
           eligible.sort((a, b) => {
-            const aReady = isPrereqReady(a, doneSet, doneCp, course);
-            const bReady = isPrereqReady(b, doneSet, doneCp, course);
+            const aReady = isPrereqReady(a, doneSet, doneCp, donePrefixCp, course);
+            const bReady = isPrereqReady(b, doneSet, doneCp, donePrefixCp, course);
             if (aReady !== bReady) return aReady ? -1 : 1;
-            if (a.level !== b.level) return a.level - b.level;
+
+            const aSpan = critSpans[a.code] || 1;
+            const bSpan = critSpans[b.code] || 1;
+            if (aSpan !== bSpan) return bSpan - aSpan;
+
+            const aLocked = (a.trimesters || []).length > 0 && !(a.trimesters || []).includes(otherMainTri) ? 0 : 1;
+            const bLocked = (b.trimesters || []).length > 0 && !(b.trimesters || []).includes(otherMainTri) ? 0 : 1;
+            if (tNum !== 3 && aLocked !== bLocked) return aLocked - bLocked;
+
             if (allowGeneralT3 && tNum !== 3) {
               const aHasT3 = (a.trimesters || []).includes(3) ? 1 : 0;
               const bHasT3 = (b.trimesters || []).includes(3) ? 1 : 0;
-              // Don't hold back a prerequisite unit if other units depend on it!
-              if ((dependentsCount[a.code] || 0) === 0 && (dependentsCount[b.code] || 0) === 0 && aHasT3 !== bHasT3) {
+              if (!(depEdges.get(a.code)?.length) && !(depEdges.get(b.code)?.length) && aHasT3 !== bHasT3) {
                 return aHasT3 - bHasT3;
               }
             }
-            const aOnlyHere = (a.trimesters?.length || 3) === 1 ? 0 : 1;
-            const bOnlyHere = (b.trimesters?.length || 3) === 1 ? 0 : 1;
-            if (aOnlyHere !== bOnlyHere) return aOnlyHere - bOnlyHere;
-            return (dependentsCount[b.code] || 0) - (dependentsCount[a.code] || 0);
+
+            if (a.level !== b.level) return a.level - b.level;
+            return (depEdges.get(b.code)?.length || 0) - (depEdges.get(a.code)?.length || 0);
           });
 
+          const totalRemainingCp = remUnits.reduce((s, x) => s + x.cp, 0) + remPh.reduce((s, x) => s + (x.cp || 6), 0);
           const placedThisTri = [];
           for (const u of eligible) {
-            if (triCp + u.cp > maxThisTri) continue;
-            const hasUnmetLocalOrFuturePrereq =
-              !isPrereqReady(u, doneSet, doneCp, course) &&
-              (u.prereqMeta?.codes || []).some(
+            const effCp = (u.yearLong || u.cp >= 24) && nextPlan.studyLoad !== "Part-time" ? Math.ceil(u.cp / 2) : u.cp;
+            if (triEffCp + effCp > maxThisTri) continue;
+
+            const readyNow = isPrereqReady(u, doneSet, doneCp, donePrefixCp, course);
+            if (!readyNow) {
+              const pm = u.prereqMeta;
+              const hasFutureCodePrereq = (pm?.codes || []).some(
                 (c) => remUnits.some((x) => x.code === c) || placedThisTri.some((x) => x.code === c)
               );
-            if (hasUnmetLocalOrFuturePrereq) continue;
+              const hasFutureMinCp = pm?.minCp > 0 && doneCp < pm.minCp && doneCp + totalRemainingCp - u.cp >= pm.minCp;
+              let hasFuturePrefixCp = false;
+              if (pm?.prefixCp) {
+                const prefs = pm.prefixCp.prefixes || [pm.prefixCp.prefix];
+                const curP = prefs.reduce((s, pr) => s + (donePrefixCp[pr] || 0), 0);
+                const remP = remUnits
+                  .filter((x) => x.code !== u.code && prefs.includes(x.prefix))
+                  .reduce((s, x) => s + x.cp, 0);
+                const curTriP = placedThisTri
+                  .filter((x) => prefs.includes(x.prefix))
+                  .reduce((s, x) => s + x.cp, 0);
+                if (curP < pm.prefixCp.cp && curP + remP + curTriP >= pm.prefixCp.cp) {
+                  hasFuturePrefixCp = true;
+                }
+              }
+              if (hasFutureCodePrereq || hasFutureMinCp || hasFuturePrefixCp) continue;
+            }
 
             yrObj.trimesters[tNum].push({ id: uid("u"), type: "unit", code: u.code });
-            triCp += u.cp;
+            triEffCp += effCp;
             placedThisTri.push(u);
             const idx = remUnits.findIndex((x) => x.code === u.code);
             if (idx !== -1) remUnits.splice(idx, 1);
           }
 
           if ((tNum !== 3 || allowGeneralT3) && remPh.length > 0) {
-            // In 'spread' mode, reserve open placeholders for T3 (up to 12 CP) before putting them into T1/T2!
             const holdPhForT3 =
               mode === "spread" &&
               tNum !== 3 &&
-              y < Math.max(1, Math.ceil(targetStudyCp / 48)) &&
+              y < stdYears &&
               remUnits.filter((u) => (u.trimesters || []).includes(3)).length < 2;
             const yrCpBeforeThisTri = [1, 2, 3]
               .filter((tn) => tn !== tNum)
@@ -1380,24 +1678,24 @@
                   }, 0),
                 0
               );
-            while (!holdPhForT3 && remPh.length > 0 && triCp + 6 <= maxThisTri) {
-              if (mode === "spread" && tNum === 3 && yrCpBeforeThisTri + triCp + 6 > 48) {
+            while (!holdPhForT3 && remPh.length > 0 && triEffCp + 6 <= maxThisTri) {
+              if (mode === "spread" && tNum === 3 && yrCpBeforeThisTri + triEffCp + 6 > 48) {
                 break;
               }
               const ph = remPh.shift();
               yrObj.trimesters[tNum].push(ph);
-              triCp += ph.cp;
+              triEffCp += ph.cp;
             }
           }
 
           for (const u of placedThisTri) {
             doneSet.add(u.code);
             doneCp += u.cp;
+            if (u.prefix) donePrefixCp[u.prefix] = (donePrefixCp[u.prefix] || 0) + u.cp;
           }
           doneCp += yrObj.trimesters[tNum].filter((s) => s.type === "placeholder").reduce((s, x) => s + x.cp, 0);
         }
 
-        // Trim trailing completely empty years
         if ([1, 2, 3].some((t) => yrObj.trimesters[t].length > 0)) {
           simYears.push(yrObj);
         }
@@ -1420,7 +1718,6 @@
         }
       }
 
-      // Compute final completion chronological index
       let lastChrono = 0;
       let finishLabel = "Year 1 · T1";
       let finalStageUnits = [];
@@ -1465,7 +1762,6 @@
           totalMajorUnits,
         };
       } else {
-        // Honest guardrail: don't pointlessly overload Year 1 to 60 CP when 0 trimesters are saved!
         nextPlan.years = stdSim.years;
         nextPlan.t3Analysis = {
           strategy: "accelerate",
@@ -1480,7 +1776,6 @@
       }
     } else if (strategy === "spread") {
       let spreadSim = simulateSchedule("spread", true);
-      // If capping upper years at 18 CP accidentally pushed graduation past Standard T1/T2, relax upper-year cap!
       if (spreadSim.lastChrono > stdSim.lastChrono + 1) {
         spreadSim = simulateSchedule("spread", false);
       }
@@ -1502,11 +1797,16 @@
     return nextPlan;
   }
 
-  function isPrereqReady(u, completedSet, completedCp, course) {
+  function isPrereqReady(u, completedSet, completedCp, completedPrefixCp, course) {
     const pm = u.prereqMeta;
     if (!pm) return true;
     if (pm.pgWaiver && course.studyLevel === "Postgraduate") return true;
     if (pm.minCp > 0 && completedCp < pm.minCp) return false;
+    if (pm.prefixCp && completedPrefixCp) {
+      const prefs = pm.prefixCp.prefixes || [pm.prefixCp.prefix];
+      const havePref = prefs.reduce((s, pr) => s + (completedPrefixCp[pr] || 0), 0);
+      if (havePref < pm.prefixCp.cp) return false;
+    }
     if (pm.tokens && pm.tokens.length > 0 && !evalPrereqTokens(pm.tokens, completedSet)) return false;
     return true;
   }
