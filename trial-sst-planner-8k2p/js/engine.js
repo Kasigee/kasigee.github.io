@@ -140,6 +140,7 @@
       aosStructure,
       selectedMajors: [],
       selectedMinor: "",
+      dynamicAosSelections: {},
       commencingTrimester: 1,
       studyLoad: "Full-time",
       preferredMode: (course.modes || []).includes("Online") ? "Online" : (course.modes[0] || "On Campus"),
@@ -190,6 +191,51 @@
     scan(activeTopContainers);
 
     return { majors, minors, pathways, mandatoryComponents };
+  }
+
+  /**
+   * For any whole-university course using aosMode === 'dynamic' (e.g. BA, BBus, BASC, BSCLAW, BED*, BAGR, etc.),
+   * extracts every active AOS selector container (Majors, Minors, Specialisations, Teaching Areas, Focus Areas).
+   */
+  function getDynamicAOSGroups(course, plan, data) {
+    const cfg = course.structureConfig;
+    const activeTopContainers = cfg.hasAdmissionRules
+      ? (course.containers.find((c) => c.title.trim() === plan.admissionRule)?.children || course.containers[0]?.children || [])
+      : course.containers;
+
+    const groups = [];
+    function scan(conts) {
+      for (const c of conts || []) {
+        const aosItems = (c.items || []).filter((it) => it.kind === "aos");
+        if (aosItems.length > 0) {
+          const vgLow = (c.vg || "").toLowerCase();
+          const titleLow = c.title.toLowerCase();
+          const descLow = (c.description || "").toLowerCase();
+          const isMinor = vgLow === "minor" || titleLow.includes("minor");
+          const isMandatorySingle =
+            aosItems.length === 1 &&
+            (descLow.includes("complete the following") ||
+              descLow.includes("available law listed") ||
+              titleLow.includes("focus area") ||
+              titleLow.includes("articulation"));
+          const cleanLabel = c.title
+            .replace(/^Rule\s+[A-Z0-9\s/&-]+-\s*/i, "")
+            .replace(/^Schedule\s+[A-Z0-9\s/&-]+-\s*/i, "")
+            .trim();
+          groups.push({
+            id: c.title,
+            title: cleanLabel || c.title,
+            isMinor,
+            isMandatorySingle,
+            description: c.description || "",
+            items: aosItems,
+          });
+        }
+        scan(c.children);
+      }
+    }
+    scan(activeTopContainers);
+    return groups;
   }
 
   /**
@@ -331,6 +377,31 @@
           ...buildAOSBuckets(comp.code, idx === 0 ? "major1" : "minor", comp.title, data, majorCoreHints)
         );
       });
+    } else if (cfg.aosMode === "dynamic") {
+      const dynGroups = getDynamicAOSGroups(course, plan, data);
+      const dynSel = plan.dynamicAosSelections || {};
+      let majorSlotIdx = 0;
+      for (const grp of dynGroups) {
+        let chosenCode = "";
+        if (grp.isMandatorySingle) {
+          chosenCode = grp.items[0]?.code || "";
+        } else {
+          chosenCode = dynSel[grp.id] || "";
+        }
+        if (chosenCode && data.aos[chosenCode]) {
+          const aObj = data.aos[chosenCode];
+          const cleanName = (grp.items.find((x) => x.code === chosenCode)?.title || aObj.title)
+            .replace(/^[A-Z0-9]+\s*-\s*/, "")
+            .replace(/\s*\((Major|Minor)\)\s*$/i, "")
+            .trim();
+          const isListedFocus = /listed unit/i.test(grp.title) || /listed unit/i.test(cleanName);
+          const cat = isListedFocus ? "listed" : grp.isMinor ? "minor" : majorSlotIdx === 0 ? "major1" : "major2";
+          if (!grp.isMinor && !isListedFocus) majorSlotIdx++;
+          activeAOSBuckets.push(
+            ...buildAOSBuckets(chosenCode, cat, `${grp.title} (${cleanName})`, data, majorCoreHints)
+          );
+        }
+      }
     } else {
       const maxMajors =
         (cfg.aosMode === "bsc" && plan.aosStructure === "2m") ||
@@ -417,6 +488,9 @@
         return;
       }
       if (cfg.aosMode === "dscnce" && titleLow.includes("general studies in science or minor")) {
+        return;
+      }
+      if (cfg.aosMode === "dynamic" && (cont.items || []).some((i) => i.kind === "aos") && !(cont.items || []).some((i) => i.kind === "unit")) {
         return;
       }
 
@@ -1670,9 +1744,9 @@
         addBuckets((b) => ["major2", "minor"].includes(b.category));
       }
       if (coursePoolMap.size === 0) {
-        addBuckets((b) => b.category === "listed" || b.category === "minor");
+        addBuckets((b) => b.category === "listed" || b.category === "minor" || b.title.toLowerCase().includes("listed"));
       }
-      // If still empty (e.g. course stores pool in Prescribed/Core), include all non-elective buckets
+      // If still empty (e.g. course stores pool in Prescribed/Capstone/Core), include all non-elective buckets
       if (coursePoolMap.size === 0) {
         addBuckets(() => true);
       }
@@ -1764,7 +1838,50 @@
 
     // Collect candidate unit codes
     const candidateCodes = new Set(spec.coursePoolMap.keys());
-    if (includeAllElectives || !spec.strictPoolOnly) {
+
+    // Guardrail: if all units in a strict Listed/Prescribed pool are already planned (or user hasn't picked a Major/Stream yet),
+    // gracefully widen to unplanned units in other active course buckets -> course AOS options -> open electives so slots are never dead!
+    if (spec.strictPoolOnly && !includeAllElectives && (spec.hints || []).length === 0) {
+      let unplannedInPool = 0;
+      for (const code of candidateCodes) {
+        if (!alreadyPlannedMap.has(code)) unplannedInPool++;
+      }
+      if (unplannedInPool === 0) {
+        for (const b of resolved.buckets) {
+          if (b.category === "elective") continue;
+          for (const uCode of b.units || []) {
+            if (!alreadyPlannedMap.has(uCode)) {
+              candidateCodes.add(uCode);
+              if (!spec.coursePoolMap.has(uCode)) spec.coursePoolMap.set(uCode, b.title);
+              unplannedInPool++;
+            }
+          }
+        }
+      }
+      if (unplannedInPool === 0) {
+        const idxMap = getCourseUnitIndex(data);
+        const courseEntry = idxMap.get(course.code);
+        if (courseEntry) {
+          for (const uCode of courseEntry.units) {
+            if (!alreadyPlannedMap.has(uCode)) {
+              candidateCodes.add(uCode);
+              if (!spec.coursePoolMap.has(uCode)) spec.coursePoolMap.set(uCode, `${course.code} Major / Stream Pool`);
+              unplannedInPool++;
+            }
+          }
+          if (unplannedInPool > 0) {
+            spec.subtitle = "Select a Major / Stream above, or preview units from this course's specialisations";
+          }
+        }
+      }
+      if (unplannedInPool === 0) {
+        spec.allowsElectives = true;
+        spec.strictPoolOnly = false;
+        spec.subtitle = "All direct listed units are planned — showing eligible University units";
+      }
+    }
+
+    if (includeAllElectives || !spec.strictPoolOnly || spec.allowsElectives) {
       for (const uCode of Object.keys(data.units)) candidateCodes.add(uCode);
       for (const uCode of Object.keys(plan.customUnits || {})) candidateCodes.add(uCode);
     }
@@ -1958,6 +2075,350 @@
     };
   }
 
+  /* ================= WHOLE-UNIVERSITY COURSE FINDER SEARCH ENGINE ================= */
+
+  const COURSE_SYNONYMS = {
+    cs: ["computer science", "information technology", "software", "cosc"],
+    compsci: ["computer science", "cosc"],
+    coding: ["computer science", "information technology", "software", "data science"],
+    software: ["computer science", "information technology", "software"],
+    programming: ["computer science", "information technology", "data science"],
+    ai: ["artificial intelligence", "machine learning", "data science", "intelligent systems"],
+    ml: ["machine learning", "artificial intelligence", "data science"],
+    cyber: ["cybersecurity", "cyber security", "computer science", "information technology"],
+    security: ["cybersecurity", "criminology"],
+    vet: ["veterinary", "animal science", "zoology"],
+    animal: ["animal science", "zoology", "veterinary"],
+    animals: ["animal science", "zoology", "veterinary"],
+    psych: ["psychology", "counselling", "mental health"],
+    mental: ["mental health", "psychology", "counselling", "neuroscience"],
+    teach: ["teaching", "education", "early childhood"],
+    teacher: ["teaching", "education", "early childhood"],
+    teaching: ["teaching", "education"],
+    med: ["medicine", "medical", "biomedical", "medicinal"],
+    doctor: ["medicine", "medical", "biomedical"],
+    nurse: ["nursing"],
+    nursing: ["nursing"],
+    law: ["laws", "legal", "juris doctor"],
+    lawyer: ["laws", "legal", "juris doctor"],
+    llb: ["laws", "law"],
+    jd: ["juris doctor", "laws"],
+    biz: ["business", "commerce", "accounting", "management"],
+    business: ["business", "accounting", "economics", "management", "mba"],
+    mba: ["business administration", "mba"],
+    finance: ["accounting", "economics", "business", "finance"],
+    econ: ["economics", "agribusiness"],
+    ag: ["agriculture", "agribusiness", "rural science"],
+    agri: ["agriculture", "agribusiness", "rural science"],
+    farm: ["agriculture", "agribusiness", "rural science"],
+    farming: ["agriculture", "agribusiness", "rural science"],
+    rural: ["rural science", "agriculture", "rural medicine"],
+    chem: ["chemistry", "medicinal chemistry", "biochemistry"],
+    bio: ["biology", "biological", "biomedical", "biodiversity", "genetics"],
+    math: ["mathematics", "statistics", "data science"],
+    maths: ["mathematics", "statistics", "data science"],
+    stats: ["statistics", "data science", "mathematics"],
+    phys: ["physics", "renewable energy"],
+    energy: ["renewable energy", "physics"],
+    env: ["environmental", "ecology", "sustainability", "biodiversity"],
+    climate: ["environmental", "sustainability", "ecology", "geoscience"],
+    geo: ["geography", "geoscience", "palaeobiology"],
+    sport: ["exercise", "sports science", "clinical exercise"],
+    fitness: ["exercise", "sports science", "nutrition"],
+    diet: ["nutrition", "health science"],
+    food: ["nutrition", "agriculture", "agribusiness"],
+    brain: ["neuroscience", "psychology"],
+    crim: ["criminology", "forensic"],
+    history: ["history", "ancient history", "archaeology"],
+    language: ["languages", "linguistics", "modern languages"],
+    writing: ["writing", "creative", "english", "media", "communications"],
+    media: ["media", "communications", "journalism"],
+    music: ["music", "theatre"],
+    double: ["double", "combined"],
+    combined: ["double", "combined"],
+    honours: ["honours", "hons"],
+    phd: ["doctor of philosophy", "doctorate"],
+    masters: ["master"],
+    diploma: ["diploma", "advanced diploma", "graduate diploma"],
+    pathway: ["enabling", "pathway", "tracks"],
+  };
+
+  function matchTerm(haystack, term) {
+    if (!haystack || !term) return false;
+    const escTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Short terms (<=3 chars like "ai", "law", "mba", "cs", "vet") MUST match whole word boundaries
+    // so "ai" never matches "sustainable" or "training"!
+    if (term.length <= 3) {
+      return new RegExp(`\\b${escTerm}\\b`, "i").test(haystack);
+    }
+    return new RegExp(`\\b${escTerm}`, "i").test(haystack);
+  }
+
+  function editDistLeq1(a, b) {
+    if (Math.abs(a.length - b.length) > 1) return false;
+    let i = 0, j = 0, edits = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) { i++; j++; }
+      else {
+        edits++;
+        if (edits > 1) return false;
+        if (a.length > b.length) i++;
+        else if (b.length > a.length) j++;
+        else { i++; j++; }
+      }
+    }
+    return edits + (a.length - i) + (b.length - j) <= 1;
+  }
+
+  let _courseUnitIndexCache = null;
+  function getCourseUnitIndex(data) {
+    if (_courseUnitIndexCache) return _courseUnitIndexCache;
+    const map = new Map(); // courseCode -> { units: Set, aosEntries: [{code,title,isMinor}] }
+    for (const c of data.courses) {
+      const units = new Set();
+      const aosEntries = [];
+      const seenAos = new Set();
+      function walk(conts) {
+        for (const ct of conts || []) {
+          for (const it of ct.items || []) {
+            if (it.kind === "unit") {
+              units.add(it.code);
+            } else if (it.kind === "aos") {
+              if (!seenAos.has(it.code)) {
+                seenAos.add(it.code);
+                const cleanT = (it.title || "")
+                  .replace(/^[A-Z0-9]+\s*-\s*/, "")
+                  .replace(/\s*\((Major|Minor)\)\s*$/i, "")
+                  .trim();
+                const isMinor = (it.subType || "").toLowerCase() === "minor" || (ct.title || "").toLowerCase().includes("minor");
+                if (!/listed unit/i.test(cleanT) && !/listed unit/i.test(ct.title || "")) {
+                  aosEntries.push({ code: it.code, title: cleanT || it.code, isMinor, containerTitle: ct.title });
+                }
+              }
+              if (data.aos[it.code]) walk(data.aos[it.code].containers);
+            }
+          }
+          walk(ct.children);
+        }
+      }
+      walk(c.containers);
+      map.set(c.code, { units, aosEntries });
+    }
+    _courseUnitIndexCache = map;
+    return map;
+  }
+
+  /**
+   * Brilliant ranked search across ALL 233 UNE courses, their 675 Majors/Minors/Specialisations,
+   * 1,720 unit codes, career keywords, schools, faculties, ATAR, and study modes.
+   */
+  function searchCourses(rawQuery, filters, data) {
+    const q = (rawQuery || "").trim().toLowerCase();
+    const qUpper = q.toUpperCase();
+    const f = filters || {};
+    const unitIdxMap = getCourseUnitIndex(data);
+    const isUnitCodeQuery = /^[A-Z]{2,4}\d{3}[A-Z]?$/.test(qUpper);
+    const tokens = q.split(/[\s/,&-]+/).filter((t) => t.length >= 2);
+
+    // Expand synonyms for each token
+    const expandedGroups = tokens.map((tok) => {
+      const alts = new Set([tok]);
+      if (COURSE_SYNONYMS[tok]) {
+        for (const syn of COURSE_SYNONYMS[tok]) alts.add(syn);
+      }
+      return Array.from(alts);
+    });
+
+    const results = [];
+
+    for (const c of data.courses) {
+      // Facet filters
+      if (f.studyLevel && f.studyLevel !== "ALL") {
+        if (f.studyLevel === "Double") {
+          if (!c.isDoubleDegree) continue;
+        } else if (f.studyLevel === "Pathway") {
+          if (!["Pathway Programs", "Other"].includes(c.studyLevel)) continue;
+        } else if (c.studyLevel !== f.studyLevel) {
+          continue;
+        }
+      }
+      if (f.school && f.school !== "ALL" && c.school !== f.school) continue;
+      if (f.faculty && f.faculty !== "ALL" && c.faculty !== f.faculty) continue;
+      if (f.mode && f.mode !== "ALL" && !(c.modes || []).includes(f.mode)) continue;
+      if (f.intake && f.intake !== "ALL" && !(c.intakes || "").includes(`Trimester ${f.intake}`)) continue;
+      if (f.maxAtar && f.maxAtar !== "ALL") {
+        const atarNum = parseInt(c.atar, 10);
+        if (isNaN(atarNum) || atarNum > parseInt(f.maxAtar, 10)) continue;
+      }
+
+      if (!q) {
+        results.push({ course: c, score: c.code === "BSC" ? 10 : 0, matchedMajors: [], matchedUnit: null, matchBadges: [] });
+        continue;
+      }
+
+      const codeLow = c.code.toLowerCase();
+      const titleLow = c.title.toLowerCase();
+      const schoolLow = (c.school || "").toLowerCase();
+      const facLow = (c.faculty || "").toLowerCase();
+      const ascedLow = (c.asced || "").toLowerCase();
+      const careersLow = (c.careers || "").toLowerCase();
+      const overviewLow = (c.overview || "").toLowerCase();
+      const prefixesLow = (c.unitPrefixes || []).map((p) => p.toLowerCase());
+      const idxEntry = unitIdxMap.get(c.code) || { units: new Set(), aosEntries: [] };
+
+      let score = 0;
+      const matchBadges = [];
+      const matchedMajors = [];
+      let matchedUnit = null;
+
+      // 1. Unit Code reverse lookup! (e.g. "CHEM110" or "COSC110")
+      if (isUnitCodeQuery && idxEntry.units.has(qUpper)) {
+        score += 110;
+        matchedUnit = qUpper;
+        matchBadges.push(`Includes unit ${qUpper}`);
+      }
+
+      // 2. Exact / prefix Course Code match
+      if (codeLow === q) score += 160;
+      else if (codeLow.startsWith(q)) score += 95;
+
+      // 3. Exact phrase in Title (word-boundary safe for short queries like "ai" or "law" / "laws")
+      if (matchTerm(titleLow, q) || (q.length >= 3 && !q.endsWith("s") && matchTerm(titleLow, `${q}s`))) score += 95;
+
+      // 4. Double degree keyword boost
+      if ((q.includes("double") || q.includes("combined")) && c.isDoubleDegree) {
+        score += 45;
+        matchBadges.push("Double / Combined Degree");
+      }
+
+      // 5. Major / Minor / Specialisation matching (capped so one course with 5 similar minors doesn't outrank primary degree)
+      let majorBonus = 0;
+      for (const aos of idxEntry.aosEntries) {
+        const aLow = aos.title.toLowerCase();
+        const directMatch = matchTerm(aLow, q);
+        const synMatch =
+          !directMatch &&
+          expandedGroups.length > 0 &&
+          expandedGroups.every((alts) => alts.some((alt) => matchTerm(aLow, alt)));
+        if (directMatch || synMatch) {
+          majorBonus = Math.max(majorBonus, directMatch ? 64 : 42);
+          if (matchedMajors.length < 4 && !matchedMajors.some((m) => m.title === aos.title)) {
+            matchedMajors.push(aos);
+          }
+        }
+      }
+      score += majorBonus + Math.min(matchedMajors.length, 3) * 3;
+
+      // 6. Per-token & synonym scoring across title, majors, prefixes, school, ASCED, overview, careers
+      if (tokens.length > 0) {
+        const titleWords = titleLow.split(/[^a-z0-9]+/).filter(Boolean);
+        let tokensMatched = 0;
+        let titleTokensMatched = 0;
+        for (let tIdx = 0; tIdx < expandedGroups.length; tIdx++) {
+          const origTok = tokens[tIdx];
+          const alts = expandedGroups[tIdx];
+          let bestTokScore = 0;
+          let hitTitle = false;
+          for (const alt of alts) {
+            const isDirect = alt === origTok;
+            const mult = isDirect ? 1 : 0.72;
+            if (codeLow === alt) {
+              bestTokScore = Math.max(bestTokScore, Math.round(60 * mult));
+              hitTitle = true;
+            } else if (matchTerm(titleLow, alt)) {
+              bestTokScore = Math.max(bestTokScore, Math.round(46 * mult));
+              hitTitle = true;
+            } else if (
+              isDirect &&
+              alt.length >= 4 &&
+              titleWords.some((w) => editDistLeq1(alt, w) || (w.length > alt.length && editDistLeq1(alt.slice(0, 6), w.slice(0, 6))))
+            ) {
+              bestTokScore = Math.max(bestTokScore, 32);
+              hitTitle = true;
+            } else if (alt === "double" || alt === "combined") {
+              if (c.isDoubleDegree) {
+                bestTokScore = Math.max(bestTokScore, 40);
+                hitTitle = true;
+              }
+            } else if (prefixesLow.includes(alt)) {
+              bestTokScore = Math.max(bestTokScore, Math.round(28 * mult));
+            } else if (idxEntry.aosEntries.some((a) => matchTerm(a.title.toLowerCase(), alt))) {
+              bestTokScore = Math.max(bestTokScore, Math.round(30 * mult));
+            } else if (matchTerm(ascedLow, alt)) {
+              bestTokScore = Math.max(bestTokScore, Math.round(16 * mult));
+            } else if (matchTerm(schoolLow, alt) || matchTerm(facLow, alt)) {
+              bestTokScore = Math.max(bestTokScore, Math.round(13 * mult));
+            } else if (isDirect && (matchTerm(careersLow, alt) || matchTerm(overviewLow, alt))) {
+              // Only match noisy prose (overview/careers) on direct user terms, never on expanded synonyms
+              bestTokScore = Math.max(bestTokScore, 8);
+            }
+          }
+          if (bestTokScore > 0) {
+            tokensMatched++;
+            if (hitTitle) titleTokensMatched++;
+            score += bestTokScore;
+          }
+        }
+        if (titleTokensMatched === tokens.length) score += 28;
+        if (tokens.length >= 2 && tokensMatched < tokens.length && !matchedUnit && matchedMajors.length === 0) {
+          score = 0;
+        }
+      }
+
+      if (score > 0) {
+        if (c.studyLevel === "Undergraduate" && c.totalCp >= 144) score += 4;
+        if (!q.includes("double") && !q.includes("combined") && !c.isDoubleDegree) score += 2;
+        results.push({ course: c, score, matchedMajors, matchedUnit, matchBadges });
+      }
+    }
+
+    const sortBy = f.sortBy || "relevance";
+    results.sort((a, b) => {
+      if (sortBy === "az") return a.course.title.localeCompare(b.course.title);
+      if (sortBy === "cp_asc") return (a.course.totalCp || 0) - (b.course.totalCp || 0) || a.course.title.localeCompare(b.course.title);
+      if (sortBy === "cp_desc") return (b.course.totalCp || 0) - (a.course.totalCp || 0) || a.course.title.localeCompare(b.course.title);
+      if (sortBy === "atar") {
+        const aA = parseInt(a.course.atar, 10) || 999;
+        const bA = parseInt(b.course.atar, 10) || 999;
+        return aA - bA || a.course.title.localeCompare(b.course.title);
+      }
+      // Relevance (or default featured order when query is empty)
+      if (b.score !== a.score) return b.score - a.score;
+      return a.course.title.localeCompare(b.course.title);
+    });
+
+    return results;
+  }
+
+  function preselectAOS(course, plan, aosEntry, data) {
+    if (!aosEntry || !aosEntry.code) return;
+    const cfg = course.structureConfig;
+    if (cfg.aosMode === "dynamic") {
+      plan.dynamicAosSelections = plan.dynamicAosSelections || {};
+      const groups = getDynamicAOSGroups(course, plan, data);
+      const matchGrp =
+        groups.find((g) => g.items.some((it) => it.code === aosEntry.code)) ||
+        groups.find((g) => g.id === aosEntry.containerTitle);
+      if (matchGrp && !matchGrp.isMandatorySingle) {
+        plan.dynamicAosSelections[matchGrp.id] = aosEntry.code;
+      }
+      return;
+    }
+    const opts = getAvailableAOSOptions(course, plan, data);
+    if (opts.majors.some((m) => m.code === aosEntry.code)) {
+      if (!plan.selectedMajors.includes(aosEntry.code)) {
+        plan.selectedMajors = [aosEntry.code];
+      }
+    } else if (opts.minors.some((m) => m.code === aosEntry.code)) {
+      if (cfg.aosMode === "bsc") plan.aosStructure = "1m1n";
+      else if (cfg.aosMode === "bcomp") plan.aosStructure = "opt2";
+      else if (cfg.aosMode === "bbiosc") plan.aosStructure = "minor";
+      plan.selectedMinor = aosEntry.code;
+    } else if (opts.pathways.some((p) => p.code === aosEntry.code)) {
+      plan.selectedMinor = aosEntry.code;
+    }
+  }
+
   global.UNEPlannerEngine = {
     uid,
     getUnit,
@@ -1965,6 +2426,7 @@
     getAdvancedStandingCp,
     createDefaultPlan,
     getAvailableAOSOptions,
+    getDynamicAOSGroups,
     getPlannedPlacements,
     resolveCurriculumBuckets,
     evaluateAllPlacements,
@@ -1974,5 +2436,7 @@
     getAvailableStudyPlans,
     parseSlotSpec,
     resolveSlotCandidates,
+    searchCourses,
+    preselectAOS,
   };
 })(typeof window !== "undefined" ? window : globalThis);

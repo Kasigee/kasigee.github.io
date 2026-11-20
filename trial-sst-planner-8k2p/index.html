@@ -2,32 +2,73 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow, noarchive" />
-  <title>UNE 2027 Interactive Course & Unit Planner — School of Science & Technology (Trial)</title>
+  <meta name="theme-color" content="#272525" />
+  <title>UNE 2027 Interactive Course & Unit Planner — University of New England</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
-<body>
+<body class="mobile-pane-plan">
   <div id="trial-banner" class="trial-banner">
     <span>
-      <strong>🧪 Unofficial Trial Prototype</strong> — Interactive 2027 UNE School of Science &amp; Technology Course Planner (for internal feedback &amp; exploration). Always verify official rules at
+      <strong>🧪 Unofficial Trial Prototype</strong> — 2027 University of New England Course &amp; Unit Planner (all 11 Schools, 233 courses). Always verify official rules at
       <a href="https://handbook.une.edu.au" target="_blank" rel="noopener">handbook.une.edu.au</a>.
     </span>
     <button id="btn-dismiss-trial" class="trial-dismiss-btn" title="Dismiss banner for this session">Dismiss ✕</button>
   </div>
+
   <header id="app-header" class="app-header"></header>
-  <section id="config-ribbon" class="config-ribbon"></section>
-  <div id="preset-bar" class="preset-bar" style="display:none;"></div>
 
-  <main class="workspace">
-    <aside id="sidebar" class="sidebar"></aside>
-    <section id="board-area" class="board-area"></section>
-  </main>
+  <!-- Whole-University Course Finder View (233 Courses / 11 Schools) -->
+  <section id="finder-view" class="finder-view hidden"></section>
 
+  <!-- Active Degree Planner Shell -->
+  <div id="planner-shell" class="hidden">
+    <div id="config-ribbon-wrap" class="config-ribbon-wrap">
+      <button id="btn-mobile-config-toggle" class="config-toggle-mobile" type="button"></button>
+      <section id="config-ribbon" class="config-ribbon"></section>
+    </div>
+    <div id="preset-bar" class="preset-bar" style="display:none;"></div>
+
+    <main class="workspace">
+      <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+      <aside id="sidebar" class="sidebar"></aside>
+      <section id="board-area" class="board-area"></section>
+    </main>
+  </div>
+
+  <!-- Sticky Mobile Bottom Navigation (< 768px) -->
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav" aria-label="Primary navigation"></nav>
+
+  <!-- Modals & Bottom Sheets -->
   <div id="modal-backdrop" class="modal-backdrop hidden"></div>
 
-  <script src="data/une_sst_2027.js"></script>
+  <!-- Compact Gzipped Whole-University 2027 Dataset + Engine + App -->
+  <script src="data/une_all_2027.gz.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/app.js"></script>
+  <script>
+    (async function bootUNEPlanner() {
+      try {
+        if (!window.UNE_SST_DATA && window.UNE_ALL_GZ_B64) {
+          const bin = Uint8Array.from(atob(window.UNE_ALL_GZ_B64), (c) => c.charCodeAt(0));
+          const ds = new DecompressionStream("gzip");
+          const stream = new Blob([bin]).stream().pipeThrough(ds);
+          const text = await new Response(stream).text();
+          window.UNE_SST_DATA = JSON.parse(text);
+        }
+        if (window.initUNEPlannerApp) {
+          window.initUNEPlannerApp();
+        }
+      } catch (err) {
+        console.error("Failed to unpack UNE 2027 dataset:", err);
+        const fv = document.getElementById("finder-view");
+        if (fv) {
+          fv.classList.remove("hidden");
+          fv.innerHTML = '<div style="padding:24px;color:#b11010;font-weight:700;">Could not load the 2027 UNE dataset. Please refresh or use a modern browser (Chrome, Edge, Safari, Firefox).</div>';
+        }
+      }
+    })();
+  </script>
 </body>
 </html>

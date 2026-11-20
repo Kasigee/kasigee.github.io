@@ -1,12 +1,14 @@
 /**
- * UNE School of Science & Technology — Interactive Course & Unit Planner UI Controller
+ * University of New England (UNE) — 2027 Interactive Course & Unit Planner
+ * Whole-University Course Finder (233 courses / 11 Schools) + Responsive Mobile/Tablet/Desktop Planner
  */
-(function () {
+window.initUNEPlannerApp = function () {
   "use strict";
 
   const DATA = window.UNE_SST_DATA;
   const Engine = window.UNEPlannerEngine;
-  const STORAGE_KEY = "une_sst_2027_plans_v1";
+  const STORAGE_KEY = "une_all_2027_plans_v2";
+  const LEGACY_STORAGE_KEY = "une_sst_2027_plans_v1";
   const THEME_KEY = "une_sst_theme";
 
   const CAT_LABELS = {
@@ -37,9 +39,37 @@
     { label: "Renewable Energy Physics", structure: "1m", majors: ["RNWENPH001"], minor: "" },
   ];
 
+  const FINDER_TOPICS = [
+    { label: "Science & Tech", school: "School of Science and Technology", query: "" },
+    { label: "Data, AI & Computing", school: "ALL", query: "data computer ai cyber" },
+    { label: "Double Degrees (17)", school: "ALL", studyLevel: "Double", query: "" },
+    { label: "Health & Medicine", faculty: "Faculty of Medicine and Health", query: "" },
+    { label: "Law & Criminology", school: "School of Law", query: "" },
+    { label: "Business & MBA", school: "UNE Business School", query: "" },
+    { label: "Education & Teaching", school: "School of Education", query: "" },
+    { label: "Agriculture & Rural", school: "School of Environmental and Rural Science", query: "" },
+    { label: "Arts & Humanities", school: "School of Humanities, Arts and Social Sciences", query: "" },
+    { label: "Psychology", school: "School of Psychology", query: "" },
+  ];
+
   const state = {
+    view: "finder", // 'finder' | 'planner'
     savedPlansByCourse: {},
     currentCourseCode: "BSC",
+
+    // Course Finder state
+    finderQuery: "",
+    finderLevel: "ALL",
+    finderSchool: "ALL",
+    finderFaculty: "ALL",
+    finderMode: "ALL",
+    finderIntake: "ALL",
+    finderAtar: "ALL",
+    finderSort: "relevance",
+    finderLimit: 48,
+    finderActiveTopic: -1,
+
+    // Planner sidebar & slot picker state
     sidebarTab: "requirements", // 'slot' | 'requirements' | 'catalog'
     collapsedBuckets: {},
     catalogQuery: "",
@@ -48,17 +78,20 @@
     catalogPrefix: "all",
     catalogShowIneligible: false,
 
-    // Focused Slot Picker state
-    targetSlot: null, // { yearIdx, triNum, replaceSlotId?, label?, slotKind?, hintCodes? }
+    targetSlot: null,
     slotQuery: "",
-    slotPoolFilter: "all", // 'all' | 'course' | 'elective'
+    slotPoolFilter: "all",
     slotLevelFilter: "all",
     slotShowIneligible: false,
     slotForceElectives: false,
 
+    // Responsive UI state
+    mobilePane: "plan", // 'plan' | 'units'
+    mobileConfigOpen: false,
+    mobileTriFilter: "all", // 'all' | '1' | '2' | '3'
+    tabletDrawerOpen: false,
+
     dragging: null,
-    courseFilterLevel: "ALL",
-    courseSearchQuery: "",
   };
 
   function esc(str) {
@@ -68,6 +101,14 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function isMobileViewport() {
+    return window.innerWidth < 768;
+  }
+
+  function isTabletViewport() {
+    return window.innerWidth >= 768 && window.innerWidth < 1100;
   }
 
   function getCourse(code) {
@@ -102,20 +143,60 @@
     try {
       const savedTheme = localStorage.getItem(THEME_KEY);
       if (savedTheme === "dark") document.documentElement.classList.add("dark");
-      const raw = localStorage.getItem(STORAGE_KEY);
+
+      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+      let hasSaved = false;
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed.savedPlansByCourse) state.savedPlansByCourse = parsed.savedPlansByCourse;
+        if (parsed.savedPlansByCourse && Object.keys(parsed.savedPlansByCourse).length > 0) {
+          state.savedPlansByCourse = parsed.savedPlansByCourse;
+          hasSaved = true;
+        }
         if (parsed.currentCourseCode && DATA.courses.some((c) => c.code === parsed.currentCourseCode)) {
           state.currentCourseCode = parsed.currentCourseCode;
         }
       }
+
       const params = new URLSearchParams(window.location.search);
       const qCourse = (params.get("course") || window.location.hash.replace("#", "")).toUpperCase();
-      if (qCourse && DATA.courses.some((c) => c.code === qCourse)) {
+      const qBrowse = params.get("browse") || params.get("find");
+
+      if (qBrowse) {
+        state.view = "finder";
+      } else if (qCourse && DATA.courses.some((c) => c.code === qCourse)) {
         state.currentCourseCode = qCourse;
+        state.view = "planner";
+      } else if (hasSaved) {
+        // Returning user with saved work opens right into their active plan, with Find Course 1 click away!
+        state.view = "planner";
+      } else {
+        // Fresh user starts at the brilliant Whole-University Course Finder before unit selection!
+        state.view = "finder";
       }
-    } catch (_) {}
+    } catch (_) {
+      state.view = "finder";
+    }
+  }
+
+  function openCourseInPlanner(courseCode, matchedAosEntry) {
+    if (!DATA.courses.some((c) => c.code === courseCode)) return;
+    state.currentCourseCode = courseCode;
+    const course = getCurrentCourse();
+    const plan = getCurrentPlan();
+    if (matchedAosEntry) {
+      Engine.preselectAOS(course, plan, matchedAosEntry, DATA);
+    }
+    exitSlotPicker();
+    state.view = "planner";
+    state.mobilePane = "plan";
+    state.tabletDrawerOpen = false;
+    state.mobileConfigOpen = false;
+    saveState();
+    renderAll({ resetSidebarScroll: true });
+    window.scrollTo({ top: 0, behavior: "instant" });
+    if (matchedAosEntry) {
+      showToast(`Opened ${course.code} with ${matchedAosEntry.title} pre-selected!`);
+    }
   }
 
   function isUnitPlanned(code, plan) {
@@ -151,7 +232,7 @@
     return list;
   }
 
-  function activateSlotPicker(slotTarget) {
+  function activateSlotPicker(slotTarget, openUiPane) {
     state.targetSlot = slotTarget;
     state.sidebarTab = "slot";
     state.slotQuery = "";
@@ -159,6 +240,10 @@
     state.slotLevelFilter = "all";
     state.slotShowIneligible = false;
     state.slotForceElectives = false;
+    if (openUiPane !== false) {
+      if (isMobileViewport()) state.mobilePane = "units";
+      else if (isTabletViewport()) state.tabletDrawerOpen = true;
+    }
   }
 
   function exitSlotPicker() {
@@ -168,10 +253,12 @@
     }
   }
 
-  /**
-   * Smartly adds a unit to either the active targetSlot OR the earliest valid trimester.
-   * Preserves sidebar scroll position when ticking off units in Requirements / All Units!
-   */
+  function syncResponsiveClasses() {
+    document.body.classList.toggle("drawer-open", state.tabletDrawerOpen && state.view === "planner");
+    document.body.classList.toggle("mobile-pane-units", state.view === "planner" && state.mobilePane === "units");
+    document.body.classList.toggle("mobile-pane-plan", state.view === "planner" && state.mobilePane !== "units");
+  }
+
   function addUnitToPlan(code) {
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
@@ -194,16 +281,17 @@
           if (idx !== -1) yr.trimesters[triNum][idx] = newSlot;
           else yr.trimesters[triNum].push(newSlot);
 
-          // Rapid-fill ergonomics: if user was in Slot Picker filling placeholders, jump to next open placeholder if any!
           const remaining = findOpenPlaceholders(plan);
           if (state.sidebarTab === "slot" && remaining.length > 0) {
-            activateSlotPicker(remaining[0]);
+            activateSlotPicker(remaining[0], false);
             saveState();
             renderAll({ resetSidebarScroll: true });
-            showToast(`Placed ${code} in Y${yr.yearNum} T${triNum}! Showing next open slot (${remaining.length} left).`);
+            showToast(`Placed ${code} in Y${yr.yearNum} T${triNum}! Next open slot: Y${remaining[0].yearNum} T${remaining[0].triNum} (${remaining.length} left).`);
             return;
           } else {
             exitSlotPicker();
+            if (isMobileViewport()) state.mobilePane = "plan";
+            if (isTabletViewport()) state.tabletDrawerOpen = false;
             saveState();
             renderAll({ resetSidebarScroll: false });
             showToast(
@@ -214,7 +302,6 @@
             return;
           }
         } else {
-          // Clicking an empty trimester drop zone: place unit there, keep targetSlot active if space < 24 CP!
           yr.trimesters[triNum].push(newSlot);
           const newLoadCp = yr.trimesters[triNum].reduce((s, x) => {
             const xu = x.type === "unit" ? Engine.getUnit(x.code, DATA, plan.customUnits) : null;
@@ -222,6 +309,8 @@
           }, 0);
           if (newLoadCp >= (plan.studyLoad === "Part-time" ? 12 : 24)) {
             exitSlotPicker();
+            if (isMobileViewport()) state.mobilePane = "plan";
+            if (isTabletViewport()) state.tabletDrawerOpen = false;
           }
           saveState();
           renderAll({ resetSidebarScroll: false });
@@ -231,7 +320,7 @@
       }
     }
 
-    // Standard "+ Add" from Course Requirements or All Units: find earliest valid trimester & preserve sidebar scroll!
+    // Smart earliest valid placement preserving left sidebar scroll
     const maxPerTri = plan.studyLoad === "Part-time" ? 12 : 24;
     const placements = Engine.getPlannedPlacements(plan, DATA);
     const advCp = Engine.getAdvancedStandingCp(course, plan.admissionRule);
@@ -266,9 +355,7 @@
           if (pm.tokens && pm.tokens.length > 0 && !Engine.evalPrereqTokens(pm.tokens, priorSet)) prereqOk = false;
         }
         const score = (prereqOk ? 0 : 100) + chrono;
-        if (!best || score < best.score) {
-          best = { yIdx, tNum, score };
-        }
+        if (!best || score < best.score) best = { yIdx, tNum, score };
       }
     });
 
@@ -312,9 +399,7 @@
     const yr = plan.years[yearIdx];
     if (!yr) return;
     yr.trimesters[triNum] = (yr.trimesters[triNum] || []).filter((s) => s.id !== slotId);
-    if (state.targetSlot && state.targetSlot.replaceSlotId === slotId) {
-      exitSlotPicker();
-    }
+    if (state.targetSlot && state.targetSlot.replaceSlotId === slotId) exitSlotPicker();
     saveState();
     renderAll({ resetSidebarScroll: false });
   }
@@ -351,8 +436,7 @@
     if (!el) {
       el = document.createElement("div");
       el.id = "planner-toast";
-      el.style.cssText =
-        "position:fixed;bottom:20px;right:20px;z-index:90;background:var(--text);color:var(--surface);padding:10px 16px;border-radius:8px;font-weight:600;font-size:12.5px;box-shadow:var(--shadow-lg);transition:opacity 0.2s;pointer-events:none;";
+      el.className = "planner-toast";
       document.body.appendChild(el);
     }
     el.textContent = msg;
@@ -360,77 +444,134 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       el.style.opacity = "0";
-    }, 2800);
+    }, 3000);
   }
 
-  /* ================= RENDERING ================= */
-
+  /* ==========================================================================
+     1. UNE HEADER BAR
+     ========================================================================== */
   function renderHeader(course, plan) {
-    const studyPlans = Engine.getAvailableStudyPlans(course, plan, DATA);
     const hdr = document.getElementById("app-header");
+    const isPlanner = state.view === "planner";
+    const studyPlans = isPlanner ? Engine.getAvailableStudyPlans(course, plan, DATA) : [];
+    const openPhCount = isPlanner ? findOpenPlaceholders(plan).length : 0;
+
     hdr.innerHTML = `
       <div class="brand-group">
-        <div class="une-crest" title="University of New England — School of Science & Technology">UNE</div>
-        <button class="course-switcher-btn" id="btn-open-courses" title="Switch across all 45 School of Science & Technology courses">
-          <span class="course-code-pill">${esc(course.code)}</span>
-          <div class="course-title-block">
-            <div class="course-title-main">${esc(course.title)} <span style="color:var(--text-subtle);font-weight:500;">▾</span></div>
-            <div class="course-subtitle-meta">
-              <span>2027 Handbook</span> ·
-              <span>${course.totalCp} CP</span> ·
-              <span>${esc(course.studyLevel)}</span> ·
-              <span style="color:var(--primary);font-weight:600;">Switch Course (${DATA.meta.counts.courses} in School)</span>
-            </div>
+        <button class="une-brand-btn" id="btn-brand-home" title="Browse all ${DATA.meta.counts.courses} UNE 2027 Courses">
+          <div class="une-crest" aria-hidden="true">
+            <span class="une-crest-letters">une</span>
+            <span class="une-crest-bar"></span>
+          </div>
+          <div class="une-brand-text">
+            <span class="une-brand-name">University of New England</span>
+            <span class="une-brand-sub">2027 Course &amp; Unit Planner</span>
           </div>
         </button>
+
+        ${
+          isPlanner
+            ? `
+              <div class="header-divider"></div>
+              <button class="course-switcher-btn" id="btn-open-finder" title="Search & switch across all ${DATA.meta.counts.courses} UNE courses">
+                <span class="course-code-pill">${esc(course.code)}</span>
+                <div class="course-title-block">
+                  <div class="course-title-main">${esc(course.title)} <span style="color:var(--une-lime);">▾</span></div>
+                  <div class="course-subtitle-meta">
+                    <span>${course.totalCp} CP</span> ·
+                    <span>${esc(course.school.replace(/^School of /, ""))}</span> ·
+                    <span style="color:var(--une-lime);font-weight:700;">All ${DATA.meta.counts.courses} Courses</span>
+                  </div>
+                </div>
+              </button>
+            `
+            : ""
+        }
       </div>
 
       <div class="header-actions">
         ${
-          studyPlans.length > 0
-            ? `<button class="btn" id="btn-open-studyplans" title="Load an official UNE Trimester Progression Map">
-                <span>📋 Official Plans (${studyPlans.length})</span>
-              </button>`
-            : ""
+          isPlanner
+            ? `
+              <button class="btn btn-hdr tablet-drawer-trigger" id="btn-tablet-drawer">
+                <span>📚 Units${openPhCount ? ` (${openPhCount})` : ""}</span>
+              </button>
+              ${
+                studyPlans.length > 0
+                  ? `<button class="btn btn-hdr hdr-hide-mobile" id="btn-open-studyplans" title="Load an official UNE Trimester Progression Map">
+                      <span>📋 Plans (${studyPlans.length})</span>
+                    </button>`
+                  : ""
+              }
+              <button class="btn btn-hdr-lime" id="btn-auto-plan" title="Automatically schedule required units into valid 2027 trimesters">
+                <span>✨ <span class="auto-plan-full">Auto-Plan</span><span class="auto-plan-short">Auto</span></span>
+              </button>
+              <button class="btn btn-hdr hdr-hide-tablet hdr-hide-mobile" id="btn-course-info" title="Course Rules, Outcomes & Handbook">
+                <span>📖 Info</span>
+              </button>
+              <button class="btn btn-hdr hdr-hide-mobile" id="btn-export-menu" title="Print, Export CSV/JSON or Reset">
+                <span>⬇ Export</span>
+              </button>
+            `
+            : `
+              <button class="btn btn-hdr-lime" id="btn-back-to-active">
+                <span>📅 Open Planner (${esc(course.code)}) →</span>
+              </button>
+            `
         }
-        <button class="btn btn-primary" id="btn-auto-plan" title="Automatically populate & schedule required units into valid 2027 trimesters">
-          <span>✨ Smart Auto-Plan</span>
-        </button>
-        <button class="btn" id="btn-course-info" title="View Course Rules, Learning Outcomes, Careers & Official Handbook Link">
-          <span>📖 Rules & Info</span>
-        </button>
-        <button class="btn" id="btn-export-menu" title="Export, Import, Print or Reset Plan">
-          <span>⬇ Export / Save</span>
-        </button>
-        <button class="btn btn-icon" id="btn-theme-toggle" title="Toggle Light / Dark Theme">
+        <button class="btn btn-hdr btn-icon" id="btn-theme-toggle" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">
           <span>${document.documentElement.classList.contains("dark") ? "☀️" : "🌙"}</span>
         </button>
       </div>
     `;
 
-    document.getElementById("btn-open-courses").onclick = openCourseModal;
-    if (document.getElementById("btn-open-studyplans")) {
-      document.getElementById("btn-open-studyplans").onclick = openStudyPlansModal;
-    }
-    document.getElementById("btn-auto-plan").onclick = () => {
-      const generated = Engine.autoSchedulePlan(course, plan, DATA);
-      state.savedPlansByCourse[course.code] = generated;
-      const openPh = findOpenPlaceholders(generated);
-      if (openPh.length > 0) {
-        activateSlotPicker(openPh[0]);
-      } else {
-        exitSlotPicker();
-      }
-      saveState();
-      renderAll({ resetSidebarScroll: true });
-      showToast(
-        openPh.length > 0
-          ? `Generated ${course.code} schedule! Showing eligible units for ${openPh.length} open slot(s).`
-          : `Generated complete 2027 schedule for ${course.code}!`
-      );
+    document.getElementById("btn-brand-home").onclick = () => {
+      state.view = "finder";
+      state.tabletDrawerOpen = false;
+      renderAll({ resetSidebarScroll: false });
+      window.scrollTo({ top: 0, behavior: "instant" });
     };
-    document.getElementById("btn-course-info").onclick = openCourseInfoModal;
-    document.getElementById("btn-export-menu").onclick = openExportModal;
+
+    const openFinderBtn = document.getElementById("btn-open-finder");
+    if (openFinderBtn) {
+      openFinderBtn.onclick = () => {
+        state.view = "finder";
+        state.tabletDrawerOpen = false;
+        renderAll({ resetSidebarScroll: false });
+        window.scrollTo({ top: 0, behavior: "instant" });
+      };
+    }
+
+    const backActiveBtn = document.getElementById("btn-back-to-active");
+    if (backActiveBtn) {
+      backActiveBtn.onclick = () => {
+        state.view = "planner";
+        renderAll({ resetSidebarScroll: false });
+      };
+    }
+
+    const drawerBtn = document.getElementById("btn-tablet-drawer");
+    if (drawerBtn) {
+      drawerBtn.onclick = () => {
+        state.tabletDrawerOpen = !state.tabletDrawerOpen;
+        syncResponsiveClasses();
+      };
+    }
+
+    const spBtn = document.getElementById("btn-open-studyplans");
+    if (spBtn) spBtn.onclick = openStudyPlansModal;
+
+    const autoBtn = document.getElementById("btn-auto-plan");
+    if (autoBtn) {
+      autoBtn.onclick = runSmartAutoPlan;
+    }
+
+    const infoBtn = document.getElementById("btn-course-info");
+    if (infoBtn) infoBtn.onclick = openCourseInfoModal;
+
+    const expBtn = document.getElementById("btn-export-menu");
+    if (expBtn) expBtn.onclick = openExportModal;
+
     document.getElementById("btn-theme-toggle").onclick = () => {
       document.documentElement.classList.toggle("dark");
       localStorage.setItem(THEME_KEY, document.documentElement.classList.contains("dark") ? "dark" : "light");
@@ -438,16 +579,508 @@
     };
   }
 
+  function runSmartAutoPlan() {
+    const course = getCurrentCourse();
+    const plan = getCurrentPlan();
+    const generated = Engine.autoSchedulePlan(course, plan, DATA);
+    state.savedPlansByCourse[course.code] = generated;
+    const openPh = findOpenPlaceholders(generated);
+    if (openPh.length > 0 && !isMobileViewport()) {
+      activateSlotPicker(openPh[0], !isTabletViewport());
+    } else {
+      exitSlotPicker();
+    }
+    saveState();
+    renderAll({ resetSidebarScroll: true });
+    showToast(
+      openPh.length > 0
+        ? `Generated ${course.code} schedule! ${openPh.length} open slot(s) ready to choose.`
+        : `Generated complete 2027 schedule for ${course.code}!`
+    );
+  }
+
+  /* ==========================================================================
+     2. WHOLE-UNIVERSITY COURSE FINDER (ALL 233 COURSES / 11 SCHOOLS)
+     ========================================================================== */
+  function renderCourseFinder(resultsOnly) {
+    const fv = document.getElementById("finder-view");
+    const activeSavedCodes = Object.keys(state.savedPlansByCourse).filter((code) => {
+      const p = state.savedPlansByCourse[code];
+      return p && Engine.getPlannedPlacements(p, DATA).length > 0;
+    });
+
+    const levelCounts = {
+      ALL: DATA.courses.length,
+      Undergraduate: DATA.courses.filter((c) => c.studyLevel === "Undergraduate").length,
+      Double: DATA.courses.filter((c) => c.isDoubleDegree).length,
+      "Bachelor Honours": DATA.courses.filter((c) => c.studyLevel === "Bachelor Honours").length,
+      Postgraduate: DATA.courses.filter((c) => c.studyLevel === "Postgraduate").length,
+      "Postgraduate Research": DATA.courses.filter((c) => c.studyLevel === "Postgraduate Research").length,
+      Pathway: DATA.courses.filter((c) => ["Pathway Programs", "Other"].includes(c.studyLevel)).length,
+    };
+
+    const resumeHtml =
+      activeSavedCodes.length > 0
+        ? `
+          <div class="resume-strip">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-weight:700;font-size:12.5px;color:#fff;">📌 Resume your saved plan${activeSavedCodes.length > 1 ? "s" : ""}:</span>
+              ${activeSavedCodes
+                .slice(0, 4)
+                .map((code) => {
+                  const c = getCourse(code);
+                  const rep = Engine.validatePlan(c, state.savedPlansByCourse[code], DATA);
+                  return `<button class="btn btn-sm btn-hdr-lime" data-resume-course="${esc(code)}">${esc(code)} (${rep.totalPlannedCp}/${rep.targetCp} CP) →</button>`;
+                })
+                .join("")}
+            </div>
+          </div>
+        `
+        : "";
+
+    // Mount the Finder shell once (or when full refresh requested) so typing never destroys #inp-finder-search on mobile keyboards!
+    const existingSearch = document.getElementById("inp-finder-search");
+    if (!resultsOnly || !existingSearch) {
+      fv.innerHTML = `
+        <div class="finder-hero">
+          <div class="finder-hero-inner">
+            <div class="finder-kicker">
+              <span>2027 UNE Course Handbook</span>
+              <span>·</span>
+              <span>${DATA.meta.counts.courses} Courses</span>
+              <span>·</span>
+              <span>${DATA.meta.counts.schools} Schools</span>
+              <span>·</span>
+              <span>${DATA.meta.counts.units.toLocaleString()} Units</span>
+            </div>
+            <h1 class="finder-h1">Find your UNE degree, then plan every trimester</h1>
+            <p class="finder-lead">
+              Search by degree name, <strong>Major or Minor</strong> (e.g. <em>Zoology, Medicinal Chemistry, Criminology</em>), career field (<em>vet, AI, teaching, law, MBA</em>), or even a <strong>unit code</strong> (<em>CHEM110, COSC110</em>).
+            </p>
+
+            <div class="finder-search-wrap">
+              <span class="finder-search-icon" aria-hidden="true">🔍</span>
+              <input
+                type="search"
+                id="inp-finder-search"
+                class="finder-search-input"
+                placeholder="Search degrees, majors, careers, or unit codes (press / to search)…"
+                value="${esc(state.finderQuery)}"
+                autocomplete="off"
+              />
+              <button class="finder-clear-btn ${state.finderQuery ? "" : "hidden"}" id="btn-clear-finder-q" title="Clear search" type="button">✕</button>
+            </div>
+
+            <div class="finder-topic-chips" id="finder-topic-chips">
+              ${FINDER_TOPICS.map(
+                (t, idx) =>
+                  `<button class="topic-chip ${state.finderActiveTopic === idx ? "active" : ""}" data-topic-idx="${idx}" type="button">${esc(t.label)}</button>`
+              ).join("")}
+            </div>
+
+            ${resumeHtml}
+          </div>
+        </div>
+
+        <div class="finder-body">
+          <div class="finder-levels-row" id="finder-levels-row">
+            ${[
+              ["ALL", `All Degrees (${levelCounts.ALL})`],
+              ["Undergraduate", `Undergraduate (${levelCounts.Undergraduate})`],
+              ["Double", `Double / Combined (${levelCounts.Double})`],
+              ["Bachelor Honours", `Honours (${levelCounts["Bachelor Honours"]})`],
+              ["Postgraduate", `Postgraduate (${levelCounts.Postgraduate})`],
+              ["Postgraduate Research", `Research (${levelCounts["Postgraduate Research"]})`],
+              ["Pathway", `Pathways & Other (${levelCounts.Pathway})`],
+            ]
+              .map(
+                ([val, lbl]) =>
+                  `<button class="level-pill-btn ${state.finderLevel === val ? "active" : ""}" data-flvl="${val}" type="button">${lbl}</button>`
+              )
+              .join("")}
+          </div>
+
+          <div class="finder-facets-bar">
+            <select class="select-input finder-school-sel" id="sel-finder-school" aria-label="Filter by School">
+              <option value="ALL">All 11 UNE Schools</option>
+              ${DATA.meta.schools
+                .map(
+                  ([sName, sCount]) =>
+                    `<option value="${esc(sName)}" ${state.finderSchool === sName ? "selected" : ""}>${esc(sName)} (${sCount})</option>`
+                )
+                .join("")}
+            </select>
+
+            <select class="select-input" id="sel-finder-mode" aria-label="Delivery Mode">
+              <option value="ALL">Any Mode</option>
+              <option value="Online" ${state.finderMode === "Online" ? "selected" : ""}>Online Available</option>
+              <option value="On Campus" ${state.finderMode === "On Campus" ? "selected" : ""}>On Campus (Armidale)</option>
+            </select>
+
+            <select class="select-input" id="sel-finder-intake" aria-label="Intake Trimester">
+              <option value="ALL">Any Intake</option>
+              <option value="1" ${state.finderIntake === "1" ? "selected" : ""}>Trimester 1</option>
+              <option value="2" ${state.finderIntake === "2" ? "selected" : ""}>Trimester 2</option>
+              <option value="3" ${state.finderIntake === "3" ? "selected" : ""}>Trimester 3</option>
+            </select>
+
+            <select class="select-input" id="sel-finder-atar" aria-label="Maximum ATAR">
+              <option value="ALL">Any ATAR</option>
+              <option value="65" ${state.finderAtar === "65" ? "selected" : ""}>ATAR ≤ 65</option>
+              <option value="75" ${state.finderAtar === "75" ? "selected" : ""}>ATAR ≤ 75</option>
+              <option value="85" ${state.finderAtar === "85" ? "selected" : ""}>ATAR ≤ 85</option>
+            </select>
+
+            <select class="select-input" id="sel-finder-sort" aria-label="Sort Courses">
+              <option value="relevance" ${state.finderSort === "relevance" ? "selected" : ""}>Sort: Best Match</option>
+              <option value="az" ${state.finderSort === "az" ? "selected" : ""}>Sort: A – Z</option>
+              <option value="cp_asc" ${state.finderSort === "cp_asc" ? "selected" : ""}>Sort: Shortest (CP)</option>
+              <option value="cp_desc" ${state.finderSort === "cp_desc" ? "selected" : ""}>Sort: Longest (CP)</option>
+              <option value="atar" ${state.finderSort === "atar" ? "selected" : ""}>Sort: Lowest ATAR</option>
+            </select>
+
+            <button class="btn btn-sm hidden" id="btn-reset-finder" type="button">Reset Filters</button>
+          </div>
+
+          <div id="finder-results-area"></div>
+        </div>
+
+        <footer class="finder-footer">
+          <span>
+            <strong>University of New England (UNE)</strong> · 2027 Course &amp; Unit Planner Prototype (Armidale, Sydney &amp; Online).
+          </span>
+          <span>
+            Source data compiled from the official <a href="https://handbook.une.edu.au" target="_blank" rel="noopener">2027 UNE Handbook ↗</a>.
+          </span>
+        </footer>
+      `;
+
+      // Bind persistent shell controls once
+      const searchInp = document.getElementById("inp-finder-search");
+      searchInp.oninput = (e) => {
+        state.finderQuery = e.target.value;
+        state.finderActiveTopic = -1;
+        state.finderLimit = 48;
+        renderCourseFinder(true);
+      };
+
+      document.getElementById("btn-clear-finder-q").onclick = () => {
+        state.finderQuery = "";
+        state.finderActiveTopic = -1;
+        searchInp.value = "";
+        renderCourseFinder(true);
+        searchInp.focus();
+      };
+
+      fv.querySelectorAll("[data-topic-idx]").forEach((btn) => {
+        btn.onclick = () => {
+          const idx = parseInt(btn.dataset.topicIdx, 10);
+          if (state.finderActiveTopic === idx) {
+            state.finderActiveTopic = -1;
+            state.finderSchool = "ALL";
+            state.finderFaculty = "ALL";
+            state.finderLevel = "ALL";
+            state.finderQuery = "";
+          } else {
+            const t = FINDER_TOPICS[idx];
+            state.finderActiveTopic = idx;
+            state.finderSchool = t.school || "ALL";
+            state.finderFaculty = t.faculty || "ALL";
+            state.finderLevel = t.studyLevel || "ALL";
+            state.finderQuery = t.query || "";
+          }
+          state.finderLimit = 48;
+          searchInp.value = state.finderQuery;
+          renderCourseFinder(true);
+        };
+      });
+
+      fv.querySelectorAll("[data-flvl]").forEach((btn) => {
+        btn.onclick = () => {
+          state.finderLevel = btn.dataset.flvl;
+          state.finderLimit = 48;
+          renderCourseFinder(true);
+        };
+      });
+
+      fv.querySelectorAll("[data-resume-course]").forEach((btn) => {
+        btn.onclick = () => openCourseInPlanner(btn.dataset.resumeCourse);
+      });
+
+      document.getElementById("sel-finder-school").onchange = (e) => {
+        state.finderSchool = e.target.value;
+        state.finderFaculty = "ALL";
+        state.finderActiveTopic = -1;
+        state.finderLimit = 48;
+        renderCourseFinder(true);
+      };
+      document.getElementById("sel-finder-mode").onchange = (e) => {
+        state.finderMode = e.target.value;
+        renderCourseFinder(true);
+      };
+      document.getElementById("sel-finder-intake").onchange = (e) => {
+        state.finderIntake = e.target.value;
+        renderCourseFinder(true);
+      };
+      document.getElementById("sel-finder-atar").onchange = (e) => {
+        state.finderAtar = e.target.value;
+        renderCourseFinder(true);
+      };
+      document.getElementById("sel-finder-sort").onchange = (e) => {
+        state.finderSort = e.target.value;
+        renderCourseFinder(true);
+      };
+      document.getElementById("btn-reset-finder").onclick = resetFinderFilters;
+    }
+
+    // Sync controls & active chips without disturbing keyboard focus
+    const clearBtn = document.getElementById("btn-clear-finder-q");
+    if (clearBtn) clearBtn.classList.toggle("hidden", !state.finderQuery);
+
+    const hasActiveFilters =
+      Boolean(state.finderQuery) ||
+      state.finderLevel !== "ALL" ||
+      state.finderSchool !== "ALL" ||
+      state.finderFaculty !== "ALL" ||
+      state.finderMode !== "ALL" ||
+      state.finderIntake !== "ALL" ||
+      state.finderAtar !== "ALL";
+    const resetBtn = document.getElementById("btn-reset-finder");
+    if (resetBtn) resetBtn.classList.toggle("hidden", !hasActiveFilters);
+
+    const schSel = document.getElementById("sel-finder-school");
+    if (schSel && schSel.value !== state.finderSchool) schSel.value = state.finderSchool;
+    const modSel = document.getElementById("sel-finder-mode");
+    if (modSel && modSel.value !== state.finderMode) modSel.value = state.finderMode;
+    const intSel = document.getElementById("sel-finder-intake");
+    if (intSel && intSel.value !== state.finderIntake) intSel.value = state.finderIntake;
+    const atarSel = document.getElementById("sel-finder-atar");
+    if (atarSel && atarSel.value !== state.finderAtar) atarSel.value = state.finderAtar;
+    const sortSel = document.getElementById("sel-finder-sort");
+    if (sortSel && sortSel.value !== state.finderSort) sortSel.value = state.finderSort;
+
+    fv.querySelectorAll("[data-topic-idx]").forEach((btn) => {
+      btn.classList.toggle("active", parseInt(btn.dataset.topicIdx, 10) === state.finderActiveTopic);
+    });
+    fv.querySelectorAll("[data-flvl]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.flvl === state.finderLevel);
+    });
+
+    // Compute and render matching course cards into #finder-results-area
+    const results = Engine.searchCourses(
+      state.finderQuery,
+      {
+        studyLevel: state.finderLevel,
+        school: state.finderSchool,
+        faculty: state.finderFaculty,
+        mode: state.finderMode,
+        intake: state.finderIntake,
+        maxAtar: state.finderAtar,
+        sortBy: state.finderSort,
+      },
+      DATA
+    );
+
+    const resArea = document.getElementById("finder-results-area");
+    resArea.innerHTML = `
+      <div class="finder-results-meta" style="margin-bottom:12px;">
+        <span>
+          Showing <strong>${Math.min(results.length, state.finderLimit)}</strong> of <strong>${results.length}</strong> matching UNE 2027 course${results.length === 1 ? "" : "s"}
+          ${state.finderQuery ? `for "<strong>${esc(state.finderQuery)}</strong>"` : ""}
+          ${state.finderFaculty !== "ALL" ? `in <strong>${esc(state.finderFaculty)}</strong>` : ""}
+        </span>
+        <span style="font-size:12px;">Preview details or click <strong>Plan Degree →</strong> to start scheduling</span>
+      </div>
+
+      ${
+        results.length === 0
+          ? `<div style="background:var(--surface);border:1px dashed var(--border-strong);border-radius:var(--radius-lg);padding:32px;text-align:center;">
+              <div style="font-size:16px;font-weight:700;">No 2027 UNE courses matched those filters</div>
+              <div style="font-size:13px;color:var(--text-subtle);margin:6px 0 14px;">Try a broader search term (like "Science", "Law", "Health", "AI", or "Data") or reset filters.</div>
+              <button class="btn btn-primary" id="btn-empty-reset-finder" type="button">Show All ${DATA.meta.counts.courses} Courses</button>
+            </div>`
+          : `
+            <div class="finder-grid">
+              ${results
+                .slice(0, state.finderLimit)
+                .map((r) => renderFinderCourseCard(r))
+                .join("")}
+            </div>
+            ${
+              results.length > state.finderLimit
+                ? `<div style="display:flex;justify-content:center;padding-top:14px;">
+                    <button class="btn btn-soft" id="btn-finder-more" type="button">Show More Courses (${results.length - state.finderLimit} remaining)</button>
+                  </div>`
+                : ""
+            }
+          `
+      }
+    `;
+
+    const emptyReset = document.getElementById("btn-empty-reset-finder");
+    if (emptyReset) emptyReset.onclick = resetFinderFilters;
+
+    const moreBtn = document.getElementById("btn-finder-more");
+    if (moreBtn) {
+      moreBtn.onclick = () => {
+        state.finderLimit += 60;
+        renderCourseFinder(true);
+      };
+    }
+
+    resArea.querySelectorAll("[data-launch-course]").forEach((btn) => {
+      btn.onclick = () => openCourseInPlanner(btn.dataset.launchCourse);
+    });
+
+    resArea.querySelectorAll("[data-preview-course]").forEach((btn) => {
+      btn.onclick = () => openCourseInfoModal(btn.dataset.previewCourse);
+    });
+
+    resArea.querySelectorAll("[data-launch-with-aos]").forEach((btn) => {
+      btn.onclick = () => {
+        const [cCode, aosCode, aosTitle, containerTitle] = btn.dataset.launchWithAos.split("||");
+        openCourseInPlanner(cCode, { code: aosCode, title: aosTitle, containerTitle });
+      };
+    });
+  }
+
+  function resetFinderFilters() {
+    state.finderQuery = "";
+    state.finderLevel = "ALL";
+    state.finderSchool = "ALL";
+    state.finderFaculty = "ALL";
+    state.finderMode = "ALL";
+    state.finderIntake = "ALL";
+    state.finderAtar = "ALL";
+    state.finderActiveTopic = -1;
+    state.finderLimit = 48;
+    const inp = document.getElementById("inp-finder-search");
+    if (inp) inp.value = "";
+    renderCourseFinder(true);
+  }
+
+  function renderFinderCourseCard(res) {
+    const c = res.course;
+    const isSaved = !!state.savedPlansByCourse[c.code] && Engine.getPlannedPlacements(state.savedPlansByCourse[c.code], DATA).length > 0;
+    const cardTone = c.isDoubleDegree ? "double-card" : c.studyLevel.includes("Postgraduate") ? "pg-card" : "";
+    const majorTitles = (c.majorTitles || []).filter((t) => !/listed unit/i.test(t));
+    const majorCount = majorTitles.length;
+    const minorCount = (c.minorTitles || []).length;
+    const topMatchAos = res.matchedMajors && res.matchedMajors[0];
+
+    const majorsPreviewHtml =
+      majorCount > 0 && !(res.matchedMajors && res.matchedMajors.length > 0)
+        ? `<div class="finder-majors-preview">
+             <strong>Majors:</strong> ${esc(majorTitles.slice(0, 4).join(", "))}${
+               majorCount > 4 ? ` <em>+${majorCount - 4} more</em>` : ""
+             }
+           </div>`
+        : "";
+
+    return `
+      <article class="finder-card ${cardTone}">
+        <div class="finder-card-top">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="course-code-pill teal">${esc(c.code)}</span>
+            <span class="meta-chip">${esc(c.studyLevel)}</span>
+            ${c.isDoubleDegree ? `<span class="meta-chip" style="color:var(--une-blue);border-color:var(--info-border);background:var(--info-bg);">Double Degree</span>` : ""}
+          </div>
+          <span style="font-weight:800;font-size:12.5px;color:var(--primary);font-variant-numeric:tabular-nums;">${c.totalCp} CP</span>
+        </div>
+
+        <div class="finder-card-title">${esc(c.title)}</div>
+        <div class="finder-card-school">${esc(c.school)}</div>
+
+        ${
+          c.overview
+            ? `<div style="font-size:12px;color:var(--text-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(c.overview)}</div>`
+            : ""
+        }
+
+        ${majorsPreviewHtml}
+
+        <div class="finder-card-meta">
+          ${c.modes?.length ? `<span class="meta-chip">${esc(c.modes.join(" / "))}</span>` : ""}
+          ${c.atar ? `<span class="meta-chip">ATAR ${esc(c.atar)}</span>` : ""}
+          ${majorCount ? `<span class="meta-chip">${majorCount} Major${majorCount > 1 ? "s" : ""}</span>` : ""}
+          ${minorCount ? `<span class="meta-chip">${minorCount} Minor${minorCount > 1 ? "s" : ""}</span>` : ""}
+          ${c.studyPlanIds?.length ? `<span class="meta-chip">${c.studyPlanIds.length} Official Plan${c.studyPlanIds.length > 1 ? "s" : ""}</span>` : ""}
+          ${res.matchedUnit ? `<span class="meta-chip match-hit">✓ Includes ${esc(res.matchedUnit)}</span>` : ""}
+          ${(res.matchedMajors || [])
+            .slice(0, 2)
+            .map((m) => `<span class="meta-chip match-hit">✓ ${m.isMinor ? "Minor" : "Major"}: ${esc(m.title)}</span>`)
+            .join("")}
+        </div>
+
+        <div class="finder-card-actions">
+          <span style="font-size:11.5px;color:${isSaved ? "var(--ok)" : "var(--text-subtle)"};font-weight:${isSaved ? "700" : "500"};">
+            ${isSaved ? "● Saved plan in progress" : esc(c.duration || c.courseType || "2027 Intake")}
+          </span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-sm" data-preview-course="${esc(c.code)}" title="Preview ATAR, careers, rules & handbook" type="button">📖 Details</button>
+            ${
+              topMatchAos
+                ? `<button class="btn btn-sm btn-soft" data-launch-with-aos="${esc(c.code)}||${esc(topMatchAos.code)}||${esc(topMatchAos.title)}||${esc(topMatchAos.containerTitle || "")}" type="button">
+                    Plan w/ ${esc(topMatchAos.title.slice(0, 16))}${topMatchAos.title.length > 16 ? "…" : ""} →
+                  </button>`
+                : ""
+            }
+            <button class="btn btn-sm btn-primary" data-launch-course="${esc(c.code)}" type="button">
+              ${isSaved ? "Resume Plan →" : "Plan Degree →"}
+            </button>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  /* ==========================================================================
+     3. PLANNER CONFIG RIBBON (INCLUDING DYNAMIC AOS FOR ALL 233 COURSES!)
+     ========================================================================== */
   function renderConfigRibbon(course, plan, report) {
     const cfg = course.structureConfig;
     const opts = report.resolved.aosOptions;
     const ribbon = document.getElementById("config-ribbon");
+    const mobToggle = document.getElementById("btn-mobile-config-toggle");
     const parts = [];
 
+    // Summary line for mobile collapsible config button
+    const summaryPieces = [];
+    if (cfg.hasAdmissionRules && plan.admissionRule) summaryPieces.push(plan.admissionRule);
+    if (plan.selectedMajors?.length) {
+      summaryPieces.push(
+        plan.selectedMajors
+          .map((mc) => (DATA.aos[mc]?.title || mc).replace(/^[A-Z0-9]+\s*-\s*/, "").replace(/\s*\((Major|Minor)\)\s*$/i, ""))
+          .join(" + ")
+      );
+    } else if (cfg.aosMode === "dynamic") {
+      const selVals = Object.values(plan.dynamicAosSelections || {}).filter(Boolean);
+      if (selVals.length) {
+        summaryPieces.push(
+          selVals
+            .slice(0, 2)
+            .map((ac) => (DATA.aos[ac]?.title || ac).replace(/^[A-Z0-9]+\s*-\s*/, "").replace(/\s*\((Major|Minor)\)\s*$/i, ""))
+            .join(" + ")
+        );
+      }
+    }
+    summaryPieces.push(`T${plan.commencingTrimester} · ${plan.studyLoad} · ${plan.preferredMode}`);
+    mobToggle.innerHTML = `
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">⚙ Configure: ${esc(summaryPieces.join(" · "))}</span>
+      <span style="flex-shrink:0;margin-left:8px;color:var(--primary);">${state.mobileConfigOpen ? "Hide ▴" : "Edit ▾"}</span>
+    `;
+    mobToggle.onclick = () => {
+      state.mobileConfigOpen = !state.mobileConfigOpen;
+      ribbon.classList.toggle("open-mobile", state.mobileConfigOpen);
+      mobToggle.querySelector("span:last-child").textContent = state.mobileConfigOpen ? "Hide ▴" : "Edit ▾";
+    };
+    ribbon.classList.toggle("open-mobile", state.mobileConfigOpen);
+
+    // 1. Admission Rule / Schedule Selector
     if (cfg.hasAdmissionRules) {
       parts.push(`
         <div class="config-group">
-          <span class="config-label">Admission Rule</span>
+          <span class="config-label">Pathway / Rule</span>
           <select class="select-input" id="sel-admission-rule">
             ${cfg.admissionRules
               .map((r) => {
@@ -462,10 +1095,11 @@
       `);
     }
 
+    // 2. Specialized AOS structure selectors (BSC, BCOMP, BIT01, BBIOSC)
     if (cfg.aosMode === "bsc") {
       parts.push(`
         <div class="config-group">
-          <span class="config-label">Degree Structure</span>
+          <span class="config-label">Structure</span>
           <div class="seg-group">
             <button class="seg-btn ${plan.aosStructure === "1m" ? "active" : ""}" data-struct="1m">1 Major</button>
             <button class="seg-btn ${plan.aosStructure === "1m1n" ? "active" : ""}" data-struct="1m1n">Major + Minor</button>
@@ -506,127 +1140,159 @@
       `);
     }
 
-    const needMajors =
-      (cfg.aosMode === "bsc" && plan.aosStructure === "2m") ||
-      (cfg.aosMode === "bcomp" && plan.aosStructure === "opt3") ||
-      (cfg.aosMode === "bit01" && plan.aosStructure === "2m")
-        ? 2
-        : ["bsc", "bcomp", "bit01", "single_major"].includes(cfg.aosMode)
-        ? 1
-        : 0;
+    // 3. Dynamic Whole-University AOS Selectors (BA, BBus, BASC, BSCLAW, BED*, BAGR, etc.)
+    if (cfg.aosMode === "dynamic") {
+      const dynGroups = Engine.getDynamicAOSGroups(course, plan, DATA).filter((g) => !g.isMandatorySingle);
+      const dynSel = plan.dynamicAosSelections || {};
+      dynGroups.slice(0, 4).forEach((grp, idx) => {
+        parts.push(`
+          <div class="config-group">
+            <span class="config-label">${esc(grp.title.slice(0, 26))}</span>
+            <select class="select-input" data-dyn-aos="${esc(grp.id)}" id="sel-dyn-${idx}">
+              <option value="">— Select ${esc(grp.isMinor ? "Minor / Optional" : "Option")} (${grp.items.length}) —</option>
+              ${grp.items
+                .map((it) => {
+                  const cleanT = (it.title || it.code).replace(/^[A-Z0-9]+\s*-\s*/, "").replace(/\s*\((Major|Minor)\)\s*$/i, "");
+                  return `<option value="${esc(it.code)}" ${dynSel[grp.id] === it.code ? "selected" : ""}>${esc(cleanT)}${
+                    it.cp ? ` (${it.cp} CP)` : ""
+                  }</option>`;
+                })
+                .join("")}
+            </select>
+          </div>
+        `);
+      });
+    } else {
+      const needMajors =
+        (cfg.aosMode === "bsc" && plan.aosStructure === "2m") ||
+        (cfg.aosMode === "bcomp" && plan.aosStructure === "opt3") ||
+        (cfg.aosMode === "bit01" && plan.aosStructure === "2m")
+          ? 2
+          : ["bsc", "bcomp", "bit01", "single_major"].includes(cfg.aosMode)
+          ? 1
+          : 0;
 
-    if (needMajors >= 1 && opts.majors.length) {
-      parts.push(`
-        <div class="config-group">
-          <span class="config-label">${needMajors === 2 ? "Major 1" : "Major"}</span>
-          <select class="select-input" id="sel-major-1">
-            <option value="">— Select Major —</option>
-            ${opts.majors
-              .map(
-                (m) =>
-                  `<option value="${esc(m.code)}" ${plan.selectedMajors[0] === m.code ? "selected" : ""}>${esc(
-                    m.title
-                  )} (${m.cp || DATA.aos[m.code]?.totalCp || 42} CP)</option>`
-              )
-              .join("")}
-          </select>
-        </div>
-      `);
-    }
-    if (needMajors === 2 && opts.majors.length) {
-      parts.push(`
-        <div class="config-group">
-          <span class="config-label">Major 2</span>
-          <select class="select-input" id="sel-major-2">
-            <option value="">— Select 2nd Major —</option>
-            ${opts.majors
-              .filter((m) => m.code !== plan.selectedMajors[0])
-              .map(
-                (m) =>
-                  `<option value="${esc(m.code)}" ${plan.selectedMajors[1] === m.code ? "selected" : ""}>${esc(
-                    m.title
-                  )} (${m.cp || DATA.aos[m.code]?.totalCp || 42} CP)</option>`
-              )
-              .join("")}
-          </select>
-        </div>
-      `);
+      if (needMajors >= 1 && opts.majors.length) {
+        parts.push(`
+          <div class="config-group">
+            <span class="config-label">${needMajors === 2 ? "Major 1" : "Major"}</span>
+            <select class="select-input" id="sel-major-1">
+              <option value="">— Select Major —</option>
+              ${opts.majors
+                .map(
+                  (m) =>
+                    `<option value="${esc(m.code)}" ${plan.selectedMajors[0] === m.code ? "selected" : ""}>${esc(m.title)} (${
+                      m.cp || DATA.aos[m.code]?.totalCp || 42
+                    } CP)</option>`
+                )
+                .join("")}
+            </select>
+          </div>
+        `);
+      }
+      if (needMajors === 2 && opts.majors.length) {
+        parts.push(`
+          <div class="config-group">
+            <span class="config-label">Major 2</span>
+            <select class="select-input" id="sel-major-2">
+              <option value="">— Select 2nd Major —</option>
+              ${opts.majors
+                .filter((m) => m.code !== plan.selectedMajors[0])
+                .map(
+                  (m) =>
+                    `<option value="${esc(m.code)}" ${plan.selectedMajors[1] === m.code ? "selected" : ""}>${esc(m.title)} (${
+                      m.cp || DATA.aos[m.code]?.totalCp || 42
+                    } CP)</option>`
+                )
+                .join("")}
+            </select>
+          </div>
+        `);
+      }
+
+      const showMinor =
+        (cfg.aosMode === "bsc" && plan.aosStructure === "1m1n") ||
+        (cfg.aosMode === "bcomp" && plan.aosStructure === "opt2") ||
+        (cfg.aosMode === "bbiosc" && plan.aosStructure === "minor");
+      if (showMinor && opts.minors.length) {
+        parts.push(`
+          <div class="config-group">
+            <span class="config-label">Minor</span>
+            <select class="select-input" id="sel-minor">
+              <option value="">— Select Minor —</option>
+              ${opts.minors
+                .map(
+                  (m) =>
+                    `<option value="${esc(m.code)}" ${plan.selectedMinor === m.code ? "selected" : ""}>${esc(m.title)} (${m.cp || 24} CP)</option>`
+                )
+                .join("")}
+            </select>
+          </div>
+        `);
+      }
+
+      if ((cfg.aosMode === "dscnce" || cfg.aosMode === "mnsc_pathway") && opts.pathways.length) {
+        parts.push(`
+          <div class="config-group">
+            <span class="config-label">${cfg.aosMode === "mnsc_pathway" ? "Pathway" : "Stream / Minor"}</span>
+            <select class="select-input" id="sel-minor">
+              <option value="">— Select ${cfg.aosMode === "mnsc_pathway" ? "Pathway" : "Option"} —</option>
+              ${opts.pathways
+                .map(
+                  (p) =>
+                    `<option value="${esc(p.code)}" ${plan.selectedMinor === p.code ? "selected" : ""}>${
+                      p.groupLabel ? `${esc(p.groupLabel)}: ` : ""
+                    }${esc(p.title)}</option>`
+                )
+                .join("")}
+            </select>
+          </div>
+        `);
+      }
     }
 
-    const showMinor =
-      (cfg.aosMode === "bsc" && plan.aosStructure === "1m1n") ||
-      (cfg.aosMode === "bcomp" && plan.aosStructure === "opt2") ||
-      (cfg.aosMode === "bbiosc" && plan.aosStructure === "minor");
-    if (showMinor && opts.minors.length) {
-      parts.push(`
-        <div class="config-group">
-          <span class="config-label">Minor</span>
-          <select class="select-input" id="sel-minor">
-            <option value="">— Select Minor —</option>
-            ${opts.minors
-              .map(
-                (m) =>
-                  `<option value="${esc(m.code)}" ${plan.selectedMinor === m.code ? "selected" : ""}>${esc(
-                    m.title
-                  )} (${m.cp || 24} CP)</option>`
-              )
-              .join("")}
-          </select>
-        </div>
-      `);
-    }
-
-    if ((cfg.aosMode === "dscnce" || cfg.aosMode === "mnsc_pathway") && opts.pathways.length) {
-      parts.push(`
-        <div class="config-group">
-          <span class="config-label">${cfg.aosMode === "mnsc_pathway" ? "Pathway" : "Stream / Minor"}</span>
-          <select class="select-input" id="sel-minor">
-            <option value="">— Select ${cfg.aosMode === "mnsc_pathway" ? "Pathway" : "Option"} —</option>
-            ${opts.pathways
-              .map(
-                (p) =>
-                  `<option value="${esc(p.code)}" ${plan.selectedMinor === p.code ? "selected" : ""}>${
-                    p.groupLabel ? `${esc(p.groupLabel)}: ` : ""
-                  }${esc(p.title)}</option>`
-              )
-              .join("")}
-          </select>
-        </div>
-      `);
-    }
-
+    // 4. Intake, Load, Mode & Honest T3 Strategy (clean 2x2 grid on mobile, inline flex on desktop)
     parts.push(`
-      <div class="config-group" style="margin-left:auto;">
-        <span class="config-label">Start</span>
-        <select class="select-input" id="sel-commence">
-          <option value="1" ${plan.commencingTrimester === 1 ? "selected" : ""}>Trimester 1</option>
-          <option value="2" ${plan.commencingTrimester === 2 ? "selected" : ""}>Trimester 2</option>
-          <option value="3" ${plan.commencingTrimester === 3 ? "selected" : ""}>Trimester 3</option>
-        </select>
+      <div class="config-meta-grid">
+        <div class="config-pair">
+          <span class="config-label">Start</span>
+          <select class="select-input" id="sel-commence">
+            <option value="1" ${plan.commencingTrimester === 1 ? "selected" : ""}>Trimester 1</option>
+            <option value="2" ${plan.commencingTrimester === 2 ? "selected" : ""}>Trimester 2</option>
+            <option value="3" ${plan.commencingTrimester === 3 ? "selected" : ""}>Trimester 3</option>
+          </select>
+        </div>
 
-        <span class="config-label" style="margin-left:6px;">Load</span>
-        <select class="select-input" id="sel-load">
-          <option value="Full-time" ${plan.studyLoad === "Full-time" ? "selected" : ""}>Full-time</option>
-          <option value="Part-time" ${plan.studyLoad === "Part-time" ? "selected" : ""}>Part-time</option>
-        </select>
+        <div class="config-pair">
+          <span class="config-label">Load</span>
+          <select class="select-input" id="sel-load">
+            <option value="Full-time" ${plan.studyLoad === "Full-time" ? "selected" : ""}>Full-time</option>
+            <option value="Part-time" ${plan.studyLoad === "Part-time" ? "selected" : ""}>Part-time</option>
+          </select>
+        </div>
 
-        <span class="config-label" style="margin-left:6px;">Mode</span>
-        <select class="select-input" id="sel-mode">
-          <option value="Online" ${plan.preferredMode === "Online" ? "selected" : ""}>Online</option>
-          <option value="On Campus" ${plan.preferredMode === "On Campus" ? "selected" : ""}>On Campus</option>
-        </select>
+        <div class="config-pair">
+          <span class="config-label">Mode</span>
+          <select class="select-input" id="sel-mode">
+            <option value="Online" ${plan.preferredMode === "Online" ? "selected" : ""}>Online</option>
+            <option value="On Campus" ${plan.preferredMode === "On Campus" ? "selected" : ""}>On Campus</option>
+          </select>
+        </div>
 
-        <span class="config-label" style="margin-left:6px;" title="Most upper-level BSc units only run in T1/T2 — use 'Spread Load' to lighten T1/T2 to 3 units, or 'Fast-Track' to test if your intake/major can genuinely finish earlier">T3</span>
-        <select class="select-input" id="sel-t3-strategy" title="Standard T1/T2 vs Lighter 3+3+2 Load-Spreading vs Fast-Track Check">
-          <option value="none" ${(!plan.t3Strategy || plan.t3Strategy === "none") ? "selected" : ""}>Off (T1 & T2 Standard)</option>
-          <option value="spread" ${plan.t3Strategy === "spread" ? "selected" : ""}>Spread Load (Lighter T1/T2)</option>
-          <option value="accelerate" ${plan.t3Strategy === "accelerate" ? "selected" : ""}>Fast-Track (If Saves Time)</option>
-        </select>
+        <div class="config-pair">
+          <span class="config-label" title="Standard T1/T2 vs Lighter 3+3+2 Load-Spreading vs Fast-Track Check">T3</span>
+          <select class="select-input" id="sel-t3-strategy">
+            <option value="none" ${!plan.t3Strategy || plan.t3Strategy === "none" ? "selected" : ""}>Off (T1 &amp; T2)</option>
+            <option value="spread" ${plan.t3Strategy === "spread" ? "selected" : ""}>Spread Load (3+3+2)</option>
+            <option value="accelerate" ${plan.t3Strategy === "accelerate" ? "selected" : ""}>Fast-Track (If Possible)</option>
+          </select>
+        </div>
       </div>
     `);
 
     ribbon.innerHTML = parts.join("");
 
+    // Bind config handlers
     const ruleEl = document.getElementById("sel-admission-rule");
     if (ruleEl) {
       ruleEl.onchange = (e) => {
@@ -639,6 +1305,15 @@
     ribbon.querySelectorAll("[data-struct]").forEach((btn) => {
       btn.onclick = () => {
         plan.aosStructure = btn.dataset.struct;
+        saveState();
+        renderAll({ resetSidebarScroll: false });
+      };
+    });
+
+    ribbon.querySelectorAll("[data-dyn-aos]").forEach((sel) => {
+      sel.onchange = (e) => {
+        plan.dynamicAosSelections = plan.dynamicAosSelections || {};
+        plan.dynamicAosSelections[sel.dataset.dynAos] = e.target.value;
         saveState();
         renderAll({ resetSidebarScroll: false });
       };
@@ -689,13 +1364,11 @@
     document.getElementById("sel-t3-strategy").onchange = (e) => {
       plan.t3Strategy = e.target.value;
       plan.includeT3InAuto = e.target.value !== "none";
-      // If board already has units/placeholders, re-run Smart Auto-Plan immediately with the new T3 strategy!
-      const hasAnyPlanned = Engine.getPlannedPlacements(plan, DATA).length > 0;
-      if (hasAnyPlanned) {
+      if (Engine.getPlannedPlacements(plan, DATA).length > 0) {
         const updated = Engine.autoSchedulePlan(course, plan, DATA);
         state.savedPlansByCourse[course.code] = updated;
         const openPh = findOpenPlaceholders(updated);
-        if (openPh.length > 0 && state.sidebarTab === "slot") activateSlotPicker(openPh[0]);
+        if (openPh.length > 0 && state.sidebarTab === "slot") activateSlotPicker(openPh[0], false);
       }
       saveState();
       renderAll({ resetSidebarScroll: false });
@@ -705,10 +1378,8 @@
     if (course.code === "BSC") {
       presetBar.style.display = "flex";
       presetBar.innerHTML = `
-        <span style="font-weight:700;color:var(--primary);">⚡ Quick BSc Pathway Presets (1-click auto-schedule):</span>
-        ${BSC_PRESETS.map(
-          (p, i) => `<button class="preset-chip" data-preset="${i}">${esc(p.label)}</button>`
-        ).join("")}
+        <span style="font-weight:700;color:var(--primary);white-space:nowrap;">⚡ BSc Presets:</span>
+        ${BSC_PRESETS.map((p, i) => `<button class="preset-chip" data-preset="${i}">${esc(p.label)}</button>`).join("")}
       `;
       presetBar.querySelectorAll("[data-preset]").forEach((btn) => {
         btn.onclick = () => {
@@ -719,7 +1390,7 @@
           const generated = Engine.autoSchedulePlan(course, plan, DATA);
           state.savedPlansByCourse[course.code] = generated;
           const openPh = findOpenPlaceholders(generated);
-          if (openPh.length > 0) activateSlotPicker(openPh[0]);
+          if (openPh.length > 0 && !isMobileViewport()) activateSlotPicker(openPh[0], !isTabletViewport());
           else exitSlotPicker();
           saveState();
           renderAll({ resetSidebarScroll: true });
@@ -731,31 +1402,24 @@
     }
   }
 
-  /**
-   * Renders the Left Sidebar (Slot Options | Course Requirements | All Units)
-   * while strictly preserving scroll position unless opts.resetScroll is true!
-   */
+  /* ==========================================================================
+     4. SIDEBAR (SLOT OPTIONS | REQUIREMENTS | ALL 1,720 UNITS) + SCROLL LOCK
+     ========================================================================== */
   function renderSidebar(course, plan, report, opts) {
     const sb = document.getElementById("sidebar");
     const prevBodyEl = document.getElementById("sidebar-body-scroll");
     const savedInnerScroll = opts?.resetScroll ? 0 : prevBodyEl ? prevBodyEl.scrollTop : 0;
     const savedOuterScroll = opts?.resetScroll ? 0 : sb.scrollTop;
 
-    if (state.sidebarTab === "slot" && !state.targetSlot) {
-      state.sidebarTab = "requirements";
-    }
+    if (state.sidebarTab === "slot" && !state.targetSlot) state.sidebarTab = "requirements";
 
     const { buckets, majorCoreHints } = report.resolved;
-
-    // Precompute slot candidate map if targetSlot is active (used both in Slot Options and as helpful sorting/badges in Requirements & All Units)
     let slotEval = null;
     const slotIneligMap = new Map();
-    const slotEligSet = new Set();
     if (state.targetSlot) {
       slotEval = Engine.resolveSlotCandidates(state.targetSlot, course, plan, DATA, {
         forceIncludeElectives: state.slotForceElectives,
       });
-      slotEval.eligible.forEach((e) => slotEligSet.add(e.code));
       slotEval.ineligible.forEach((i) => slotIneligMap.set(i.code, i.reasons));
     }
 
@@ -778,7 +1442,6 @@
 
     let bodyHtml = "";
 
-    // ---------------- TAB 1: FOCUSED SLOT PICKER ----------------
     if (state.sidebarTab === "slot" && state.targetSlot && slotEval) {
       const yr = plan.years[state.targetSlot.yearIdx];
       const q = state.slotQuery.trim().toLowerCase();
@@ -791,16 +1454,13 @@
           if (state.slotPoolFilter === "course" && !item.inCoursePool) return false;
           if (state.slotPoolFilter === "elective" && item.inCoursePool) return false;
         }
-        if (q && !`${item.code} ${item.unit.title} ${item.poolLabel} ${item.unit.school}`.toLowerCase().includes(q)) {
-          return false;
-        }
+        if (q && !`${item.code} ${item.unit.title} ${item.poolLabel} ${item.unit.school}`.toLowerCase().includes(q)) return false;
         return true;
       };
 
       const filteredEligible = slotEval.eligible.filter(filterFn);
       const filteredIneligible = slotEval.ineligible.filter(filterFn);
       const autoExpandInelig = state.slotShowIneligible || filteredEligible.length === 0 || q.length > 0;
-
       const courseEligCount = slotEval.eligible.filter((x) => x.inCoursePool).length;
       const elecEligCount = slotEval.eligible.filter((x) => !x.inCoursePool).length;
 
@@ -811,29 +1471,22 @@
               <div style="font-weight:800;font-size:13px;color:var(--info);">
                 🎯 Filling Year ${yr?.yearNum || state.targetSlot.yearIdx + 1} · Trimester ${state.targetSlot.triNum}
               </div>
-              <div style="font-weight:700;font-size:12px;color:var(--text);margin-top:1px;">
-                ${esc(slotEval.spec.title)}
-              </div>
-              <div style="font-size:11px;color:var(--text-subtle);">
-                ${esc(slotEval.spec.subtitle)}
-              </div>
+              <div style="font-weight:700;font-size:12px;color:var(--text);margin-top:1px;">${esc(slotEval.spec.title)}</div>
+              <div style="font-size:11px;color:var(--text-subtle);">${esc(slotEval.spec.subtitle)}</div>
             </div>
-            <button class="btn btn-sm" id="btn-exit-slot" title="Exit Slot Picker">✕ Exit</button>
+            <button class="btn btn-sm" id="btn-exit-slot">✕ Exit</button>
           </div>
 
           ${
             slotEval.eligible.length + slotEval.ineligible.length > 4 || q || state.slotLevelFilter !== "all"
               ? `<div style="display:flex;gap:6px;margin-top:2px;">
-                  <input type="search" class="text-input" id="inp-slot-search" placeholder="Filter options (or search unit code)..." value="${esc(
+                  <input type="search" class="text-input" id="inp-slot-search" placeholder="Filter units or check why ineligible…" value="${esc(
                     state.slotQuery
                   )}" style="flex:1;min-width:0;background:var(--surface);" />
                   <select class="select-input" id="sel-slot-level" style="background:var(--surface);">
-                    <option value="all">All Levels</option>
+                    <option value="all">Levels</option>
                     ${[100, 200, 300, 400, 500]
-                      .map(
-                        (l) =>
-                          `<option value="${l}" ${state.slotLevelFilter === String(l) ? "selected" : ""}>L${l}</option>`
-                      )
+                      .map((l) => `<option value="${l}" ${state.slotLevelFilter === String(l) ? "selected" : ""}>L${l}</option>`)
                       .join("")}
                   </select>
                 </div>`
@@ -845,19 +1498,19 @@
               hasBothPools
                 ? `<div class="seg-group" style="background:var(--surface);">
                     <button class="seg-btn ${state.slotPoolFilter === "all" ? "active" : ""}" data-spool="all">All (${slotEval.eligible.length})</button>
-                    <button class="seg-btn ${state.slotPoolFilter === "course" ? "active" : ""}" data-spool="course">Listed/Course (${courseEligCount})</button>
+                    <button class="seg-btn ${state.slotPoolFilter === "course" ? "active" : ""}" data-spool="course">Course (${courseEligCount})</button>
                     <button class="seg-btn ${state.slotPoolFilter === "elective" ? "active" : ""}" data-spool="elective">Electives (${elecEligCount})</button>
                   </div>`
                 : !slotEval.spec.allowsElectives && slotEval.spec.hints.length === 0
                 ? `<label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);cursor:pointer;">
                     <input type="checkbox" id="chk-slot-force-elec" ${state.slotForceElectives ? "checked" : ""} />
-                    Also include open electives
+                    Include open electives
                   </label>`
                 : `<span></span>`
             }
             ${
               slotEval.spec.allowsElectives || state.slotForceElectives
-                ? `<button class="btn btn-sm" id="btn-slot-custom" style="background:var(--surface);">+ Custom Elective</button>`
+                ? `<button class="btn btn-sm" id="btn-slot-custom" style="background:var(--surface);">+ Custom</button>`
                 : ""
             }
           </div>
@@ -871,22 +1524,17 @@
         ${
           filteredEligible.length === 0
             ? `<div style="padding:12px;border:1px dashed var(--border-strong);border-radius:8px;font-size:12px;color:var(--text-subtle);text-align:center;">
-                No eligible units match your current filter for Y${slotEval.yearNum} · T${slotEval.triNum}. See reasons in the Ineligible section below or adjust filters.
+                No eligible units match for Y${slotEval.yearNum} · T${slotEval.triNum}. See reasons in the Ineligible section below.
               </div>`
-            : filteredEligible
-                .slice(0, 100)
-                .map((item) => renderSlotEligibleCard(item))
-                .join("")
+            : filteredEligible.slice(0, 100).map((item) => renderSlotEligibleCard(item)).join("")
         }
 
         ${
           filteredIneligible.length > 0
             ? `
               <button class="inelig-category-toggle" id="btn-toggle-slot-inelig">
-                <span>🚫 Ineligible for Y${slotEval.yearNum} · T${slotEval.triNum} (${filteredIneligible.length} unit${
-                filteredIneligible.length === 1 ? "" : "s"
-              })</span>
-                <span style="font-size:11px;">${autoExpandInelig ? "Hide reasons ▴" : "Show why ▾"}</span>
+                <span>🚫 Ineligible for Y${slotEval.yearNum} · T${slotEval.triNum} (${filteredIneligible.length})</span>
+                <span style="font-size:11px;">${autoExpandInelig ? "Hide ▴" : "Show why ▾"}</span>
               </button>
               ${
                 autoExpandInelig
@@ -900,10 +1548,7 @@
             : ""
         }
       `;
-    }
-
-    // ---------------- TAB 2: COURSE REQUIREMENTS ----------------
-    else if (state.sidebarTab === "requirements") {
+    } else if (state.sidebarTab === "requirements") {
       bodyHtml = buckets
         .map((b) => {
           const isCollapsed = !!state.collapsedBuckets[b.id];
@@ -923,12 +1568,11 @@
             return x.localeCompare(y);
           });
 
-          // If a targetSlot is active while browsing Course Requirements, partition eligible above ineligible within the bucket!
           let bucketCardsHtml = "";
           if (b.units.length === 0 && b.category === "elective") {
             bucketCardsHtml = `
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <button class="btn btn-sm btn-soft" id="btn-jump-catalog">🔍 Browse All ${DATA.meta.counts.units} Units</button>
+                <button class="btn btn-sm btn-soft" id="btn-jump-catalog">🔍 Browse All ${DATA.meta.counts.units.toLocaleString()} Units</button>
                 <button class="btn btn-sm" id="btn-open-custom-unit">+ Custom Elective</button>
               </div>
             `;
@@ -989,10 +1633,7 @@
           `;
         })
         .join("");
-    }
-
-    // ---------------- TAB 3: ALL UNITS CATALOG ----------------
-    else {
+    } else {
       const prefixes = Array.from(new Set(Object.values(DATA.units).map((u) => u.prefix).filter(Boolean))).sort();
       const q = state.catalogQuery.trim().toLowerCase();
 
@@ -1007,21 +1648,15 @@
         return true;
       });
 
-      // Partition All Units into Available/Eligible vs Ineligible/Restricted so ineligible units NEVER clutter the top!
       const topUnits = [];
       const bottomInelig = [];
 
       for (const u of allUnitsList) {
         if (state.targetSlot) {
-          if (isUnitPlanned(u.code, plan)) {
-            topUnits.push(u);
-          } else if (slotIneligMap.has(u.code)) {
-            bottomInelig.push({ unit: u, reasons: slotIneligMap.get(u.code) });
-          } else {
-            topUnits.push(u);
-          }
+          if (isUnitPlanned(u.code, plan)) topUnits.push(u);
+          else if (slotIneligMap.has(u.code)) bottomInelig.push({ unit: u, reasons: slotIneligMap.get(u.code) });
+          else topUnits.push(u);
         } else {
-          // Course-level sanity check when browsing without a target slot
           const reasons = [];
           if (u.offered2027 === false) reasons.push("Not offered in 2027 (archived unit)");
           const pm = u.prereqMeta;
@@ -1045,39 +1680,34 @@
 
       bodyHtml = `
         <div style="display:flex;flex-direction:column;gap:8px;position:sticky;top:0;background:var(--surface);padding-bottom:8px;z-index:5;border-bottom:1px solid var(--border);flex-shrink:0;">
-          <input type="search" class="text-input" id="inp-catalog-search" placeholder="Search 500 units by code, title or topic..." value="${esc(
+          <input type="search" class="text-input" id="inp-catalog-search" placeholder="Search ${DATA.meta.counts.units.toLocaleString()} UNE units by code, title, school…" value="${esc(
             state.catalogQuery
           )}" style="width:100%;" />
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
             <select class="select-input" id="sel-cat-level">
               <option value="all">All Levels</option>
               ${[100, 200, 300, 400, 500]
-                .map((l) => `<option value="${l}" ${state.catalogLevel === String(l) ? "selected" : ""}>${l}-level</option>`)
+                .map((l) => `<option value="${l}" ${state.catalogLevel === String(l) ? "selected" : ""}>L${l}</option>`)
                 .join("")}
             </select>
             <select class="select-input" id="sel-cat-tri">
-              <option value="all">Any Trimester</option>
-              <option value="1" ${state.catalogTri === "1" ? "selected" : ""}>Trimester 1</option>
-              <option value="2" ${state.catalogTri === "2" ? "selected" : ""}>Trimester 2</option>
-              <option value="3" ${state.catalogTri === "3" ? "selected" : ""}>Trimester 3</option>
+              <option value="all">Any Tri</option>
+              <option value="1" ${state.catalogTri === "1" ? "selected" : ""}>T1</option>
+              <option value="2" ${state.catalogTri === "2" ? "selected" : ""}>T2</option>
+              <option value="3" ${state.catalogTri === "3" ? "selected" : ""}>T3</option>
             </select>
             <select class="select-input" id="sel-cat-prefix">
-              <option value="all">All Subjects</option>
-              ${prefixes
-                .map((p) => `<option value="${esc(p)}" ${state.catalogPrefix === p ? "selected" : ""}>${esc(p)}</option>`)
-                .join("")}
+              <option value="all">All Prefixes</option>
+              ${prefixes.map((p) => `<option value="${esc(p)}" ${state.catalogPrefix === p ? "selected" : ""}>${esc(p)}</option>`).join("")}
             </select>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--text-subtle);">
-            <span>${topUnits.length} eligible${bottomInelig.length ? ` · ${bottomInelig.length} restricted/ineligible below` : ""}</span>
-            <button class="btn btn-sm" id="btn-open-custom-unit-2">+ Cross-Faculty Unit</button>
+            <span>${topUnits.length} eligible${bottomInelig.length ? ` · ${bottomInelig.length} restricted below` : ""}</span>
+            <button class="btn btn-sm" id="btn-open-custom-unit-2">+ Custom Unit</button>
           </div>
         </div>
 
-        ${topUnits
-          .slice(0, 80)
-          .map((u) => renderPoolUnitCard(u.code, plan, majorCoreHints))
-          .join("")}
+        ${topUnits.slice(0, 80).map((u) => renderPoolUnitCard(u.code, plan, majorCoreHints)).join("")}
 
         ${
           bottomInelig.length > 0
@@ -1105,25 +1735,21 @@
     }
 
     sb.innerHTML = `
+      <div class="sidebar-drawer-bar">
+        <span style="font-weight:700;font-size:13px;">📚 ${esc(course.code)} Units &amp; Requirements</span>
+        <button class="btn btn-sm btn-hdr" id="btn-close-tablet-drawer">Done ✕</button>
+      </div>
       <div class="sidebar-tabs">
         ${
           state.targetSlot
-            ? `<button class="sidebar-tab slot-tab ${state.sidebarTab === "slot" ? "active" : ""}" data-stab="slot">
-                🎯 Slot Options
-              </button>`
+            ? `<button class="sidebar-tab slot-tab ${state.sidebarTab === "slot" ? "active" : ""}" data-stab="slot">🎯 Slot Options</button>`
             : ""
         }
-        <button class="sidebar-tab ${state.sidebarTab === "requirements" ? "active" : ""}" data-stab="requirements">
-          📚 Requirements
-        </button>
-        <button class="sidebar-tab ${state.sidebarTab === "catalog" ? "active" : ""}" data-stab="catalog">
-          🔍 All Units (${DATA.meta.counts.units})
-        </button>
+        <button class="sidebar-tab ${state.sidebarTab === "requirements" ? "active" : ""}" data-stab="requirements">📚 Requirements</button>
+        <button class="sidebar-tab ${state.sidebarTab === "catalog" ? "active" : ""}" data-stab="catalog">🔍 All (${DATA.meta.counts.units.toLocaleString()})</button>
       </div>
       ${targetBanner}
-      <div class="sidebar-body" id="sidebar-body-scroll">
-        ${bodyHtml}
-      </div>
+      <div class="sidebar-body" id="sidebar-body-scroll">${bodyHtml}</div>
     `;
 
     // Restore exact scroll position synchronously before paint!
@@ -1131,7 +1757,14 @@
     if (nextBodyEl) nextBodyEl.scrollTop = savedInnerScroll;
     sb.scrollTop = savedOuterScroll;
 
-    // Bind sidebar events
+    const closeDrw = document.getElementById("btn-close-tablet-drawer");
+    if (closeDrw) {
+      closeDrw.onclick = () => {
+        state.tabletDrawerOpen = false;
+        syncResponsiveClasses();
+      };
+    }
+
     sb.querySelectorAll("[data-stab]").forEach((btn) => {
       btn.onclick = () => {
         const nextTab = btn.dataset.stab;
@@ -1161,11 +1794,12 @@
     if (exitSlotBtn) {
       exitSlotBtn.onclick = () => {
         exitSlotPicker();
+        if (isMobileViewport()) state.mobilePane = "plan";
+        if (isTabletViewport()) state.tabletDrawerOpen = false;
         renderAll({ resetSidebarScroll: true });
       };
     }
 
-    // Slot Options controls
     const slotSearchInp = document.getElementById("inp-slot-search");
     if (slotSearchInp) {
       slotSearchInp.oninput = (e) => {
@@ -1276,9 +1910,7 @@
   function renderSlotEligibleCard(item) {
     const u = item.unit;
     return `
-      <div class="pool-unit ${item.majorRequiredBy ? "major-req" : ""}"
-           draggable="true"
-           data-drag-pool-code="${esc(item.code)}">
+      <div class="pool-unit ${item.majorRequiredBy ? "major-req" : ""}" draggable="true" data-drag-pool-code="${esc(item.code)}">
         <div class="pool-unit-top">
           <button class="unit-code-link" data-inspect-unit="${esc(item.code)}">${esc(item.code)} · ${u.cp} CP</button>
           <button class="btn btn-sm btn-primary" data-add-unit="${esc(item.code)}">Select →</button>
@@ -1291,17 +1923,11 @@
                 ? "background:var(--primary-soft);color:var(--primary);border:1px solid var(--primary-border);"
                 : "background:var(--surface-alt);color:var(--text-subtle);border:1px solid var(--border);"
             }">${esc(item.poolLabel)}</span>
-            ${
-              item.helpsLevelMin
-                ? `<span class="badge-mini" style="background:var(--cat-major1-bg);color:var(--cat-major1);border:1px solid var(--cat-major1);">L${u.level} Target</span>`
-                : ""
-            }
+            ${item.helpsLevelMin ? `<span class="badge-mini" style="background:var(--cat-major1-bg);color:var(--cat-major1);border:1px solid var(--cat-major1);">L${u.level} Target</span>` : ""}
             ${u.intensive === "Mandatory" ? `<span class="badge-mini badge-intensive">Intensive</span>` : ""}
             ${item.modeWarning ? `<span class="badge-mini badge-intensive">${esc(item.modeWarning)}</span>` : ""}
           </div>
-          <div class="tri-pills">
-            ${(u.trimesters || []).map((t) => `<span class="tri-pill active-tri">T${t}</span>`).join("")}
-          </div>
+          <div class="tri-pills">${(u.trimesters || []).map((t) => `<span class="tri-pill active-tri">T${t}</span>`).join("")}</div>
         </div>
       </div>
     `;
@@ -1317,9 +1943,7 @@
             ${poolLabel ? `<span style="font-size:10px;color:var(--text-subtle);">${esc(poolLabel)}</span>` : ""}
             ${
               allowOverride && u.offered2027 !== false
-                ? `<button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px;color:var(--text-subtle);" data-add-unit="${esc(
-                    code
-                  )}" title="Add with manual override / waiver">Override</button>`
+                ? `<button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px;min-height:24px;color:var(--text-subtle);" data-add-unit="${esc(code)}" title="Add with manual override">Override</button>`
                 : ""
             }
           </div>
@@ -1329,9 +1953,13 @@
           ${reasons
             .map(
               (r) =>
-                `<div class="inelig-reason-pill ${r.startsWith("Pre-requisite") || r.startsWith("Requires") || r.startsWith("Co-requisite") ? "soft" : ""}">
-                  ${r.startsWith("Not offered") || r.startsWith("Restricted") || r.startsWith("Incompatible") || r.startsWith("Cannot") || r.startsWith("Exceeds") ? "⛔" : "⚠"} ${esc(r)}
-                </div>`
+                `<div class="inelig-reason-pill ${
+                  r.startsWith("Pre-requisite") || r.startsWith("Requires") || r.startsWith("Co-requisite") ? "soft" : ""
+                }">${
+                  r.startsWith("Not offered") || r.startsWith("Restricted") || r.startsWith("Incompatible") || r.startsWith("Cannot") || r.startsWith("Exceeds")
+                    ? "⛔"
+                    : "⚠"
+                } ${esc(r)}</div>`
             )
             .join("")}
         </div>
@@ -1356,9 +1984,7 @@
           <button class="unit-code-link" data-inspect-unit="${esc(code)}">${esc(code)} · ${u.cp} CP</button>
           ${
             plannedLoc
-              ? `<span class="badge-mini" style="background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-border);">✓ ${esc(
-                  plannedLoc
-                )}</span>`
+              ? `<span class="badge-mini" style="background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-border);">✓ ${esc(plannedLoc)}</span>`
               : u.offered2027 === false
               ? `<span class="badge-mini badge-archived">Not offered 2027</span>`
               : `<button class="btn btn-sm btn-soft" data-add-unit="${esc(code)}">+ Add</button>`
@@ -1374,7 +2000,7 @@
                   : `<span class="tri-pill" style="opacity:0.35;">T${t}</span>`
               )
               .join("")}
-            ${u.intensive === "Mandatory" ? `<span class="badge-mini badge-intensive" title="Mandatory Intensive School">Intensive</span>` : ""}
+            ${u.intensive === "Mandatory" ? `<span class="badge-mini badge-intensive">Intensive</span>` : ""}
             ${reqByMajors ? `<span class="badge-mini badge-major-req">Req: ${esc(reqByMajors.join(", "))}</span>` : ""}
             ${!reqByMajors && choiceMajors.length ? `<span class="badge-mini badge-major-req">Choice: ${esc(choiceMajors[0])}</span>` : ""}
           </div>
@@ -1384,6 +2010,9 @@
     `;
   }
 
+  /* ==========================================================================
+     5. TRIMESTER BOARD + MOBILE TRIMESTER FILTER
+     ========================================================================== */
   function renderBoard(course, plan, report) {
     const board = document.getElementById("board-area");
     const { buckets, attributedBucketByCode } = report.resolved;
@@ -1402,7 +2031,7 @@
         report.unitErrorCount + (report.resolved.incompatiblePairWarning ? 1 : 0)
       } Enrolment Issue(s)</span>`;
     } else if (openPlaceholders.length > 0) {
-      statusBadge = `<button class="btn btn-sm btn-soft" id="btn-jump-next-placeholder" title="Click to choose eligible units for open placeholder slots">🎯 Fill Open Slots (${openPlaceholders.length} left) →</button>`;
+      statusBadge = `<button class="btn btn-sm btn-soft" id="btn-jump-next-placeholder">🎯 Fill Open Slots (${openPlaceholders.length} left) →</button>`;
     }
 
     const levelRulesHtml = report.levelChecks
@@ -1420,26 +2049,24 @@
     const progressHtml = `
       <div class="progress-card">
         <div class="progress-top">
-          <div>
-            <div class="cp-headline">
-              <span class="cp-big">${report.totalPlannedCp} / ${report.targetCp} CP</span>
-              <span style="font-size:12px;color:var(--text-subtle);">
-                (${report.unitCp} CP units${
-      report.advancedStandingCp ? ` + ${report.advancedStandingCp} CP Adv. Standing` : ""
-    }${report.placeholderCp ? ` + ${report.placeholderCp} CP open slots` : ""})
-              </span>
-            </div>
+          <div class="cp-headline">
+            <span class="cp-big">${report.totalPlannedCp} / ${report.targetCp} CP</span>
+            <span style="font-size:12px;color:var(--text-subtle);">
+              (${report.unitCp} CP units${report.advancedStandingCp ? ` + ${report.advancedStandingCp} CP Adv. Standing` : ""}${
+      report.placeholderCp ? ` + ${report.placeholderCp} CP open slots` : ""
+    })
+            </span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
             ${statusBadge}
-            <a href="${esc(course.url)}" target="_blank" rel="noopener" class="btn btn-sm no-print">Official Handbook ↗</a>
+            <a href="${esc(course.url)}" target="_blank" rel="noopener" class="btn btn-sm no-print">Handbook ↗</a>
           </div>
         </div>
 
-        <div class="progress-bar-track" title="${report.totalPlannedCp} of ${report.targetCp} Credit Points planned">
-          <div class="progress-seg" style="width:${pctAdv}%;background:var(--cat-minor);" title="Advanced Standing: ${report.advancedStandingCp} CP"></div>
-          <div class="progress-seg" style="width:${pctUnits}%;background:var(--primary);" title="Planned Units: ${report.unitCp} CP"></div>
-          <div class="progress-seg" style="width:${pctPh}%;background:var(--border-strong);" title="Open Placeholder Slots: ${report.placeholderCp} CP"></div>
+        <div class="progress-bar-track">
+          <div class="progress-seg" style="width:${pctAdv}%;background:var(--cat-minor);"></div>
+          <div class="progress-seg" style="width:${pctUnits}%;background:var(--primary);"></div>
+          <div class="progress-seg" style="width:${pctPh}%;background:var(--border-strong);"></div>
         </div>
 
         <div class="rules-pills-row">
@@ -1481,24 +2108,43 @@
     const isBoardCompletelyEmpty = report.totalPlannedCp - report.advancedStandingCp === 0;
     const emptyWelcome = isBoardCompletelyEmpty
       ? `
-      <div class="no-print" style="background:var(--surface);border:1px dashed var(--primary);border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div class="no-print" style="background:var(--surface);border:1.5px dashed var(--primary);border-radius:var(--radius-lg);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div>
-          <div style="font-weight:700;font-size:13.5px;">Ready to plan your <strong>${esc(course.title)}</strong> (${course.code})?</div>
-          <div style="font-size:12px;color:var(--text-muted);">
-            Select your Major/Pathway above and click <strong>Smart Auto-Plan</strong>, load an <strong>Official UNE Study Plan</strong>, or drag/add units from the left panel into any Trimester below.
+          <div style="font-weight:700;font-size:14px;">Ready to plan <strong>${esc(course.title)}</strong> (${esc(course.code)})?</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+            Choose your Major/Rule above and click <strong>Auto-Plan</strong>, load an <strong>Official UNE Plan</strong>, or pick units directly into any Trimester below.
           </div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-primary" id="btn-empty-auto">✨ Smart Auto-Plan</button>
           ${
             Engine.getAvailableStudyPlans(course, plan, DATA).length
-              ? `<button class="btn" id="btn-empty-templates">📋 Official UNE Templates</button>`
+              ? `<button class="btn" id="btn-empty-templates">📋 Official Plans</button>`
               : ""
           }
         </div>
       </div>
     `
       : "";
+
+    const mobileTriBar = `
+      <div class="mobile-tri-filter no-print">
+        <span class="config-label">Show Trimester</span>
+        <div class="seg-group">
+          ${[
+            ["all", "All"],
+            ["1", "T1"],
+            ["2", "T2"],
+            ["3", "T3"],
+          ]
+            .map(
+              ([val, lbl]) =>
+                `<button class="seg-btn ${state.mobileTriFilter === val ? "active" : ""}" data-mtri="${val}">${lbl}</button>`
+            )
+            .join("")}
+        </div>
+      </div>
+    `;
 
     const yearsHtml = (plan.years || [])
       .map((yr, yIdx) => {
@@ -1511,11 +2157,7 @@
                 <span class="tri-load-badge">${yrTotalCp} CP</span>
               </div>
               <div class="no-print" style="display:flex;gap:6px;">
-                ${
-                  plan.years.length > 1
-                    ? `<button class="btn btn-sm" data-remove-year="${yIdx}" title="Remove this year">Remove Year</button>`
-                    : ""
-                }
+                ${plan.years.length > 1 ? `<button class="btn btn-sm" data-remove-year="${yIdx}">Remove</button>` : ""}
               </div>
             </div>
             <div class="trimester-grid">
@@ -1528,9 +2170,10 @@
                     state.targetSlot.yearIdx === yIdx &&
                     state.targetSlot.triNum === tNum &&
                     !state.targetSlot.replaceSlotId;
+                  const mobHidden = state.mobileTriFilter !== "all" && state.mobileTriFilter !== String(tNum);
 
                   return `
-                    <div class="tri-col ${isTarget ? "target-active" : ""}"
+                    <div class="tri-col ${isTarget ? "target-active" : ""} ${mobHidden ? "mobile-hidden-tri" : ""}"
                          data-drop-year="${yIdx}"
                          data-drop-tri="${tNum}">
                       <div class="tri-col-header">
@@ -1538,21 +2181,18 @@
                           <span class="tri-name">Trimester ${tNum}</span>
                           ${
                             tLoad.intensives > 0
-                              ? `<span class="badge-mini badge-intensive" style="margin-left:4px;" title="${tLoad.intensives} Mandatory Intensive School(s) in this trimester">${tLoad.intensives} Intensive</span>`
+                              ? `<span class="badge-mini badge-intensive" style="margin-left:4px;">${tLoad.intensives} Intensive</span>`
                               : ""
                           }
                         </div>
                         <span class="tri-load-badge ${tLoad.cp > 24 ? "overload" : ""}">${tLoad.cp} CP</span>
                       </div>
-
                       <div class="tri-slots">
                         ${slots
-                          .map((slot) =>
-                            renderBoardSlot(slot, yIdx, tNum, plan, report, bucketMap, attributedBucketByCode)
-                          )
+                          .map((slot) => renderBoardSlot(slot, yIdx, tNum, plan, report, bucketMap, attributedBucketByCode))
                           .join("")}
                         <div class="tri-empty-drop no-print" data-pick-target="${yIdx}_${tNum}">
-                          ${isTarget ? "🎯 Showing eligible units on left…" : "+ Click to pick eligible unit or drop here"}
+                          ${isTarget ? "🎯 Picking unit…" : "+ Tap to pick eligible unit"}
                         </div>
                       </div>
                     </div>
@@ -1566,18 +2206,18 @@
       .join("");
 
     const footerControls = `
-      <div class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <button class="btn" id="btn-add-year">+ Add Another Study Year (Year ${(plan.years?.length || 0) + 1})</button>
-        <button class="btn" id="btn-clear-board" style="color:var(--err);">🗑 Clear All Units on Board</button>
+      <div class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <button class="btn" id="btn-add-year">+ Add Year ${(plan.years?.length || 0) + 1}</button>
+        <button class="btn" id="btn-clear-board" style="color:var(--err);">🗑 Clear Board</button>
       </div>
     `;
 
-    board.innerHTML = progressHtml + emptyWelcome + yearsHtml + footerControls;
+    board.innerHTML = progressHtml + emptyWelcome + mobileTriBar + yearsHtml + footerControls;
 
     const jumpNextPh = document.getElementById("btn-jump-next-placeholder");
     if (jumpNextPh && openPlaceholders.length > 0) {
       jumpNextPh.onclick = () => {
-        activateSlotPicker(openPlaceholders[0]);
+        activateSlotPicker(openPlaceholders[0], true);
         renderAll({ resetSidebarScroll: true });
       };
     }
@@ -1589,8 +2229,6 @@
         plan.includeT3InAuto = true;
         const updated = Engine.autoSchedulePlan(course, plan, DATA);
         state.savedPlansByCourse[course.code] = updated;
-        const openPh = findOpenPlaceholders(updated);
-        if (openPh.length > 0 && state.sidebarTab === "slot") activateSlotPicker(openPh[0]);
         saveState();
         renderAll({ resetSidebarScroll: false });
         showToast("Switched T3 to Spread Load (lighter 18 CP trimesters where possible)!");
@@ -1598,18 +2236,16 @@
     }
 
     const emptyAuto = document.getElementById("btn-empty-auto");
-    if (emptyAuto) {
-      emptyAuto.onclick = () => {
-        const generated = Engine.autoSchedulePlan(course, plan, DATA);
-        state.savedPlansByCourse[course.code] = generated;
-        const openPh = findOpenPlaceholders(generated);
-        if (openPh.length > 0) activateSlotPicker(openPh[0]);
-        saveState();
-        renderAll({ resetSidebarScroll: true });
-      };
-    }
+    if (emptyAuto) emptyAuto.onclick = runSmartAutoPlan;
     const emptyTpl = document.getElementById("btn-empty-templates");
     if (emptyTpl) emptyTpl.onclick = openStudyPlansModal;
+
+    board.querySelectorAll("[data-mtri]").forEach((btn) => {
+      btn.onclick = () => {
+        state.mobileTriFilter = btn.dataset.mtri;
+        renderBoard(course, plan, report);
+      };
+    });
 
     document.getElementById("btn-add-year").onclick = () => {
       const n = plan.years.length + 1;
@@ -1658,11 +2294,14 @@
           exitSlotPicker();
           renderAll({ resetSidebarScroll: false });
         } else {
-          activateSlotPicker({
-            yearIdx: yIdx,
-            triNum: tNum,
-            label: `Add Unit to Year ${plan.years[yIdx]?.yearNum || yIdx + 1} · Trimester ${tNum}`,
-          });
+          activateSlotPicker(
+            {
+              yearIdx: yIdx,
+              triNum: tNum,
+              label: `Add Unit to Year ${plan.years[yIdx]?.yearNum || yIdx + 1} · Trimester ${tNum}`,
+            },
+            true
+          );
           renderAll({ resetSidebarScroll: true });
         }
       };
@@ -1671,21 +2310,19 @@
     board.querySelectorAll("[data-resolve-placeholder]").forEach((btn) => {
       btn.onclick = () => {
         const [yIdx, tNum, slotId] = btn.dataset.resolvePlaceholder.split("|");
-        if (state.targetSlot && state.targetSlot.replaceSlotId === slotId && state.sidebarTab === "slot") {
-          exitSlotPicker();
-          renderAll({ resetSidebarScroll: false });
-          return;
-        }
         const yr = plan.years[Number(yIdx)];
         const ph = (yr?.trimesters[Number(tNum)] || []).find((s) => s.id === slotId);
-        activateSlotPicker({
-          yearIdx: Number(yIdx),
-          triNum: Number(tNum),
-          replaceSlotId: slotId,
-          label: ph?.label || "Listed or Elective Unit",
-          slotKind: ph?.slotKind || "",
-          hintCodes: ph?.hintCodes || [],
-        });
+        activateSlotPicker(
+          {
+            yearIdx: Number(yIdx),
+            triNum: Number(tNum),
+            replaceSlotId: slotId,
+            label: ph?.label || "Listed or Elective Unit",
+            slotKind: ph?.slotKind || "",
+            hintCodes: ph?.hintCodes || [],
+          },
+          true
+        );
         renderAll({ resetSidebarScroll: true });
       };
     });
@@ -1724,14 +2361,10 @@
             <button class="icon-action remove no-print" data-remove-slot="${yIdx}|${tNum}|${esc(slot.id)}" title="Remove slot">✕</button>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-            <span style="font-size:11px;color:var(--text-subtle);">${
-              isSelected ? "Pick an eligible unit on the left" : "Filter left panel to valid options"
-            }</span>
+            <span style="font-size:11px;color:var(--text-subtle);">${isSelected ? "Choosing eligible unit…" : "Tap to pick valid unit"}</span>
             <button class="btn btn-sm ${isSelected ? "btn-primary" : "btn-soft"} no-print" data-resolve-placeholder="${yIdx}|${tNum}|${esc(
         slot.id
-      )}">
-              ${isSelected ? "Choosing…" : "Choose Unit →"}
-            </button>
+      )}">Choose Unit →</button>
           </div>
         </div>
       `;
@@ -1742,35 +2375,26 @@
     const bucket = bucketMap[bId];
     const cat = bucket?.category || "elective";
     const diag = report.slotDiagnostics[slot.id] || { errors: [], warnings: [], infos: [] };
-
     const statusCls = diag.errors.length ? "has-error" : diag.warnings.length ? "has-warning" : "";
 
     return `
-      <div class="slot-card cat-${cat} ${statusCls}"
-           draggable="true"
-           data-drag-board="${yIdx}|${tNum}|${esc(slot.id)}|${esc(slot.code)}">
+      <div class="slot-card cat-${cat} ${statusCls}" draggable="true" data-drag-board="${yIdx}|${tNum}|${esc(slot.id)}|${esc(slot.code)}">
         <div class="slot-top">
           <button class="unit-code-link" data-inspect-unit="${esc(slot.code)}">
             ${esc(slot.code)} <span style="font-weight:500;color:var(--text-subtle);">· ${u ? u.cp : (slot.cp || 6)} CP</span>
           </button>
           <div class="slot-actions no-print">
-            <button class="icon-action" data-move-slot="${yIdx}|${tNum}|${esc(slot.id)}|-1" title="Move to earlier trimester">◀</button>
-            <button class="icon-action" data-move-slot="${yIdx}|${tNum}|${esc(slot.id)}|1" title="Move to next trimester">▶</button>
+            <button class="icon-action" data-move-slot="${yIdx}|${tNum}|${esc(slot.id)}|-1" title="Move earlier">◀</button>
+            <button class="icon-action" data-move-slot="${yIdx}|${tNum}|${esc(slot.id)}|1" title="Move later">▶</button>
             <button class="icon-action remove" data-remove-slot="${yIdx}|${tNum}|${esc(slot.id)}" title="Remove unit">✕</button>
           </div>
         </div>
         <div class="slot-title">${esc(u ? u.title : slot.code)}</div>
         <div class="slot-footer">
           <span class="cat-tag cat-${cat}">${esc(CAT_LABELS[cat] || "Unit")}</span>
-          <div class="tri-pills">
-            ${
-              u
-                ? (u.trimesters || [])
-                    .map((t) => `<span class="tri-pill ${t === tNum ? "active-tri" : ""}">T${t}</span>`)
-                    .join("")
-                : ""
-            }
-          </div>
+          <div class="tri-pills">${
+            u ? (u.trimesters || []).map((t) => `<span class="tri-pill ${t === tNum ? "active-tri" : ""}">T${t}</span>`).join("") : ""
+          }</div>
         </div>
         ${diag.errors.map((m) => `<div class="slot-msg err">⛔ ${esc(m)}</div>`).join("")}
         ${diag.warnings.map((m) => `<div class="slot-msg warn">⚠ ${esc(m)}</div>`).join("")}
@@ -1779,6 +2403,114 @@
     `;
   }
 
+  /* ==========================================================================
+     6. MOBILE BOTTOM NAVIGATION BAR (< 768px)
+     ========================================================================== */
+  function renderMobileBottomNav(course, plan) {
+    const nav = document.getElementById("mobile-bottom-nav");
+    const hasSlotDot = state.view === "planner" && (!!state.targetSlot || findOpenPlaceholders(plan).length > 0);
+
+    nav.innerHTML = `
+      <button class="mob-nav-btn ${state.view === "finder" ? "active" : ""}" id="mnav-find">
+        <span class="mob-ico">🎓</span>
+        <span>Find (${DATA.meta.counts.courses})</span>
+      </button>
+      <button class="mob-nav-btn ${state.view === "planner" && state.mobilePane === "plan" ? "active" : ""}" id="mnav-plan">
+        <span class="mob-ico">📅</span>
+        <span>My Plan</span>
+      </button>
+      <button class="mob-nav-btn ${state.view === "planner" && state.mobilePane === "units" ? "active" : ""}" id="mnav-units">
+        <span class="mob-ico">📚</span>
+        <span>${state.targetSlot ? "Slot Pick" : "Units"}</span>
+        ${hasSlotDot ? `<span class="mob-badge-dot"></span>` : ""}
+      </button>
+      <button class="mob-nav-btn" id="mnav-tools">
+        <span class="mob-ico">⚙️</span>
+        <span>Tools</span>
+      </button>
+    `;
+
+    document.getElementById("mnav-find").onclick = () => {
+      state.view = "finder";
+      renderAll({ resetSidebarScroll: false });
+      window.scrollTo({ top: 0, behavior: "instant" });
+    };
+    document.getElementById("mnav-plan").onclick = () => {
+      state.view = "planner";
+      state.mobilePane = "plan";
+      renderAll({ resetSidebarScroll: false });
+    };
+    document.getElementById("mnav-units").onclick = () => {
+      state.view = "planner";
+      state.mobilePane = "units";
+      renderAll({ resetSidebarScroll: false });
+    };
+    document.getElementById("mnav-tools").onclick = openMobileToolsSheet;
+  }
+
+  function openMobileToolsSheet() {
+    const course = getCurrentCourse();
+    const plan = getCurrentPlan();
+    const spCount = Engine.getAvailableStudyPlans(course, plan, DATA).length;
+    openModal(
+      `<div style="font-weight:800;font-size:15px;">⚙️ ${esc(course.code)} Tools &amp; Actions</div>`,
+      `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+          <button class="course-card-option" id="mtool-auto">
+            <div style="font-weight:700;">✨ Smart Auto-Plan</div>
+            <div style="font-size:11px;color:var(--text-subtle);">Build a valid schedule</div>
+          </button>
+          ${
+            spCount
+              ? `<button class="course-card-option" id="mtool-plans">
+                  <div style="font-weight:700;">📋 Official Plans (${spCount})</div>
+                  <div style="font-size:11px;color:var(--text-subtle);">UNE progression maps</div>
+                </button>`
+              : ""
+          }
+          <button class="course-card-option" id="mtool-info">
+            <div style="font-weight:700;">📖 Rules &amp; Info</div>
+            <div style="font-size:11px;color:var(--text-subtle);">Outcomes, ATAR, handbook</div>
+          </button>
+          <button class="course-card-option" id="mtool-export">
+            <div style="font-weight:700;">⬇ Export / Save</div>
+            <div style="font-size:11px;color:var(--text-subtle);">PDF, CSV, JSON, Reset</div>
+          </button>
+          <button class="course-card-option" id="mtool-custom">
+            <div style="font-weight:700;">➕ Custom Elective</div>
+            <div style="font-size:11px;color:var(--text-subtle);">Add any UNE unit</div>
+          </button>
+          <button class="course-card-option" id="mtool-theme">
+            <div style="font-weight:700;">${document.documentElement.classList.contains("dark") ? "☀️ Light Mode" : "🌙 Dark Mode"}</div>
+            <div style="font-size:11px;color:var(--text-subtle);">Switch appearance</div>
+          </button>
+        </div>
+      `,
+      (modal) => {
+        modal.querySelector("#mtool-auto").onclick = () => {
+          closeModal();
+          state.view = "planner";
+          state.mobilePane = "plan";
+          runSmartAutoPlan();
+        };
+        const pBtn = modal.querySelector("#mtool-plans");
+        if (pBtn) pBtn.onclick = () => { closeModal(); openStudyPlansModal(); };
+        modal.querySelector("#mtool-info").onclick = () => { closeModal(); openCourseInfoModal(); };
+        modal.querySelector("#mtool-export").onclick = () => { closeModal(); openExportModal(); };
+        modal.querySelector("#mtool-custom").onclick = () => { closeModal(); openCustomUnitModal(); };
+        modal.querySelector("#mtool-theme").onclick = () => {
+          document.documentElement.classList.toggle("dark");
+          localStorage.setItem(THEME_KEY, document.documentElement.classList.contains("dark") ? "dark" : "light");
+          closeModal();
+          renderAll({ resetSidebarScroll: false });
+        };
+      }
+    );
+  }
+
+  /* ==========================================================================
+     7. DRAG & DROP + MODALS
+     ========================================================================== */
   function bindUnitTriggers(root, plan) {
     root.querySelectorAll("[data-add-unit]").forEach((btn) => {
       btn.onclick = (e) => {
@@ -1786,14 +2518,12 @@
         addUnitToPlan(btn.dataset.addUnit);
       };
     });
-
     root.querySelectorAll("[data-inspect-unit]").forEach((btn) => {
       btn.onclick = (e) => {
         e.stopPropagation();
         openUnitModal(btn.dataset.inspectUnit);
       };
     });
-
     root.querySelectorAll("[data-drag-pool-code]").forEach((el) => {
       el.ondragstart = (e) => {
         const code = el.dataset.dragPoolCode;
@@ -1806,17 +2536,10 @@
         highlightOfferingColumns(null, plan, false);
       };
     });
-
     root.querySelectorAll("[data-drag-board]").forEach((el) => {
       el.ondragstart = (e) => {
         const [yIdx, tNum, slotId, code] = el.dataset.dragBoard.split("|");
-        state.dragging = {
-          source: "board",
-          fromYearIdx: Number(yIdx),
-          fromTriNum: Number(tNum),
-          slotId,
-          code,
-        };
+        state.dragging = { source: "board", fromYearIdx: Number(yIdx), fromTriNum: Number(tNum), slotId, code };
         e.dataTransfer.setData("text/plain", code);
         highlightOfferingColumns(code, plan, true);
       };
@@ -1836,19 +2559,14 @@
     const u = Engine.getUnit(code, DATA, plan.customUnits);
     cols.forEach((col) => {
       const tNum = Number(col.dataset.dropTri);
-      if (!u || !u.trimesters || u.trimesters.length === 0 || u.trimesters.includes(tNum)) {
-        col.classList.add("drag-valid");
-      } else {
-        col.classList.add("drag-invalid");
-      }
+      if (!u || !u.trimesters || u.trimesters.length === 0 || u.trimesters.includes(tNum)) col.classList.add("drag-valid");
+      else col.classList.add("drag-invalid");
     });
   }
 
   function bindDropZones(board, plan) {
     board.querySelectorAll("[data-drop-year]").forEach((col) => {
-      col.ondragover = (e) => {
-        e.preventDefault();
-      };
+      col.ondragover = (e) => e.preventDefault();
       col.ondrop = (e) => {
         e.preventDefault();
         const toY = Number(col.dataset.dropYear);
@@ -1856,7 +2574,6 @@
         const drag = state.dragging;
         highlightOfferingColumns(null, plan, false);
         if (!drag) return;
-
         if (drag.source === "pool") {
           if (isUnitPlanned(drag.code, plan)) {
             showToast(`${drag.code} is already on your board.`);
@@ -1877,8 +2594,6 @@
       };
     });
   }
-
-  /* ================= MODALS ================= */
 
   function openModal(titleHtml, bodyHtml, onMount) {
     const backdrop = document.getElementById("modal-backdrop");
@@ -1903,118 +2618,20 @@
     document.getElementById("modal-backdrop").classList.add("hidden");
   }
 
-  function openCourseModal() {
-    function renderCourseListContent() {
-      const q = state.courseSearchQuery.trim().toLowerCase();
-      const filtered = DATA.courses.filter((c) => {
-        if (state.courseFilterLevel !== "ALL" && c.studyLevel !== state.courseFilterLevel) return false;
-        if (q && !`${c.code} ${c.title} ${c.studyLevel}`.toLowerCase().includes(q)) return false;
-        return true;
-      });
-
-      return `
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <input type="search" class="text-input" id="inp-course-search" placeholder="Search 45 courses (e.g. Science, Computer, Data, Cybersecurity, Exercise, Neuroscience)..." value="${esc(
-            state.courseSearchQuery
-          )}" style="flex:1;min-width:240px;" />
-          <div class="seg-group">
-            ${[
-              ["ALL", "All (45)"],
-              ["Undergraduate", "Undergraduate (12)"],
-              ["Bachelor Honours", "Honours (2)"],
-              ["Postgraduate", "Postgraduate (31)"],
-            ]
-              .map(
-                ([val, lbl]) =>
-                  `<button class="seg-btn ${state.courseFilterLevel === val ? "active" : ""}" data-clvl="${val}">${lbl}</button>`
-              )
-              .join("")}
-          </div>
-        </div>
-        <div class="course-grid">
-          ${filtered
-            .map((c) => {
-              const hasSaved = !!state.savedPlansByCourse[c.code];
-              return `
-                <button class="course-card-option ${c.code === state.currentCourseCode ? "selected" : ""}" data-select-course="${esc(
-                c.code
-              )}">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;">
-                    <span class="course-code-pill">${esc(c.code)}</span>
-                    <span style="font-size:11px;color:var(--text-subtle);font-weight:600;">${esc(c.studyLevel)} · ${c.totalCp} CP</span>
-                  </div>
-                  <div style="font-weight:700;font-size:13.5px;color:var(--text);">${esc(c.title)}</div>
-                  <div style="font-size:11.5px;color:var(--text-subtle);display:flex;justify-content:space-between;width:100%;">
-                    <span>${esc(c.modes.join(", ") || "Online / On Campus")}</span>
-                    ${hasSaved ? `<span style="color:var(--primary);font-weight:700;">● Active Plan</span>` : ""}
-                  </div>
-                </button>
-              `;
-            })
-            .join("")}
-        </div>
-      `;
-    }
-
-    openModal(
-      `<div style="font-weight:800;font-size:16px;">School of Science & Technology — All 2027 Courses (${DATA.meta.counts.courses})</div>
-       <div style="font-size:12px;color:var(--text-subtle);">Select any course below. Your progress on each course is saved automatically.</div>`,
-      renderCourseListContent(),
-      (modal) => {
-        function bindInner() {
-          const inp = modal.querySelector("#inp-course-search");
-          if (inp) {
-            inp.oninput = (e) => {
-              state.courseSearchQuery = e.target.value;
-              const pos = e.target.selectionStart;
-              modal.querySelector("#modal-body-content").innerHTML = renderCourseListContent();
-              bindInner();
-              const next = modal.querySelector("#inp-course-search");
-              next.focus();
-              next.setSelectionRange(pos, pos);
-            };
-          }
-          modal.querySelectorAll("[data-clvl]").forEach((b) => {
-            b.onclick = () => {
-              state.courseFilterLevel = b.dataset.clvl;
-              modal.querySelector("#modal-body-content").innerHTML = renderCourseListContent();
-              bindInner();
-            };
-          });
-          modal.querySelectorAll("[data-select-course]").forEach((card) => {
-            card.onclick = () => {
-              state.currentCourseCode = card.dataset.selectCourse;
-              exitSlotPicker();
-              saveState();
-              closeModal();
-              renderAll({ resetSidebarScroll: true });
-            };
-          });
-        }
-        bindInner();
-        modal.querySelector("#inp-course-search")?.focus();
-      }
-    );
-  }
-
   function openUnitModal(code) {
     const plan = getCurrentPlan();
     const u = Engine.getUnit(code, DATA, plan.customUnits);
     if (!u) return;
     const plannedLoc = isUnitPlanned(code, plan);
-
-    const colors = ["#059669", "#4f46e5", "#d97706", "#0891b2", "#e11d48", "#7c3aed"];
+    const colors = ["#1d7880", "#2774ae", "#95c236", "#b45309", "#b91c4a", "#6d28d9"];
     const assessBar = (u.assessments || [])
       .filter((a) => a.weight > 0)
-      .map(
-        (a, i) =>
-          `<div style="width:${a.weight}%;background:${colors[i % colors.length]};" title="${esc(a.name)}: ${a.weight}%"></div>`
-      )
+      .map((a, i) => `<div style="width:${a.weight}%;background:${colors[i % colors.length]};" title="${esc(a.name)}: ${a.weight}%"></div>`)
       .join("");
 
     function linkifyCodes(txt) {
       if (!txt) return "<span style='color:var(--text-subtle);'>None</span>";
-      return esc(txt).replace(/\b([A-Z]{3,4}\d{3}[A-Z]?)\b/g, (m) =>
+      return esc(txt).replace(/\b([A-Z]{2,4}\d{3}[A-Z]?)\b/g, (m) =>
         DATA.units[m]
           ? `<button class="unit-code-link" style="color:var(--primary);" data-jump-unit="${m}">${m}</button>`
           : `<strong>${m}</strong>`
@@ -2025,22 +2642,17 @@
       .map((yr, yIdx) =>
         [1, 2, 3]
           .filter((t) => !u.trimesters || !u.trimesters.length || u.trimesters.includes(t))
-          .map(
-            (t) =>
-              `<button class="btn btn-sm btn-soft" data-modal-place="${yIdx}|${t}">+ Y${yr.yearNum} T${t}</button>`
-          )
+          .map((t) => `<button class="btn btn-sm btn-soft" data-modal-place="${yIdx}|${t}">+ Y${yr.yearNum} T${t}</button>`)
           .join(" ")
       )
       .join(" ");
 
     openModal(
       `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-         <span class="course-code-pill">${esc(u.code)}</span>
-         <span style="font-weight:800;font-size:16px;">${esc(u.title)}</span>
+         <span class="course-code-pill teal">${esc(u.code)}</span>
+         <span style="font-weight:800;font-size:15.5px;">${esc(u.title)}</span>
        </div>
-       <div style="font-size:12px;color:var(--text-subtle);margin-top:3px;">
-         ${u.cp} Credit Points · ${u.level}-Level · ${esc(u.school || "UNE")}
-       </div>`,
+       <div style="font-size:12px;color:var(--text-subtle);margin-top:3px;">${u.cp} Credit Points · ${u.level}-Level · ${esc(u.school || "UNE")}</div>`,
       `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface-alt);padding:10px 12px;border-radius:8px;border:1px solid var(--border);">
           <div>
@@ -2050,7 +2662,6 @@
                 : u.offered2027 === false
                 ? `<span style="color:var(--err);font-weight:700;">⛔ No 2027 Offering Published</span>`
                 : `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                    <span style="font-size:12px;font-weight:700;">Add to Plan:</span>
                     <button class="btn btn-sm btn-primary" id="btn-modal-smart-add">${
                       state.targetSlot
                         ? `Select for Y${plan.years[state.targetSlot.yearIdx]?.yearNum || 1} T${state.targetSlot.triNum} →`
@@ -2062,34 +2673,15 @@
           </div>
           <a href="${esc(u.url)}" target="_blank" rel="noopener" class="btn btn-sm">Official 2027 Unit Page ↗</a>
         </div>
-
         ${u.overview ? `<div><div class="config-label" style="margin-bottom:4px;">Unit Description</div><div style="white-space:pre-line;color:var(--text-muted);">${esc(u.overview)}</div></div>` : ""}
-
         <div class="info-grid">
-          <div class="info-stat">
-            <div class="info-stat-label">Pre-requisites</div>
-            <div style="font-size:12.5px;margin-top:4px;">${linkifyCodes(u.prereqText)}</div>
-          </div>
-          <div class="info-stat">
-            <div class="info-stat-label">Co-requisites</div>
-            <div style="font-size:12.5px;margin-top:4px;">${linkifyCodes(u.coreqText)}</div>
-          </div>
-          <div class="info-stat">
-            <div class="info-stat-label">Restrictions / Exclusions</div>
-            <div style="font-size:12.5px;margin-top:4px;">${linkifyCodes(u.restrictionText)}</div>
-          </div>
+          <div class="info-stat"><div class="info-stat-label">Pre-requisites</div><div style="font-size:12.5px;margin-top:4px;">${linkifyCodes(u.prereqText)}</div></div>
+          <div class="info-stat"><div class="info-stat-label">Co-requisites</div><div style="font-size:12.5px;margin-top:4px;">${linkifyCodes(u.coreqText)}</div></div>
+          <div class="info-stat"><div class="info-stat-label">Restrictions / Exclusions</div><div style="font-size:12.5px;margin-top:4px;">${linkifyCodes(u.restrictionText)}</div></div>
         </div>
-
-        ${
-          u.assumedKnowledge
-            ? `<div class="info-stat"><div class="info-stat-label">Assumed Knowledge</div><div style="font-size:12px;margin-top:3px;">${esc(
-                u.assumedKnowledge
-              )}</div></div>`
-            : ""
-        }
-
+        ${u.assumedKnowledge ? `<div class="info-stat"><div class="info-stat-label">Assumed Knowledge</div><div style="font-size:12px;margin-top:3px;">${esc(u.assumedKnowledge)}</div></div>` : ""}
         <div>
-          <div class="config-label" style="margin-bottom:6px;">2027 Offerings & Intensive Schools</div>
+          <div class="config-label" style="margin-bottom:6px;">2027 Offerings &amp; Intensive Schools</div>
           ${
             u.intensive
               ? `<div style="margin-bottom:8px;"><span class="badge-mini badge-intensive">${esc(u.intensive)} Intensive School${
@@ -2099,24 +2691,19 @@
           }
           ${
             (u.offerings || []).length
-              ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;">
+              ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:8px;">
                   ${u.offerings
                     .map(
-                      (o) => `
-                    <div style="border:1px solid var(--border);border-radius:6px;padding:7px 10px;background:var(--surface-alt);">
-                      <div style="font-weight:700;font-size:12.5px;">${esc(o.period)}</div>
-                      <div style="font-size:11.5px;color:var(--text-muted);">${esc(o.modes.join(", ") || "Standard")} · ${esc(
-                        o.location || "UNE"
-                      )}</div>
-                    </div>
-                  `
+                      (o) => `<div style="border:1px solid var(--border);border-radius:6px;padding:7px 10px;background:var(--surface-alt);">
+                        <div style="font-weight:700;font-size:12.5px;">${esc(o.period)}</div>
+                        <div style="font-size:11.5px;color:var(--text-muted);">${esc(o.modes.join(", ") || "Standard")} · ${esc(o.location || "UNE")}</div>
+                      </div>`
                     )
                     .join("")}
                 </div>`
               : `<div style="color:var(--text-subtle);font-size:12px;">No 2027 teaching periods listed.</div>`
           }
         </div>
-
         ${
           (u.assessments || []).length
             ? `<div>
@@ -2125,23 +2712,18 @@
                 <div style="display:flex;flex-direction:column;gap:5px;">
                   ${u.assessments
                     .map(
-                      (a, idx) => `
-                    <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:5px 8px;background:var(--surface-alt);border-radius:5px;">
-                      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${
-                        colors[idx % colors.length]
-                      };margin-right:6px;"></span><strong>${esc(a.name)}</strong> ${
-                        a.hurdle ? `<span class="badge-mini badge-intensive" style="margin-left:4px;">Hurdle</span>` : ""
-                      }</span>
-                      <strong>${a.weight ? `${a.weight}%` : "Pass/Fail"}</strong>
-                    </div>
-                  `
+                      (a, idx) => `<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:5px 8px;background:var(--surface-alt);border-radius:5px;">
+                        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colors[idx % colors.length]};margin-right:6px;"></span><strong>${esc(
+                        a.name
+                      )}</strong> ${a.hurdle ? `<span class="badge-mini badge-intensive" style="margin-left:4px;">Hurdle</span>` : ""}</span>
+                        <strong>${a.weight ? `${a.weight}%` : "Pass/Fail"}</strong>
+                      </div>`
                     )
                     .join("")}
                 </div>
               </div>`
             : ""
         }
-
         ${
           (u.outcomes || []).length
             ? `<div>
@@ -2155,12 +2737,7 @@
       `,
       (modal) => {
         const smartBtn = modal.querySelector("#btn-modal-smart-add");
-        if (smartBtn) {
-          smartBtn.onclick = () => {
-            closeModal();
-            addUnitToPlan(u.code);
-          };
-        }
+        if (smartBtn) smartBtn.onclick = () => { closeModal(); addUnitToPlan(u.code); };
         modal.querySelectorAll("[data-modal-place]").forEach((b) => {
           b.onclick = () => {
             const [yIdx, tNum] = b.dataset.modalPlace.split("|").map(Number);
@@ -2181,16 +2758,14 @@
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
     const plans = Engine.getAvailableStudyPlans(course, plan, DATA);
-
     const groups = {};
     for (const sp of plans) {
       groups[sp.group] = groups[sp.group] || [];
       groups[sp.group].push(sp);
     }
-
     openModal(
-      `<div style="font-weight:800;font-size:16px;">Official UNE 2027 Progression Maps & Study Plans</div>
-       <div style="font-size:12px;color:var(--text-subtle);">Load an official UNE trimester template onto your planner board, then click "Choose Unit →" on any placeholder slot to see valid units for that exact trimester.</div>`,
+      `<div style="font-weight:800;font-size:15.5px;">Official UNE 2027 Progression Maps (${plans.length})</div>
+       <div style="font-size:12px;color:var(--text-subtle);">Load an official UNE trimester template, then tap "Choose Unit →" on any placeholder slot.</div>`,
       Object.entries(groups)
         .map(
           ([grp, list]) => `
@@ -2199,105 +2774,104 @@
           <div style="display:flex;flex-direction:column;gap:7px;">
             ${list
               .map(
-                (sp) => `
-              <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-alt);">
-                <div>
-                  <div style="font-weight:700;font-size:13px;">${esc(sp.title)}</div>
-                  <div style="font-size:11.5px;color:var(--text-subtle);">
-                    ${sp.years.length} Year(s) · Commencing T${sp.commencementTrimester} · ${esc(sp.loadType)}
+                (sp) => `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-alt);">
+                  <div>
+                    <div style="font-weight:700;font-size:13px;">${esc(sp.title)}</div>
+                    <div style="font-size:11.5px;color:var(--text-subtle);">${sp.years.length} Year(s) · Commencing T${sp.commencementTrimester} · ${esc(sp.loadType)}</div>
                   </div>
-                </div>
-                <button class="btn btn-sm btn-primary" data-load-sp="${esc(sp.id)}">Load Template</button>
-              </div>
-            `
+                  <button class="btn btn-sm btn-primary" data-load-sp="${esc(sp.id)}">Load</button>
+                </div>`
               )
               .join("")}
           </div>
-        </div>
-      `
+        </div>`
         )
         .join(""),
       (modal) => {
         modal.querySelectorAll("[data-load-sp]").forEach((btn) => {
           btn.onclick = () => {
-            const spId = btn.dataset.loadSp;
-            const loaded = Engine.applyOfficialStudyPlan(spId, course, plan, DATA);
+            const loaded = Engine.applyOfficialStudyPlan(btn.dataset.loadSp, course, plan, DATA);
             state.savedPlansByCourse[course.code] = loaded;
             const openPh = findOpenPlaceholders(loaded);
-            if (openPh.length > 0) activateSlotPicker(openPh[0]);
+            if (openPh.length > 0 && !isMobileViewport()) activateSlotPicker(openPh[0], !isTabletViewport());
             else exitSlotPicker();
+            state.mobilePane = "plan";
             saveState();
             closeModal();
             renderAll({ resetSidebarScroll: true });
-            showToast(
-              openPh.length > 0
-                ? `Loaded official UNE Study Plan! Showing valid options for ${openPh.length} placeholder slot(s).`
-                : "Loaded official UNE Study Plan!"
-            );
+            showToast("Loaded official UNE Study Plan!");
           };
         });
       }
     );
   }
 
-  function openCourseInfoModal() {
-    const c = getCurrentCourse();
+  function openCourseInfoModal(courseCode) {
+    const c = typeof courseCode === "string" ? getCourse(courseCode) : getCurrentCourse();
+    const isOtherOrFinder = state.view === "finder" || c.code !== state.currentCourseCode;
+    const majorList = (c.majorTitles || []).filter((t) => !/listed unit/i.test(t));
     openModal(
-      `<div style="display:flex;align-items:center;gap:8px;">
-         <span class="course-code-pill">${esc(c.code)}</span>
-         <span style="font-weight:800;font-size:16px;">${esc(c.title)} (2027)</span>
+      `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+         <span class="course-code-pill teal">${esc(c.code)}</span>
+         <span style="font-weight:800;font-size:15.5px;">${esc(c.title)} (2027)</span>
        </div>`,
       `
         <div class="info-grid">
           <div class="info-stat"><div class="info-stat-label">Award Credit Points</div><div class="info-stat-val">${c.totalCp} CP</div></div>
-          <div class="info-stat"><div class="info-stat-label">AQF / Study Level</div><div class="info-stat-val">${esc(c.aqfLevel || c.studyLevel)}</div></div>
-          <div class="info-stat"><div class="info-stat-label">Duration</div><div class="info-stat-val">${esc(c.duration || "Standard")}</div></div>
-          <div class="info-stat"><div class="info-stat-label">Delivery & Campus</div><div class="info-stat-val">${esc(c.modes.join(", "))} (${esc(c.location || "UNE")})</div></div>
+          <div class="info-stat"><div class="info-stat-label">School</div><div class="info-stat-val">${esc(c.school)}</div></div>
+          <div class="info-stat"><div class="info-stat-label">Study / AQF Level</div><div class="info-stat-val">${esc(c.aqfLevel || c.studyLevel)}</div></div>
+          <div class="info-stat"><div class="info-stat-label">Delivery</div><div class="info-stat-val">${esc(c.modes.join(", ") || "Standard")}</div></div>
           ${c.atar ? `<div class="info-stat"><div class="info-stat-label">Selection Rank (ATAR)</div><div class="info-stat-val">${esc(c.atar)}</div></div>` : ""}
           ${c.cricos ? `<div class="info-stat"><div class="info-stat-label">CRICOS Code</div><div class="info-stat-val">${esc(c.cricos)}</div></div>` : ""}
         </div>
-
+        ${
+          majorList.length
+            ? `<div class="info-stat">
+                 <div class="info-stat-label">Available Majors / Specialisations (${majorList.length})</div>
+                 <div style="margin-top:4px;font-size:12px;color:var(--text-muted);">${esc(majorList.join(" · "))}</div>
+               </div>`
+            : ""
+        }
         ${c.progressionText ? `<div class="info-stat"><div class="info-stat-label">Official Course Progression Rule</div><div style="margin-top:4px;">${esc(c.progressionText)}</div></div>` : ""}
-
         ${
           (c.enrolmentRules || []).length
-            ? `<div>
-                <div class="config-label" style="margin-bottom:6px;">Course Enrolment Rules & Advisory Notes</div>
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                  ${c.enrolmentRules.map((r) => `<div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:6px;padding:8px 11px;white-space:pre-line;font-size:12px;">${esc(r)}</div>`).join("")}
-                </div>
-              </div>`
+            ? `<div><div class="config-label" style="margin-bottom:6px;">Course Enrolment Rules</div><div style="display:flex;flex-direction:column;gap:6px;">${c.enrolmentRules
+                .map((r) => `<div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:6px;padding:8px 11px;white-space:pre-line;font-size:12px;">${esc(r)}</div>`)
+                .join("")}</div></div>`
             : ""
         }
-
-        ${c.overview ? `<div><div class="config-label" style="margin-bottom:4px;">Course Overview</div><div style="white-space:pre-line;color:var(--text-muted);">${esc(c.overview)}</div></div>` : ""}
+        ${c.overview ? `<div><div class="config-label" style="margin-bottom:4px;">Overview</div><div style="white-space:pre-line;color:var(--text-muted);">${esc(c.overview)}</div></div>` : ""}
         ${c.careers ? `<div><div class="config-label" style="margin-bottom:4px;">Career Opportunities</div><div style="white-space:pre-line;color:var(--text-muted);">${esc(c.careers)}</div></div>` : ""}
-
         ${
           (c.outcomes || []).length
-            ? `<div>
-                <div class="config-label" style="margin-bottom:6px;">Course Learning Outcomes</div>
-                <ul style="margin:0;padding-left:18px;color:var(--text-muted);font-size:12px;display:flex;flex-direction:column;gap:4px;">
-                  ${c.outcomes.map((o) => `<li>${esc(o)}</li>`).join("")}
-                </ul>
-              </div>`
+            ? `<div><div class="config-label" style="margin-bottom:6px;">Learning Outcomes</div><ul style="margin:0;padding-left:18px;color:var(--text-muted);font-size:12px;display:flex;flex-direction:column;gap:4px;">${c.outcomes
+                .map((o) => `<li>${esc(o)}</li>`)
+                .join("")}</ul></div>`
             : ""
         }
-
-        <div style="display:flex;justify-content:flex-end;">
-          <a href="${esc(c.url)}" target="_blank" rel="noopener" class="btn btn-primary">Open Official 2027 UNE Handbook Page ↗</a>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <a href="${esc(c.url)}" target="_blank" rel="noopener" class="btn">Official 2027 UNE Handbook Page ↗</a>
+          ${isOtherOrFinder ? `<button class="btn btn-primary" id="btn-modal-launch-course">Plan ${esc(c.code)} Now →</button>` : ""}
         </div>
-      `
+      `,
+      (modal) => {
+        const launchBtn = modal.querySelector("#btn-modal-launch-course");
+        if (launchBtn) {
+          launchBtn.onclick = () => {
+            closeModal();
+            openCourseInPlanner(c.code);
+          };
+        }
+      }
     );
   }
 
   function openCustomUnitModal() {
     const plan = getCurrentPlan();
     openModal(
-      `<div style="font-weight:800;font-size:16px;">Add Cross-Faculty / Custom UNE Elective Unit</div>
-       <div style="font-size:12px;color:var(--text-subtle);">Planning a general elective from Arts, Business, Law, Education or Languages? Add it here.</div>`,
+      `<div style="font-weight:800;font-size:15.5px;">Add Custom / Cross-Faculty UNE Elective</div>`,
       `
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px;">
+        <div class="form-grid-2">
           <div>
             <label class="config-label">Unit Code</label>
             <input type="text" class="text-input" id="cust-code" placeholder="e.g. FREN101" style="width:100%;margin-top:4px;text-transform:uppercase;" />
@@ -2335,27 +2909,18 @@
           const title = (modal.querySelector("#cust-title").value || "").trim() || "General Elective Unit";
           const cp = parseInt(modal.querySelector("#cust-cp").value, 10) || 6;
           const level = parseInt(modal.querySelector("#cust-lvl").value, 10) || 100;
-          if (!code) {
-            showToast("Please enter a unit code (e.g. FREN101).");
-            return;
-          }
+          if (!code) { showToast("Please enter a unit code."); return; }
           plan.customUnits = plan.customUnits || {};
           plan.customUnits[code] = {
-            code,
-            title,
-            cp,
-            level,
+            code, title, cp, level,
             prefix: (code.match(/^[A-Z]+/) || ["ELEC"])[0],
             school: "Cross-Faculty Elective",
             offered2027: true,
             trimesters: [1, 2, 3],
             modes: ["Online", "On Campus"],
             offerings: [],
-            prereqText: "",
-            coreqText: "",
-            restrictionText: "",
-            assessments: [],
-            outcomes: [],
+            prereqText: "", coreqText: "", restrictionText: "",
+            assessments: [], outcomes: [],
             url: `https://handbook.une.edu.au/units/2027/${code}?year=2027`,
           };
           closeModal();
@@ -2369,37 +2934,21 @@
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
     openModal(
-      `<div style="font-weight:800;font-size:16px;">Export, Share, Print or Reset Study Plan</div>`,
+      `<div style="font-weight:800;font-size:15.5px;">Export, Print or Reset Study Plan</div>`,
       `
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
-          <button class="course-card-option" id="exp-print">
-            <div style="font-weight:700;">🖨️ Print / Save as PDF</div>
-            <div style="font-size:11.5px;color:var(--text-subtle);">Clean degree progression summary sheet for academic advising.</div>
-          </button>
-          <button class="course-card-option" id="exp-csv">
-            <div style="font-weight:700;">📊 Download CSV Spreadsheet</div>
-            <div style="font-size:11.5px;color:var(--text-subtle);">Year, Trimester, Unit Code, Title, Credit Points & Category.</div>
-          </button>
-          <button class="course-card-option" id="exp-json">
-            <div style="font-weight:700;">💾 Export Plan JSON</div>
-            <div style="font-size:11.5px;color:var(--text-subtle);">Save a backup file you can reload anytime.</div>
-          </button>
-          <label class="course-card-option" style="cursor:pointer;">
-            <div style="font-weight:700;">📂 Import Plan JSON</div>
-            <div style="font-size:11.5px;color:var(--text-subtle);">Restore a previously exported JSON plan file.</div>
-            <input type="file" id="inp-import-json" accept=".json" style="display:none;" />
-          </label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;">
+          <button class="course-card-option" id="exp-print"><div style="font-weight:700;">🖨️ Print / Save PDF</div><div style="font-size:11.5px;color:var(--text-subtle);">Clean degree progression summary</div></button>
+          <button class="course-card-option" id="exp-csv"><div style="font-weight:700;">📊 Download CSV</div><div style="font-size:11.5px;color:var(--text-subtle);">Spreadsheet of Year/Tri/Units</div></button>
+          <button class="course-card-option" id="exp-json"><div style="font-weight:700;">💾 Export JSON</div><div style="font-size:11.5px;color:var(--text-subtle);">Backup file to reload anytime</div></button>
+          <label class="course-card-option" style="cursor:pointer;"><div style="font-weight:700;">📂 Import JSON</div><div style="font-size:11.5px;color:var(--text-subtle);">Restore saved plan file</div><input type="file" id="inp-import-json" accept=".json" style="display:none;" /></label>
         </div>
-        <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12px;color:var(--text-subtle);">Resetting restores ${esc(course.code)} to a blank default configuration.</span>
-          <button class="btn" id="exp-reset" style="color:var(--err);border-color:var(--err-border);">Reset ${esc(course.code)} Plan</button>
+        <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text-subtle);">Reset ${esc(course.code)} to a blank plan.</span>
+          <button class="btn" id="exp-reset" style="color:var(--err);border-color:var(--err-border);">Reset ${esc(course.code)}</button>
         </div>
       `,
       (modal) => {
-        modal.querySelector("#exp-print").onclick = () => {
-          closeModal();
-          setTimeout(() => window.print(), 150);
-        };
+        modal.querySelector("#exp-print").onclick = () => { closeModal(); setTimeout(() => window.print(), 150); };
         modal.querySelector("#exp-csv").onclick = () => {
           const report = Engine.validatePlan(course, plan, DATA);
           const rows = [["Course", "Year", "Trimester", "Code", "Title", "CreditPoints", "Category"]];
@@ -2435,17 +2984,14 @@
               if (imported.courseCode && DATA.courses.some((c) => c.code === imported.courseCode)) {
                 state.currentCourseCode = imported.courseCode;
                 state.savedPlansByCourse[imported.courseCode] = imported;
+                state.view = "planner";
                 exitSlotPicker();
                 saveState();
                 closeModal();
                 renderAll({ resetSidebarScroll: true });
                 showToast(`Imported plan for ${imported.courseCode}!`);
-              } else {
-                showToast("Invalid plan JSON file.");
-              }
-            } catch (_) {
-              showToast("Could not parse JSON file.");
-            }
+              } else showToast("Invalid plan JSON file.");
+            } catch (_) { showToast("Could not parse JSON file."); }
           };
           reader.readAsText(file);
         };
@@ -2473,17 +3019,46 @@
     URL.revokeObjectURL(url);
   }
 
+  /* ==========================================================================
+     8. MAIN RENDER ORCHESTRATOR
+     ========================================================================== */
   function renderAll(opts) {
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
-    const report = Engine.validatePlan(course, plan, DATA);
-    document.title = `${course.code} — ${course.title} | UNE 2027 Course & Unit Planner`;
-    renderHeader(course, plan, report);
-    renderConfigRibbon(course, plan, report);
-    renderSidebar(course, plan, report, { resetScroll: Boolean(opts?.resetSidebarScroll) });
-    renderBoard(course, plan, report);
+    const finderEl = document.getElementById("finder-view");
+    const plannerEl = document.getElementById("planner-shell");
+
+    renderHeader(course, plan);
+    renderMobileBottomNav(course, plan);
+
+    if (state.view === "finder") {
+      document.title = `Find a Course (233 Degrees) | UNE 2027 Interactive Course Planner`;
+      finderEl.classList.remove("hidden");
+      plannerEl.classList.add("hidden");
+      renderCourseFinder();
+    } else {
+      document.title = `${course.code} — ${course.title} | UNE 2027 Course & Unit Planner`;
+      finderEl.classList.add("hidden");
+      plannerEl.classList.remove("hidden");
+      const report = Engine.validatePlan(course, plan, DATA);
+      renderConfigRibbon(course, plan, report);
+      renderSidebar(course, plan, report, { resetScroll: Boolean(opts?.resetSidebarScroll) });
+      renderBoard(course, plan, report);
+    }
+
+    syncResponsiveClasses();
   }
 
+  // Backdrop click closes Tablet slide-over drawer
+  const sbBackdrop = document.getElementById("sidebar-backdrop");
+  if (sbBackdrop) {
+    sbBackdrop.onclick = () => {
+      state.tabletDrawerOpen = false;
+      syncResponsiveClasses();
+    };
+  }
+
+  // Dismissible trial banner
   const dismissTrialBtn = document.getElementById("btn-dismiss-trial");
   const trialBannerEl = document.getElementById("trial-banner");
   if (trialBannerEl && sessionStorage.getItem("une_trial_banner_dismissed") === "1") {
@@ -2492,12 +3067,34 @@
   if (dismissTrialBtn && trialBannerEl) {
     dismissTrialBtn.onclick = () => {
       trialBannerEl.style.display = "none";
-      try {
-        sessionStorage.setItem("une_trial_banner_dismissed", "1");
-      } catch (_) {}
+      try { sessionStorage.setItem("une_trial_banner_dismissed", "1"); } catch (_) {}
     };
   }
 
+  window.addEventListener("resize", syncResponsiveClasses);
+
+  // Global keyboard shortcuts: '/' focuses Course Finder search, 'Escape' closes modals or tablet drawer
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const mb = document.getElementById("modal-backdrop");
+      if (mb && !mb.classList.contains("hidden")) {
+        closeModal();
+        return;
+      }
+      if (state.tabletDrawerOpen) {
+        state.tabletDrawerOpen = false;
+        syncResponsiveClasses();
+      }
+    } else if (
+      e.key === "/" &&
+      state.view === "finder" &&
+      !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)
+    ) {
+      e.preventDefault();
+      document.getElementById("inp-finder-search")?.focus();
+    }
+  });
+
   loadState();
   renderAll({ resetSidebarScroll: true });
-})();
+};
