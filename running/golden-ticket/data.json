@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-11-20 12:30 AEDT",
-  "today": "2026-11-20",
+  "updated_at": "2026-11-21 20:49 AEDT",
+  "today": "2026-11-21",
   "current_week": 6,
   "total_weeks": 22,
-  "days_to_golden_ticket": 113,
+  "days_to_golden_ticket": 112,
   "goal": {
     "date": "2027-03-14",
     "event": "Armidale Running Festival — Golden Ticket (Sat 13 Mar: 1k+1k+1k+3k+5k+10k; Sun 14 Mar: Half Marathon)",
@@ -128,12 +128,12 @@
     }
   },
   "summary": {
-    "block_km": 211.1,
-    "block_runs": 30,
-    "current_week_actual_km": 33.67,
+    "block_km": 226.4,
+    "block_runs": 31,
+    "current_week_actual_km": 48.96,
     "current_week_planned_km": 56,
-    "rolling_7d_km": 54.7,
-    "rolling_28d_avg_km": 36.3
+    "rolling_7d_km": 57.4,
+    "rolling_28d_avg_km": 38.9
   },
   "checkpoints": [
     {
@@ -175,35 +175,74 @@
     }
   ],
   "current_call": {
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "verdict": "Adjusted",
-    "headline": "Rest Friday, Easy Parkrun Saturday, 14–15 km Long Run Sunday",
-    "summary": "After three consecutive high-output days (Tuesday's 5 × 1.6 km threshold breakthrough + gym, Wednesday Ultimate Frisbee, and Thursday HIIT) and 54.7 km over the rolling 7 days, Saturday's scheduled parkrun tempo + 200s is adjusted to an easy 8–10 km aerobic run (5:04–5:36/km watch, HR ≤150). That protects absorption and sets up Sunday's 14–15 km long run to finish Week 6 right on target (~56–58 km).",
+    "headline": "15.3 km long run banked early Saturday — trim Sunday to 7–9 km easy + sauna",
+    "summary": "Saturday's planned easy parkrun became a disciplined 15.29 km aerobic long run (5:24.4/km watch → 5:01.6/km EAP v2.0, avg HR 132, 97% Z1–Z2), bringing Week 6 to 49.0 km through Saturday. Swapping the weekend — trimming Sunday from 15 km to a relaxed 7–9 km shakeout + sauna — lands Week 6 cleanly on target at 56–58 km and leaves fresh legs for Tuesday's 10 × 1 km Norwegian threshold session in Week 7.",
     "next_three_days": [
-      {
-        "date": "2026-11-20",
-        "day": "Fri 20 Nov",
-        "status": "As planned",
-        "title": "Rest (optional easy swim)",
-        "target": "No running; optional 20–30 min easy recovery swim"
-      },
-      {
-        "date": "2026-11-21",
-        "day": "Sat 21 Nov",
-        "status": "Adjusted",
-        "title": "Easy Aerobic Parkrun (8–10 km total)",
-        "target": "5:04–5:36/km watch · HR ≤150 (14–15 °C, NW 14 km/h, showers likely)"
-      },
       {
         "date": "2026-11-22",
         "day": "Sun 22 Nov",
+        "status": "Adjusted",
+        "title": "Easy Aerobic Shakeout (7–9 km) + Sauna",
+        "target": "5:04–5:37/km watch · HR ≤145 (15–19 °C, dry 0% rain, 9–10 km/h WNW breeze)"
+      },
+      {
+        "date": "2026-11-23",
+        "day": "Mon 23 Nov",
         "status": "As planned",
-        "title": "Long Run (14–15 km) + Sauna",
-        "target": "5:04–5:36/km watch · HR ≤150 (14–19 °C, dry 0% rain, light WNW breeze)"
+        "title": "Week 7 Opener: Easy Run (6 km)",
+        "target": "5:05–5:37/km watch · HR ≤150 (17–19 °C, dry 0% rain, 11–13 km/h NW breeze)"
+      },
+      {
+        "date": "2026-11-24",
+        "day": "Tue 24 Nov",
+        "status": "As planned",
+        "title": "Norwegian Threshold kms (10 × 1 km @ T)",
+        "target": "~4:05–4:10/km watch (60 s jog) · HR 158–168 (Z3 cap) + PM Gym A"
       }
     ]
   },
   "reports": [
+    {
+      "id": "2026-11-21-aerobic-15k-parkrun",
+      "date": "2026-11-21",
+      "week": 6,
+      "tag": "Long Run",
+      "title": "15.29 km aerobic group run + parkrun cruise at 132 bpm",
+      "summary": "Banked Sunday's long run a day early with a 5 km jog to Armidale parkrun, 5 km strictly easy inside parkrun, and 5.3 km home (15.29 km total, +117/−119 m, 1:22:36 moving). Total restraint from start to finish: 5:24.4/km watch → 5:01.6/km EAP v2.0 acclimatised into a 19.5 km/h NW breeze, spending 97% of the run in Z1–Z2 (out 5 km avg HR 128, parkrun 5 km avg HR 135, return 5.3 km avg HR 133 — zero cardiac drift).",
+      "metrics": [
+        {
+          "label": "Distance",
+          "value": "15.29 km"
+        },
+        {
+          "label": "Moving Time",
+          "value": "1:22:36"
+        },
+        {
+          "label": "Watch Pace",
+          "value": "5:24.4/km"
+        },
+        {
+          "label": "EAP v2.0",
+          "value": "5:01.6/km"
+        },
+        {
+          "label": "Avg / Max HR",
+          "value": "132 / 154 bpm"
+        },
+        {
+          "label": "Avg Power",
+          "value": "350 W · 170 spm"
+        },
+        {
+          "label": "Conditions",
+          "value": "17.0 °C · DP 13.1 °C · 20 km/h NW"
+        }
+      ],
+      "adaptation": "Sunday 22 Nov adjusted from 15 km to 7–9 km easy + sauna so Week 6 finishes right at 56–58 km (plan: 56 km) ahead of Week 7's 10 × 1 km @ T."
+    },
     {
       "id": "2026-11-20-golden-ticket-pivot",
       "date": "2026-11-20",
@@ -1312,7 +1351,7 @@
       "phase": "base",
       "planned_km": 56,
       "optional_km": 11,
-      "actual_km": 33.67,
+      "actual_km": 48.96,
       "down": false,
       "mark": null,
       "days": [
@@ -1449,8 +1488,17 @@
           "optional_km": 6,
           "detail": "2.5 km jog there. 5 km @ {T}, then 4 × 200 m @ {R} (200 m jog). Jog home. Optional 5:45 social +6 km first, if feeling fresh.",
           "extras": [],
-          "actual_km": 0,
-          "actual_runs": []
+          "actual_km": 15.29,
+          "actual_runs": [
+            {
+              "km": 15.29,
+              "duration_min": 82.6,
+              "pace": "5:24/km",
+              "avg_hr": 132,
+              "elev_m": 117,
+              "surface": "Road"
+            }
+          ]
         },
         {
           "date": "2026-11-22",
