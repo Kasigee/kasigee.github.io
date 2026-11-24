@@ -17,6 +17,43 @@
   }
 
   /**
+   * Resolves a unit's Intensive School metadata (kind, location, campuses, published dates, TBA flag)
+   * for a specific trimester (or overall if triNum is omitted).
+   */
+  function getUnitIntensiveForTri(u, triNum) {
+    if (!u || !u.intensive) return null;
+    const byTri = triNum && u.intensiveByTri ? u.intensiveByTri[String(triNum)] : null;
+    const kind = byTri?.kind || u.intensive;
+    const dates = byTri ? (byTri.dates || []) : (u.intensiveDates || []);
+    const campuses = byTri && byTri.campuses?.length ? byTri.campuses : (u.intensiveCampuses || []);
+    const location = byTri?.location || u.intensiveLocation || "Location TBA";
+    const tba = byTri ? Boolean(byTri.tba) : (dates.length === 0);
+    const physicalCampuses = campuses.filter((c) => c !== "online");
+    const isOnlineOnly = campuses.length > 0 && physicalCampuses.length === 0;
+    return {
+      kind,
+      dates,
+      tba,
+      location,
+      campuses,
+      physicalCampuses,
+      isPhysical: !isOnlineOnly,
+      duration: u.intensiveDuration || "",
+      note: u.intensiveNote || "",
+    };
+  }
+
+  function getPhysicalCampusGroup(intInfo) {
+    if (!intInfo || intInfo.kind !== "Mandatory" || !intInfo.isPhysical) return null;
+    const s = new Set(intInfo.physicalCampuses || []);
+    if (s.has("armidale") && s.has("sydney")) return "armidale_sydney";
+    if (s.has("sydney")) return "sydney_only";
+    if (s.has("armidale")) return "armidale_only";
+    if (s.size > 0) return Array.from(s).sort().join("_");
+    return null;
+  }
+
+  /**
    * Recursive-descent boolean evaluator for unit prerequisite token streams:
    * Tokens: '(', ')', 'AND', 'OR', or UnitCode (e.g. 'MTHS120').
    * Adjacent unit codes without explicit connector default to OR if inside choice parens, else AND.
@@ -739,12 +776,13 @@
 
     for (const p of placements) {
       if (p.type !== "unit") {
-        resultsBySlotId[p.slot.id] = { errors: [], warnings: [], infos: [] };
+        resultsBySlotId[p.slot.id] = { errors: [], warnings: [], infos: [], intensiveAlerts: [] };
         continue;
       }
       const errors = [];
       const warnings = [];
       const infos = [];
+      const intensiveAlerts = [];
       const u = p.unit;
 
       if (codeCounts[p.code] > 1) {
@@ -753,7 +791,7 @@
 
       if (!u) {
         warnings.push("Custom/unlisted unit — verify handbook offering & prerequisites.");
-        resultsBySlotId[p.slot.id] = { errors, warnings, infos };
+        resultsBySlotId[p.slot.id] = { errors, warnings, infos, intensiveAlerts };
         continue;
       }
 
@@ -765,13 +803,22 @@
         );
       }
 
+      if (u.t3RepeatOnly && p.triNum === 3) {
+        warnings.push(`${p.code} Trimester 3 is for repeating students only (requires Head of School permission).`);
+      }
+
       if (u.modes && u.modes.length > 0 && plan.preferredMode && !u.modes.includes(plan.preferredMode)) {
         warnings.push(`${p.code} is offered ${u.modes.join(" / ")} only (your preference is ${plan.preferredMode}).`);
       }
 
-      if (u.intensive === "Mandatory") {
-        const dt = u.intensiveDates && u.intensiveDates.length ? ` (${u.intensiveDates[0]})` : "";
-        infos.push(`Mandatory Intensive School${dt}`);
+      const intInfo = getUnitIntensiveForTri(u, p.triNum);
+      if (intInfo && intInfo.kind === "Mandatory") {
+        const locPart = intInfo.location ? ` · ${intInfo.location}` : "";
+        if (intInfo.tba) {
+          intensiveAlerts.push(`Mandatory Intensive${locPart} — Dates TBA (check dates)`);
+        } else {
+          infos.push(`Mandatory Intensive${locPart}: ${intInfo.dates[0]}`);
+        }
       } else if (u.yearLong) {
         infos.push("Year-Long / Multi-Period Unit");
       }
@@ -863,7 +910,7 @@
         }
       }
 
-      resultsBySlotId[p.slot.id] = { errors, warnings, infos };
+      resultsBySlotId[p.slot.id] = { errors, warnings, infos, intensiveAlerts };
     }
 
     return resultsBySlotId;
@@ -1029,7 +1076,7 @@
       });
     }
 
-    // Trimester overload checks (> 24 CP; year-long 24+ CP theses span 2 trimesters so count half toward single-trimester overload)
+    // Trimester overload checks (> 24 CP) + Intensive School TBA & Multi-Campus Travel Conflict checks!
     const trimesterLoads = {};
     (plan.years || []).forEach((yr, yIdx) => {
       for (const tNum of [1, 2, 3]) {
@@ -1037,19 +1084,56 @@
         let cpSum = 0;
         let effLoadSum = 0;
         let intensives = 0;
+        let tbaIntensives = 0;
+        const armidaleOnly = [];
+        const sydneyOnly = [];
+        const sydneyOrArmidale = [];
+        const otherPhysical = [];
+
         for (const s of slots) {
           const u = s.type === "unit" ? getUnit(s.code, data, plan.customUnits) : null;
           const uCp = u ? u.cp : (s.cp || 6);
           cpSum += uCp;
           effLoadSum += u && (u.yearLong || uCp >= 24) ? Math.ceil(uCp / 2) : uCp;
-          if (u && u.intensive === "Mandatory") intensives++;
+          const intInfo = u ? getUnitIntensiveForTri(u, tNum) : null;
+          if (intInfo && intInfo.kind === "Mandatory") {
+            intensives++;
+            if (intInfo.tba) tbaIntensives++;
+            const grp = getPhysicalCampusGroup(intInfo);
+            if (grp === "armidale_only") armidaleOnly.push(u.code);
+            else if (grp === "sydney_only") sydneyOnly.push(u.code);
+            else if (grp === "armidale_sydney") sydneyOrArmidale.push(u.code);
+            else if (grp) otherPhysical.push(`${u.code} (${intInfo.location})`);
+          }
         }
+
+        const hasCampusConflict =
+          (armidaleOnly.length > 0 && (sydneyOnly.length > 0 || sydneyOrArmidale.length > 0)) ||
+          (sydneyOnly.length > 0 && sydneyOrArmidale.length > 0);
+
         const key = `${yIdx}_${tNum}`;
-        trimesterLoads[key] = { cp: cpSum, intensives };
+        trimesterLoads[key] = {
+          cp: cpSum,
+          intensives,
+          tbaIntensives,
+          campusConflict: hasCampusConflict,
+        };
+
         if (effLoadSum > 24) {
           globalIssues.push({
             severity: "warning",
             text: `${yr.name} Trimester ${tNum} has ${cpSum} CP (exceeds standard 24 CP full-time load; requires UNE overload approval).`,
+          });
+        }
+        if (hasCampusConflict) {
+          const leftStr = armidaleOnly.length ? `Armidale (${armidaleOnly.join(", ")})` : "";
+          const rightParts = [];
+          if (sydneyOnly.length) rightParts.push(`Sydney (${sydneyOnly.join(", ")})`);
+          if (sydneyOrArmidale.length) rightParts.push(`Sydney / Armidale TBC (${sydneyOrArmidale.join(", ")})`);
+          const desc = [leftStr, ...rightParts].filter(Boolean).join(" with ");
+          globalIssues.push({
+            severity: "warning",
+            text: `Intensive Campus Clash in ${yr.name} Trimester ${tNum}: mixes ${desc} — attending intensives at different campuses in the same trimester may require travel; confirm intensive locations & dates.`,
           });
         }
       }
@@ -1583,6 +1667,7 @@
           const eligible = remUnits.filter((u) => {
             const offeredHere = !u.trimesters || u.trimesters.length === 0 || u.trimesters.includes(tNum);
             if (!offeredHere) return false;
+            if (tNum === 3 && u.t3RepeatOnly) return false;
             if (course.studyLevel === "Undergraduate" && y === 1 && u.level >= 300 && (course.totalCp || 144) >= 96) {
               return false;
             }
@@ -1626,9 +1711,27 @@
 
           const totalRemainingCp = remUnits.reduce((s, x) => s + x.cp, 0) + remPh.reduce((s, x) => s + (x.cp || 6), 0);
           const placedThisTri = [];
-          for (const u of eligible) {
+          const campusDeferred = [];
+          const activeCampusGroups = new Set();
+
+          function wouldClashCampus(u) {
+            const grp = getPhysicalCampusGroup(getUnitIntensiveForTri(u, tNum));
+            if (!grp || activeCampusGroups.size === 0 || activeCampusGroups.has(grp)) return false;
+            // Clash when mixing armidale_only with sydney_only or armidale_sydney (e.g. EXSC340 Armidale with EXSC260/239/370 Sydney!)
+            if (
+              (grp === "armidale_only" && (activeCampusGroups.has("sydney_only") || activeCampusGroups.has("armidale_sydney"))) ||
+              ((grp === "sydney_only" || grp === "armidale_sydney") && activeCampusGroups.has("armidale_only")) ||
+              (grp === "sydney_only" && activeCampusGroups.has("armidale_sydney")) ||
+              (grp === "armidale_sydney" && activeCampusGroups.has("sydney_only"))
+            ) {
+              return true;
+            }
+            return false;
+          }
+
+          function tryPlaceInTri(u, allowCampusClash) {
             const effCp = (u.yearLong || u.cp >= 24) && nextPlan.studyLoad !== "Part-time" ? Math.ceil(u.cp / 2) : u.cp;
-            if (triEffCp + effCp > maxThisTri) continue;
+            if (triEffCp + effCp > maxThisTri) return false;
 
             const readyNow = isPrereqReady(u, doneSet, doneCp, donePrefixCp, course);
             if (!readyNow) {
@@ -1651,14 +1754,39 @@
                   hasFuturePrefixCp = true;
                 }
               }
-              if (hasFutureCodePrereq || hasFutureMinCp || hasFuturePrefixCp) continue;
+              if (hasFutureCodePrereq || hasFutureMinCp || hasFuturePrefixCp) return false;
+            }
+
+            if (!allowCampusClash && wouldClashCampus(u)) {
+              campusDeferred.push(u);
+              return false;
             }
 
             yrObj.trimesters[tNum].push({ id: uid("u"), type: "unit", code: u.code });
             triEffCp += effCp;
             placedThisTri.push(u);
+            const grp = getPhysicalCampusGroup(getUnitIntensiveForTri(u, tNum));
+            if (grp) activeCampusGroups.add(grp);
             const idx = remUnits.findIndex((x) => x.code === u.code);
             if (idx !== -1) remUnits.splice(idx, 1);
+            return true;
+          }
+
+          // Pass 1: Place ready units while keeping same-trimester Mandatory Intensives on the same campus!
+          for (const u of eligible) {
+            tryPlaceInTri(u, false);
+          }
+
+          // Pass 2: Only place a campus-clashing unit in this trimester if we are in the final standard year
+          // OR deferring it would genuinely delay graduation (critical-path span exceeds remaining active trimesters)!
+          const remainingStdActiveTris = Math.max(1, (stdYears - y) * 2 + (tNum === 1 ? 2 : 1));
+          for (const u of campusDeferred) {
+            if (triEffCp >= maxThisTri) break;
+            const uSpan = critSpans[u.code] || 1;
+            const mustPlaceNow = y >= stdYears || uSpan >= remainingStdActiveTris;
+            if (mustPlaceNow) {
+              tryPlaceInTri(u, true);
+            }
           }
 
           if ((tNum !== 3 || allowGeneralT3) && remPh.length > 0) {
@@ -2722,6 +2850,7 @@
   global.UNEPlannerEngine = {
     uid,
     getUnit,
+    getUnitIntensiveForTri,
     evalPrereqTokens,
     getAdvancedStandingCp,
     createDefaultPlan,

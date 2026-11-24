@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive" />
   <meta name="theme-color" content="#272525" />
   <title>UNE 2027 Interactive Course & Unit Planner — University of New England</title>
-  <link rel="stylesheet" href="css/styles.css?v=2027.3" />
+  <link rel="stylesheet" href="css/styles.css?v=2027.4" />
 </head>
 <body class="mobile-pane-plan">
   <div id="trial-banner" class="trial-banner">
@@ -14,7 +14,10 @@
       <strong>🧪 Unofficial Trial Prototype</strong> — 2027 University of New England Course &amp; Unit Planner (all 11 Schools, 233 courses). Always verify official rules at
       <a href="https://handbook.une.edu.au" target="_blank" rel="noopener">handbook.une.edu.au</a>.
     </span>
-    <button id="btn-dismiss-trial" class="trial-dismiss-btn" title="Dismiss banner for this session">Dismiss ✕</button>
+    <div class="trial-banner-actions">
+      <button id="btn-banner-bug" class="trial-bug-btn" type="button" title="Log a bug or rule issue for Course Coordinators & Discipline Convenors">🐞 Report Bug</button>
+      <button id="btn-dismiss-trial" class="trial-dismiss-btn" title="Dismiss banner for this session">Dismiss ✕</button>
+    </div>
   </div>
 
   <header id="app-header" class="app-header"></header>
@@ -44,9 +47,9 @@
   <div id="modal-backdrop" class="modal-backdrop hidden"></div>
 
   <!-- Compact Gzipped Whole-University 2027 Dataset + Engine + App -->
-  <script src="data/une_all_2027.gz.js?v=2027.3"></script>
-  <script src="js/engine.js?v=2027.3"></script>
-  <script src="js/app.js?v=2027.3"></script>
+  <script src="data/une_all_2027.gz.js?v=2027.4"></script>
+  <script src="js/engine.js?v=2027.4"></script>
+  <script src="js/app.js?v=2027.4"></script>
   <script>
     (async function bootUNEPlanner() {
       try {

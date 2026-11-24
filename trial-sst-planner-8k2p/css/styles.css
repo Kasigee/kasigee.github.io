@@ -1440,6 +1440,18 @@ html.dark .finder-card.pg-card {
   border: 1px solid var(--err-border);
 }
 
+.badge-int-tba {
+  background: var(--err-bg);
+  color: var(--err);
+  border: 1px solid var(--err-border);
+}
+
+.badge-campus-clash {
+  background: var(--err);
+  color: #ffffff;
+  border: 1px solid var(--err);
+}
+
 /* ==========================================================================
    BOARD AREA (PROGRESS CARD + YEAR x TRIMESTER GRID)
    ========================================================================== */
@@ -1831,8 +1843,65 @@ html.dark .finder-card.pg-card {
 }
 
 .slot-msg.err { background: var(--err-bg); color: var(--err); font-weight: 600; }
+.slot-msg.int-tba { background: var(--err-bg); color: var(--err); border: 1px solid var(--err-border); font-weight: 700; }
 .slot-msg.warn { background: var(--warn-bg); color: var(--warn); }
 .slot-msg.info { background: var(--info-bg); color: var(--info); }
+
+.trial-banner-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.trial-bug-btn {
+  background: rgba(149, 194, 54, 0.18);
+  color: var(--une-lime);
+  border: 1px solid rgba(149, 194, 54, 0.5);
+  border-radius: 4px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.trial-bug-btn:hover {
+  background: var(--une-lime);
+  color: #161c0a;
+}
+
+.bug-log-item {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: var(--surface-alt);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.feedback-textarea {
+  width: 100%;
+  min-height: 82px;
+  resize: vertical;
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.4;
+  outline: none;
+}
+
+.feedback-textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
 
 /* ==========================================================================
    MODALS & BOTTOM SHEETS

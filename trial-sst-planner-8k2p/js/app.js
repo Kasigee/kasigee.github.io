@@ -10,6 +10,29 @@ window.initUNEPlannerApp = function () {
   const STORAGE_KEY = "une_all_2027_plans_v2";
   const LEGACY_STORAGE_KEY = "une_sst_2027_plans_v1";
   const THEME_KEY = "une_sst_theme";
+  const FEEDBACK_LOG_KEY = "une_planner_feedback_log_v1";
+  const FEEDBACK_REVIEWER_KEY = "une_planner_reviewer_v1";
+
+  // Staff Testing Feedback Tracker Config (optional: paste a UNE Microsoft Forms / SharePoint tracker URL here!)
+  const FEEDBACK_CONFIG = {
+    formUrl: "",
+    sharedDocLabel: "Shared Feedback Tracker",
+  };
+
+  function loadFeedbackLog() {
+    try {
+      const raw = localStorage.getItem(FEEDBACK_LOG_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveFeedbackLog(list) {
+    try {
+      localStorage.setItem(FEEDBACK_LOG_KEY, JSON.stringify(list));
+    } catch (_) {}
+  }
 
   const CAT_LABELS = {
     core: "Core",
@@ -457,6 +480,7 @@ window.initUNEPlannerApp = function () {
     const isPlanner = state.view === "planner";
     const studyPlans = isPlanner ? Engine.getAvailableStudyPlans(course, plan, DATA) : [];
     const openPhCount = isPlanner ? findOpenPlaceholders(plan).length : 0;
+    const bugLogCount = loadFeedbackLog().length;
 
     hdr.innerHTML = `
       <div class="brand-group">
@@ -514,8 +538,14 @@ window.initUNEPlannerApp = function () {
               <button class="btn btn-hdr hdr-hide-mobile" id="btn-export-menu" title="Print, Export CSV/JSON or Reset">
                 <span>⬇ Export</span>
               </button>
+              <button class="btn btn-hdr hdr-hide-mobile" id="btn-report-bug" title="Log a bug or rule issue (auto-captures current course & plan)">
+                <span>🐞 Bug${bugLogCount ? ` (${bugLogCount})` : ""}</span>
+              </button>
             `
             : `
+              <button class="btn btn-hdr hdr-hide-mobile" id="btn-report-bug" title="Log a bug or feedback item">
+                <span>🐞 Bug${bugLogCount ? ` (${bugLogCount})` : ""}</span>
+              </button>
               <button class="btn btn-hdr-lime" id="btn-back-to-active">
                 <span>📅 Open Planner (${esc(course.code)}) →</span>
               </button>
@@ -573,6 +603,9 @@ window.initUNEPlannerApp = function () {
 
     const expBtn = document.getElementById("btn-export-menu");
     if (expBtn) expBtn.onclick = openExportModal;
+
+    const bugBtn = document.getElementById("btn-report-bug");
+    if (bugBtn) bugBtn.onclick = () => openBugReportModal();
 
     document.getElementById("btn-theme-toggle").onclick = () => {
       document.documentElement.classList.toggle("dark");
@@ -2134,8 +2167,19 @@ window.initUNEPlannerApp = function () {
     `;
   }
 
+  function renderIntensiveBadgeMini(u, triNum) {
+    const info = Engine.getUnitIntensiveForTri(u, triNum);
+    if (!info || info.kind !== "Mandatory") return "";
+    const shortLoc = info.location ? ` (${info.location.replace(" (TBC)", "")})` : "";
+    if (info.tba) {
+      return `<span class="badge-mini badge-int-tba" title="Mandatory Intensive School (${esc(info.location)}) — Dates TBA (check dates)">🔴 Intensive${esc(shortLoc)} · TBA</span>`;
+    }
+    return `<span class="badge-mini badge-intensive" title="Mandatory Intensive School (${esc(info.location)}): ${esc(info.dates.join(", "))}">🏫 Intensive${esc(shortLoc)}</span>`;
+  }
+
   function renderSlotEligibleCard(item) {
     const u = item.unit;
+    const targetTri = state.targetSlot ? state.targetSlot.triNum : null;
     return `
       <div class="pool-unit ${item.majorRequiredBy ? "major-req" : ""}" draggable="true" data-drag-pool-code="${esc(item.code)}">
         <div class="pool-unit-top">
@@ -2151,7 +2195,7 @@ window.initUNEPlannerApp = function () {
                 : "background:var(--surface-alt);color:var(--text-subtle);border:1px solid var(--border);"
             }">${esc(item.poolLabel)}</span>
             ${item.helpsLevelMin ? `<span class="badge-mini" style="background:var(--cat-major1-bg);color:var(--cat-major1);border:1px solid var(--cat-major1);">L${u.level} Target</span>` : ""}
-            ${u.intensive === "Mandatory" ? `<span class="badge-mini badge-intensive">Intensive</span>` : ""}
+            ${renderIntensiveBadgeMini(u, targetTri)}
             ${item.modeWarning ? `<span class="badge-mini badge-intensive">${esc(item.modeWarning)}</span>` : ""}
           </div>
           <div class="tri-pills">${(u.trimesters || []).map((t) => `<span class="tri-pill active-tri">T${t}</span>`).join("")}</div>
@@ -2227,7 +2271,7 @@ window.initUNEPlannerApp = function () {
                   : `<span class="tri-pill" style="opacity:0.35;">T${t}</span>`
               )
               .join("")}
-            ${u.intensive === "Mandatory" ? `<span class="badge-mini badge-intensive">Intensive</span>` : ""}
+            ${renderIntensiveBadgeMini(u, null)}
             ${reqByMajors ? `<span class="badge-mini badge-major-req">Req: ${esc(reqByMajors.join(", "))}</span>` : ""}
             ${!reqByMajors && choiceMajors.length ? `<span class="badge-mini badge-major-req">Choice: ${esc(choiceMajors[0])}</span>` : ""}
           </div>
@@ -2404,11 +2448,18 @@ window.initUNEPlannerApp = function () {
                          data-drop-year="${yIdx}"
                          data-drop-tri="${tNum}">
                       <div class="tri-col-header">
-                        <div>
+                        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                           <span class="tri-name">Trimester ${tNum}</span>
                           ${
                             tLoad.intensives > 0
-                              ? `<span class="badge-mini badge-intensive" style="margin-left:4px;">${tLoad.intensives} Intensive</span>`
+                              ? tLoad.tbaIntensives > 0
+                                ? `<span class="badge-mini badge-int-tba" title="${tLoad.tbaIntensives} mandatory intensive(s) have dates TBA — check UNE Handbook / myLearn">🔴 ${tLoad.intensives} Int · Dates TBA</span>`
+                                : `<span class="badge-mini badge-intensive">${tLoad.intensives} Intensive${tLoad.intensives > 1 ? "s" : ""}</span>`
+                              : ""
+                          }
+                          ${
+                            tLoad.campusConflict
+                              ? `<span class="badge-mini badge-campus-clash" title="Mandatory intensives in this trimester span different campuses (e.g. Armidale vs Sydney)">⚠ Mixed Campuses</span>`
                               : ""
                           }
                         </div>
@@ -2624,6 +2675,7 @@ window.initUNEPlannerApp = function () {
           }</div>
         </div>
         ${diag.errors.map((m) => `<div class="slot-msg err">⛔ ${esc(m)}</div>`).join("")}
+        ${(diag.intensiveAlerts || []).map((m) => `<div class="slot-msg int-tba">🔴 ${esc(m)}</div>`).join("")}
         ${diag.warnings.map((m) => `<div class="slot-msg warn">⚠ ${esc(m)}</div>`).join("")}
         ${diag.infos.map((m) => `<div class="slot-msg info">ℹ ${esc(m)}</div>`).join("")}
       </div>
@@ -2707,6 +2759,10 @@ window.initUNEPlannerApp = function () {
             <div style="font-weight:700;">➕ Custom Elective</div>
             <div style="font-size:11px;color:var(--text-subtle);">Add any UNE unit</div>
           </button>
+          <button class="course-card-option" id="mtool-bug">
+            <div style="font-weight:700;">🐞 Report Bug${loadFeedbackLog().length ? ` (${loadFeedbackLog().length})` : ""}</div>
+            <div style="font-size:11px;color:var(--text-subtle);">Log issue w/ plan snapshot</div>
+          </button>
           <button class="course-card-option" id="mtool-theme">
             <div style="font-weight:700;">${document.documentElement.classList.contains("dark") ? "☀️ Light Mode" : "🌙 Dark Mode"}</div>
             <div style="font-size:11px;color:var(--text-subtle);">Switch appearance</div>
@@ -2725,6 +2781,7 @@ window.initUNEPlannerApp = function () {
         modal.querySelector("#mtool-info").onclick = () => { closeModal(); openCourseInfoModal(); };
         modal.querySelector("#mtool-export").onclick = () => { closeModal(); openExportModal(); };
         modal.querySelector("#mtool-custom").onclick = () => { closeModal(); openCustomUnitModal(); };
+        modal.querySelector("#mtool-bug").onclick = () => { closeModal(); openBugReportModal(); };
         modal.querySelector("#mtool-theme").onclick = () => {
           document.documentElement.classList.toggle("dark");
           localStorage.setItem(THEME_KEY, document.documentElement.classList.contains("dark") ? "dark" : "light");
@@ -2898,7 +2955,10 @@ window.initUNEPlannerApp = function () {
                   </div>`
             }
           </div>
-          <a href="${esc(u.url)}" target="_blank" rel="noopener" class="btn btn-sm">Official 2027 Unit Page ↗</a>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-sm" id="btn-unit-report-bug" type="button" title="Report a prerequisite, offering or intensive issue on this unit">🐞 Flag Issue</button>
+            <a href="${esc(u.url)}" target="_blank" rel="noopener" class="btn btn-sm">Official 2027 Unit Page ↗</a>
+          </div>
         </div>
         ${u.overview ? `<div><div class="config-label" style="margin-bottom:4px;">Unit Description</div><div style="white-space:pre-line;color:var(--text-muted);">${esc(u.overview)}</div></div>` : ""}
         <div class="info-grid">
@@ -2910,11 +2970,29 @@ window.initUNEPlannerApp = function () {
         <div>
           <div class="config-label" style="margin-bottom:6px;">2027 Offerings &amp; Intensive Schools</div>
           ${
-            u.intensive
-              ? `<div style="margin-bottom:8px;"><span class="badge-mini badge-intensive">${esc(u.intensive)} Intensive School${
-                  u.intensiveDates?.length ? `: ${esc(u.intensiveDates.join(", "))}` : ""
-                }</span></div>`
+            u.t3RepeatOnly
+              ? `<div class="slot-msg warn" style="margin-bottom:8px;">⚠ Trimester 3 is available to repeating students only (requires Head of School permission).</div>`
               : ""
+          }
+          ${
+            (() => {
+              const intInfo = Engine.getUnitIntensiveForTri(u, null);
+              if (!intInfo) return "";
+              const badgeCls = intInfo.tba ? "badge-int-tba" : "badge-intensive";
+              const dateTxt = intInfo.tba
+                ? "Dates TBA — check dates"
+                : intInfo.dates.join(" / ");
+              return `
+                <div style="border:1px solid ${intInfo.tba ? "var(--err-border)" : "var(--warn-border)"};background:${intInfo.tba ? "var(--err-bg)" : "var(--warn-bg)"};border-radius:8px;padding:9px 11px;margin-bottom:9px;display:flex;flex-direction:column;gap:4px;">
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span class="badge-mini ${badgeCls}">${intInfo.tba ? "🔴" : "🏫"} ${esc(intInfo.kind)} Intensive School</span>
+                    <span style="font-weight:700;font-size:12px;color:${intInfo.tba ? "var(--err)" : "var(--warn)"};">${esc(intInfo.location)}${intInfo.duration ? ` · ${esc(intInfo.duration)}` : ""}</span>
+                  </div>
+                  <div style="font-size:12px;font-weight:700;color:${intInfo.tba ? "var(--err)" : "var(--text)"};">${esc(dateTxt)}</div>
+                  ${intInfo.note ? `<div style="font-size:11.5px;color:var(--text-muted);line-height:1.35;">${esc(intInfo.note)}</div>` : ""}
+                </div>
+              `;
+            })()
           }
           ${
             (u.offerings || []).length
@@ -2965,6 +3043,8 @@ window.initUNEPlannerApp = function () {
       (modal) => {
         const smartBtn = modal.querySelector("#btn-modal-smart-add");
         if (smartBtn) smartBtn.onclick = () => { closeModal(); addUnitToPlan(u.code); };
+        const flagBtn = modal.querySelector("#btn-unit-report-bug");
+        if (flagBtn) flagBtn.onclick = () => { closeModal(); openBugReportModal(u.code); };
         modal.querySelectorAll("[data-modal-place]").forEach((b) => {
           b.onclick = () => {
             const [yIdx, tNum] = b.dataset.modalPlace.split("|").map(Number);
@@ -3234,6 +3314,284 @@ window.initUNEPlannerApp = function () {
     );
   }
 
+  function capturePlannerContext() {
+    const course = getCurrentCourse();
+    const plan = getCurrentPlan();
+    const report = state.view === "planner" ? Engine.validatePlan(course, plan, DATA) : null;
+    const majors = (plan.selectedMajors || []).map((mc) => DATA.aos[mc]?.title || mc);
+    const dynSel = Object.values(plan.dynamicAosSelections || {}).filter(Boolean).map((ac) => DATA.aos[ac]?.title || ac);
+    const minor = plan.selectedMinor ? (DATA.aos[plan.selectedMinor]?.title || plan.selectedMinor) : "";
+    const configParts = [
+      plan.admissionRule || "",
+      ...majors,
+      ...dynSel,
+      minor ? `Minor: ${minor}` : "",
+      `Start T${plan.commencingTrimester || 1}`,
+      plan.studyLoad || "Full-time",
+      plan.preferredMode || "Online",
+      `T3=${plan.t3Strategy || "none"}`,
+    ].filter(Boolean);
+
+    const boardRows = [];
+    for (const yr of plan.years || []) {
+      for (const t of [1, 2, 3]) {
+        const sl = yr.trimesters[t] || [];
+        if (sl.length) {
+          boardRows.push(`Y${yr.yearNum}T${t}: ${sl.map((x) => (x.type === "unit" ? x.code : `[${x.label}]`)).join(",")}`);
+        }
+      }
+    }
+    const diagList = report
+      ? [
+          ...report.globalIssues.map((g) => g.text),
+          ...Object.values(report.slotDiagnostics || {}).flatMap((d) => [...(d.errors || []), ...(d.warnings || [])]),
+        ].slice(0, 6)
+      : [];
+
+    const vp = `${window.innerWidth}x${window.innerHeight} (${isMobileViewport() ? "Mobile" : isTabletViewport() ? "Tablet" : "Desktop"})`;
+    const baseUrl = window.location.href.split("?")[0].split("#")[0];
+    const directUrl = `${baseUrl}?course=${encodeURIComponent(course.code)}`;
+
+    return {
+      view: state.view,
+      courseCode: course.code,
+      courseTitle: course.title,
+      school: course.school,
+      configSummary: configParts.join(" | "),
+      boardSnapshot: boardRows.join(" ; ") || "(empty board)",
+      diagnosticsSummary: diagList.join(" ; ") || "None",
+      viewport: vp,
+      directUrl,
+    };
+  }
+
+  function copyTextToClipboard(text, okMsg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => showToast(okMsg),
+        () => fallbackCopyText(text, okMsg)
+      );
+    } else {
+      fallbackCopyText(text, okMsg);
+    }
+  }
+
+  function fallbackCopyText(text, okMsg) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      showToast(okMsg);
+    } catch (_) {
+      showToast("Copy blocked — use Download CSV instead.");
+    }
+    ta.remove();
+  }
+
+  function openBugReportModal(prefillUnitCode) {
+    const ctx = capturePlannerContext();
+    const savedReviewer = localStorage.getItem(FEEDBACK_REVIEWER_KEY) || "";
+    const log = loadFeedbackLog();
+    const unitInit = typeof prefillUnitCode === "string" ? prefillUnitCode : "";
+
+    function buildSingleText(item) {
+      return [
+        `UNE 2027 Course Planner — Tester Bug / Feedback Report`,
+        `Date: ${item.timestamp}`,
+        `Reviewer: ${item.reviewer || "Anonymous Staff"}`,
+        `Course: ${item.courseCode} — ${item.courseTitle} (${item.school})`,
+        `Category: ${item.category}`,
+        `Unit(s): ${item.units || "N/A"}`,
+        `Issue / Feedback: ${item.description}`,
+        `Active Config: ${item.configSummary}`,
+        `Board Snapshot: ${item.boardSnapshot}`,
+        `Diagnostics: ${item.diagnosticsSummary}`,
+        `Viewport: ${item.viewport}`,
+        `Link: ${item.directUrl}`,
+      ].join("\n");
+    }
+
+    function buildTsv(items) {
+      const headers = ["Timestamp", "Reviewer", "Course", "School", "Category", "Units", "Issue / Expected Behaviour", "Active Config", "Board Snapshot", "Viewport"];
+      const clean = (v) => String(v || "").replace(/[\t\r\n]+/g, " ").trim();
+      const rows = [headers, ...items.map((x) => [x.timestamp, x.reviewer, `${x.courseCode} - ${x.courseTitle}`, x.school, x.category, x.units, x.description, x.configSummary, x.boardSnapshot, x.viewport])];
+      return rows.map((r) => r.map(clean).join("\t")).join("\n");
+    }
+
+    function buildCsv(items) {
+      const headers = ["Timestamp", "Reviewer", "Course", "Title", "School", "Category", "Units", "Issue / Expected Behaviour", "Active Config", "Board Snapshot", "Diagnostics", "Viewport", "Direct Link"];
+      const q = (v) => `"${String(v || "").replace(/"/g, '""')}"`;
+      const rows = [headers, ...items.map((x) => [x.timestamp, x.reviewer, x.courseCode, x.courseTitle, x.school, x.category, x.units, x.description, x.configSummary, x.boardSnapshot, x.diagnosticsSummary, x.viewport, x.directUrl])];
+      return rows.map((r) => r.map(q).join(",")).join("\n");
+    }
+
+    const logHtml =
+      log.length > 0
+        ? `
+          <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <span class="config-label">Your Testing Session Log (${log.length} item${log.length === 1 ? "" : "s"})</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-primary" id="btn-bug-copy-tsv" type="button" title="Paste directly into a shared SharePoint Excel / Google Sheet / Teams table">📊 Copy All as Spreadsheet Rows</button>
+                <button class="btn btn-sm btn-soft" id="btn-bug-dl-csv" type="button">⬇ Download CSV</button>
+                <button class="btn btn-sm" id="btn-bug-clear-log" type="button" style="color:var(--err);">Clear Log</button>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;max-height:190px;overflow-y:auto;">
+              ${log
+                .map(
+                  (it, idx) => `
+                  <div class="bug-log-item">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                      <span><strong>${esc(it.courseCode)}</strong> · <span style="color:var(--primary);font-weight:700;">${esc(it.category)}</span>${it.units ? ` · <code>${esc(it.units)}</code>` : ""}</span>
+                      <button class="icon-action remove" data-del-bug="${idx}" type="button" title="Delete entry">✕</button>
+                    </div>
+                    <div style="color:var(--text-muted);">${esc(it.description)}</div>
+                  </div>
+                `
+                )
+                .join("")}
+            </div>
+          </div>
+        `
+        : "";
+
+    openModal(
+      `<div style="font-weight:800;font-size:15.5px;">🐞 Report a Bug or Rule Issue (DC / CC Testing)</div>
+       <div style="font-size:12px;color:var(--text-subtle);">Log multiple issues as you test — auto-captures course, rules, and schedule so you don't need to send separate emails.</div>`,
+      `
+        <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:11.5px;color:var(--text-muted);">
+          <div><strong>Auto-captured context:</strong> <span class="course-code-pill teal" style="font-size:10.5px;padding:1px 6px;">${esc(ctx.courseCode)}</span> ${esc(ctx.courseTitle)} · ${esc(ctx.viewport)}</div>
+          <div style="margin-top:3px;color:var(--text-subtle);word-break:break-word;">${esc(ctx.configSummary)}</div>
+        </div>
+
+        <div class="form-grid-2">
+          <div>
+            <label class="config-label">Your Name / Discipline</label>
+            <input type="text" class="text-input" id="bug-reviewer" placeholder="e.g. Robert (Exercise Science)" value="${esc(savedReviewer)}" style="width:100%;margin-top:4px;" />
+          </div>
+          <div>
+            <label class="config-label">Issue Category</label>
+            <select class="select-input" id="bug-category" style="width:100%;margin-top:4px;">
+              <option value="Prerequisite / Co-requisite error">Prerequisite / Co-requisite error</option>
+              <option value="Intensive School dates or campus">Intensive School dates or campus</option>
+              <option value="Auto-Plan sequence / T3 issue">Auto-Plan sequence / T3 issue</option>
+              <option value="Trimester offering / missing unit">Trimester offering / missing unit</option>
+              <option value="Course / Major / Minor rule">Course / Major / Minor rule</option>
+              <option value="Mobile / Tablet / Search glitch">Mobile / Tablet / Search glitch</option>
+              <option value="General suggestion">General suggestion</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="config-label">Unit Code(s) Involved (optional)</label>
+          <input type="text" class="text-input" id="bug-units" placeholder="e.g. EXSC390, EXSC260, EXSC370" value="${esc(unitInit)}" style="width:100%;margin-top:4px;text-transform:uppercase;" />
+        </div>
+
+        <div>
+          <label class="config-label">What happened &amp; what should happen instead?</label>
+          <textarea class="feedback-textarea" id="bug-desc" placeholder="Describe the issue clearly (e.g. 'EXSC390 was scheduled before EXSC381-384' or 'T2 intensive is in Sydney, not Armidale')…" style="margin-top:4px;"></textarea>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;gap:7px;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btn-bug-save-log" type="button">+ Add to Session Log</button>
+            <button class="btn btn-soft" id="btn-bug-copy-one" type="button">📋 Copy Single Report</button>
+          </div>
+          ${
+            FEEDBACK_CONFIG.formUrl
+              ? `<a href="${esc(FEEDBACK_CONFIG.formUrl)}" target="_blank" rel="noopener" class="btn">Open ${esc(FEEDBACK_CONFIG.sharedDocLabel)} ↗</a>`
+              : `<span style="font-size:11px;color:var(--text-subtle);">Tip: Log all items, then click <strong>Copy All as Spreadsheet Rows</strong> to paste into the shared feedback doc.</span>`
+          }
+        </div>
+
+        ${logHtml}
+      `,
+      (modal) => {
+        function buildDraftItem() {
+          const reviewer = (modal.querySelector("#bug-reviewer").value || "").trim();
+          const category = modal.querySelector("#bug-category").value;
+          const units = (modal.querySelector("#bug-units").value || "").trim().toUpperCase();
+          const description = (modal.querySelector("#bug-desc").value || "").trim();
+          if (reviewer) {
+            try { localStorage.setItem(FEEDBACK_REVIEWER_KEY, reviewer); } catch (_) {}
+          }
+          if (!description) {
+            showToast("Please describe what happened first.");
+            return null;
+          }
+          return {
+            timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+            reviewer: reviewer || "Staff Tester",
+            category,
+            units,
+            description,
+            ...ctx,
+          };
+        }
+
+        modal.querySelector("#btn-bug-save-log").onclick = () => {
+          const item = buildDraftItem();
+          if (!item) return;
+          const next = [item, ...loadFeedbackLog()];
+          saveFeedbackLog(next);
+          renderHeader(getCurrentCourse(), getCurrentPlan());
+          showToast(`Saved to Testing Log (${next.length} item${next.length === 1 ? "" : "s"})!`);
+          openBugReportModal("");
+        };
+
+        modal.querySelector("#btn-bug-copy-one").onclick = () => {
+          const item = buildDraftItem();
+          if (!item) return;
+          copyTextToClipboard(buildSingleText(item), "Copied formatted bug report — paste into the shared tracker or Teams!");
+        };
+
+        const tsvBtn = modal.querySelector("#btn-bug-copy-tsv");
+        if (tsvBtn) {
+          tsvBtn.onclick = () => {
+            copyTextToClipboard(buildTsv(loadFeedbackLog()), "Copied all logged issues as spreadsheet rows — press Ctrl+V in Excel / SharePoint!");
+          };
+        }
+
+        const csvBtn = modal.querySelector("#btn-bug-dl-csv");
+        if (csvBtn) {
+          csvBtn.onclick = () => {
+            const items = loadFeedbackLog();
+            const who = (items[0]?.reviewer || "Staff").replace(/[^a-z0-9]+/gi, "_").slice(0, 24);
+            downloadBlob(`UNE_2027_Planner_Feedback_${who}.csv`, buildCsv(items), "text/csv;charset=utf-8;");
+            showToast(`Downloaded ${items.length} feedback item(s) as CSV!`);
+          };
+        }
+
+        const clrBtn = modal.querySelector("#btn-bug-clear-log");
+        if (clrBtn) {
+          clrBtn.onclick = () => {
+            saveFeedbackLog([]);
+            renderHeader(getCurrentCourse(), getCurrentPlan());
+            showToast("Cleared session feedback log.");
+            openBugReportModal("");
+          };
+        }
+
+        modal.querySelectorAll("[data-del-bug]").forEach((btn) => {
+          btn.onclick = () => {
+            const idx = parseInt(btn.dataset.delBug, 10);
+            const list = loadFeedbackLog();
+            list.splice(idx, 1);
+            saveFeedbackLog(list);
+            renderHeader(getCurrentCourse(), getCurrentPlan());
+            openBugReportModal("");
+          };
+        });
+      }
+    );
+  }
+
   function downloadBlob(filename, content, mime) {
     const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
@@ -3285,7 +3643,11 @@ window.initUNEPlannerApp = function () {
     };
   }
 
-  // Dismissible trial banner
+  // Trial banner bug button & dismiss
+  const bannerBugBtn = document.getElementById("btn-banner-bug");
+  if (bannerBugBtn) {
+    bannerBugBtn.onclick = () => openBugReportModal();
+  }
   const dismissTrialBtn = document.getElementById("btn-dismiss-trial");
   const trialBannerEl = document.getElementById("trial-banner");
   if (trialBannerEl && sessionStorage.getItem("une_trial_banner_dismissed") === "1") {
