@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-11-21 20:49 AEDT",
-  "today": "2026-11-21",
-  "current_week": 6,
+  "updated_at": "2026-11-24 21:58 AEDT",
+  "today": "2026-11-24",
+  "current_week": 7,
   "total_weeks": 22,
-  "days_to_golden_ticket": 112,
+  "days_to_golden_ticket": 109,
   "goal": {
     "date": "2027-03-14",
     "event": "Armidale Running Festival — Golden Ticket (Sat 13 Mar: 1k+1k+1k+3k+5k+10k; Sun 14 Mar: Half Marathon)",
@@ -130,10 +130,10 @@
   "summary": {
     "block_km": 226.4,
     "block_runs": 31,
-    "current_week_actual_km": 48.96,
-    "current_week_planned_km": 56,
-    "rolling_7d_km": 57.4,
-    "rolling_28d_avg_km": 38.9
+    "current_week_actual_km": 0,
+    "current_week_planned_km": 33,
+    "rolling_7d_km": 29.7,
+    "rolling_28d_avg_km": 36.2
   },
   "checkpoints": [
     {
@@ -175,35 +175,66 @@
     }
   ],
   "current_call": {
-    "date": "2026-11-21",
+    "date": "2026-11-24",
     "verdict": "Adjusted",
-    "headline": "15.3 km long run banked early Saturday — trim Sunday to 7–9 km easy + sauna",
-    "summary": "Saturday's planned easy parkrun became a disciplined 15.29 km aerobic long run (5:24.4/km watch → 5:01.6/km EAP v2.0, avg HR 132, 97% Z1–Z2), bringing Week 6 to 49.0 km through Saturday. Swapping the weekend — trimming Sunday from 15 km to a relaxed 7–9 km shakeout + sauna — lands Week 6 cleanly on target at 56–58 km and leaves fresh legs for Tuesday's 10 × 1 km Norwegian threshold session in Week 7.",
+    "headline": "Week 7–8 adjusted due to sickness — smart aerobic re-entry starting Wednesday",
+    "summary": "Following three days of sickness (Sunday 22 Nov – Tuesday 24 Nov), Week 6 closed cleanly at 48.95 km (after banking the 15.29 km aerobic long run on Saturday 21 Nov) and Monday–Tuesday of Week 7 were taken as full rest. Rather than cramming missed threshold work back into a shortened week, Week 7 and Week 8 have swapped roles due to sickness: Week 7 becomes a 33 km recovery down week (dropping Tuesday's 10 × 1 km @ T and Saturday's T/CV split), and Week 8 becomes a 50 km controlled threshold rebuild (8 × 1 km @ T + 15 km Sunday long run) so Week 9's 12 Dec TT2 stays right on schedule.",
     "next_three_days": [
       {
-        "date": "2026-11-22",
-        "day": "Sun 22 Nov",
+        "date": "2026-11-25",
+        "day": "Wed 25 Nov",
         "status": "Adjusted",
-        "title": "Easy Aerobic Shakeout (7–9 km) + Sauna",
-        "target": "5:04–5:37/km watch · HR ≤145 (15–19 °C, dry 0% rain, 9–10 km/h WNW breeze)"
+        "title": "Re-entry Test Jog (4–5 km) or Rest",
+        "target": "5:20–5:45/km watch · HR ≤140 · skip sauna & +5 km (13 °C, 48–58% rain, 17–20 km/h wind)"
       },
       {
-        "date": "2026-11-23",
-        "day": "Mon 23 Nov",
-        "status": "As planned",
-        "title": "Week 7 Opener: Easy Run (6 km)",
-        "target": "5:05–5:37/km watch · HR ≤150 (17–19 °C, dry 0% rain, 11–13 km/h NW breeze)"
+        "date": "2026-11-26",
+        "day": "Thu 26 Nov",
+        "status": "Adjusted",
+        "title": "Thursday Social — Easy Aerobic (6–7 km)",
+        "target": "5:08–5:39/km watch · HR ≤145 · skip Gym B (21.9 °C, 30% rain)"
       },
       {
-        "date": "2026-11-24",
-        "day": "Tue 24 Nov",
+        "date": "2026-11-27",
+        "day": "Fri 27 Nov",
         "status": "As planned",
-        "title": "Norwegian Threshold kms (10 × 1 km @ T)",
-        "target": "~4:05–4:10/km watch (60 s jog) · HR 158–168 (Z3 cap) + PM Gym A"
+        "title": "Consolidation Rest Day",
+        "target": "0 km · recovery buffer ahead of Sat easy parkrun + strides"
       }
     ]
   },
   "reports": [
+    {
+      "id": "2026-11-24-sickness-reentry-adjustment",
+      "date": "2026-11-24",
+      "week": 7,
+      "tag": "Plan Update",
+      "title": "Week 7–8 adjusted due to sickness: smart aerobic re-entry",
+      "summary": "Changes made due to sickness across Sunday 22 – Tuesday 24 Nov. Because Saturday 21 Nov already banked the 15.29 km aerobic long run, skipping Sunday closed Week 6 cleanly at 48.95 km without losing aerobic progression. For Week 7, Monday's 6 km easy and Tuesday's 10 × 1 km Norwegian threshold session were taken as full rest, turning Week 7 into the recovery down week (33 km, strictly easy aerobic running only, with Saturday downgraded to an easy 9 km parkrun + optional strides and Sunday trimmed to 12 km). Week 8 absorbs the rebuild role (50 km), replacing the original VO2 800s with a controlled 8 × 1 km @ T threshold re-entry on Tuesday 1 Dec, a 10 km parkrun threshold progression on Saturday 5 Dec, and a 15 km long run on Sunday 6 Dec — keeping Week 9's 12 Dec TT2 checkpoint completely intact.",
+      "metrics": [
+        {
+          "label": "Reason",
+          "value": "Sickness (Sun–Tue)"
+        },
+        {
+          "label": "Week 6 Final",
+          "value": "48.95 / 56 km"
+        },
+        {
+          "label": "Week 7 Revised",
+          "value": "33 km (down wk)"
+        },
+        {
+          "label": "Week 8 Revised",
+          "value": "50 km (rebuild)"
+        },
+        {
+          "label": "Next Checkpoint",
+          "value": "TT2 · 12 Dec (intact)"
+        }
+      ],
+      "adaptation": "Week 7 and Week 8 swapped down-week / build-week roles due to sickness: all intensity removed from Week 7 (33 km aerobic re-entry) and replaced by controlled threshold rebuilding in Week 8 (50 km) ahead of TT2 on 12 Dec."
+    },
     {
       "id": "2026-11-21-aerobic-15k-parkrun",
       "date": "2026-11-21",
@@ -1523,20 +1554,20 @@
       "week": 7,
       "start": "2026-11-23",
       "phase": "base",
-      "planned_km": 58,
-      "optional_km": 11,
+      "planned_km": 33,
+      "optional_km": 0,
       "actual_km": 0,
-      "down": false,
+      "down": true,
       "mark": null,
       "days": [
         {
           "date": "2026-11-23",
           "dow": 0,
-          "type": "easy",
-          "title": "Easy run",
-          "planned_km": 6,
+          "type": "rest",
+          "title": "Rest — sickness recovery",
+          "planned_km": 0,
           "optional_km": 0,
-          "detail": "6 km easy @ {E}.",
+          "detail": "Full rest due to sickness. Hydration, nutrition, and recovery priority.",
           "extras": [],
           "actual_km": 0,
           "actual_runs": []
@@ -1544,34 +1575,24 @@
         {
           "date": "2026-11-24",
           "dow": 1,
-          "type": "key",
-          "title": "Norwegian kms",
-          "planned_km": 12,
+          "type": "rest",
+          "title": "Rest — sickness recovery",
+          "planned_km": 0,
           "optional_km": 0,
-          "detail": "2 km warm-up, 10 × 1 km @ {T} (60 s jog), 1.5 km cool-down. Same pace every rep; finish feeling you had 2–3 more.",
-          "extras": [
-            {
-              "kind": "gym",
-              "text": "Gym A (PM): heavy lower-body strength (trap-bar deadlift / squat 4 × 5, Bulgarian split squat, single-leg RDL, bent-knee calf raise)."
-            }
-          ],
+          "detail": "Full rest due to sickness (Norwegian 10 × 1 km threshold session and Gym A dropped — do not make up mid-week).",
+          "extras": [],
           "actual_km": 0,
           "actual_runs": []
         },
         {
           "date": "2026-11-25",
           "dow": 2,
-          "type": "social",
-          "title": "Wednesday social",
-          "planned_km": 7,
-          "optional_km": 5,
-          "detail": "6:00 am social, ~7 km easy (conversation pace counts as easy). Optional +5 km from 5:30 if feeling fresh.",
-          "extras": [
-            {
-              "kind": "sauna",
-              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
-            }
-          ],
+          "type": "easy",
+          "title": "Re-entry test jog (or rest)",
+          "planned_km": 5,
+          "optional_km": 0,
+          "detail": "Adjusted due to sickness: optional 4–5 km very easy shuffle @ {E} (strict HR ≤140, relaxed effort — skip or walk if still flat or recovery markers haven't turned the corner). Skip optional +5 km and skip sauna today.",
+          "extras": [],
           "actual_km": 0,
           "actual_runs": []
         },
@@ -1579,16 +1600,11 @@
           "date": "2026-11-26",
           "dow": 3,
           "type": "social",
-          "title": "Thursday social",
+          "title": "Thursday social (easy re-entry)",
           "planned_km": 7,
           "optional_km": 0,
-          "detail": "12:30 pm social, ~7 km easy.",
-          "extras": [
-            {
-              "kind": "gym",
-              "text": "Gym B (PM, lighter): step-ups, hip thrust, straight-leg calf raise, core stability."
-            }
-          ],
+          "detail": "Adjusted due to sickness: 12:30 pm social, 6–7 km strictly easy @ {E} (HR ≤145, conversational only — shorten if effort feels elevated). Gym B skipped this week to protect recovery.",
+          "extras": [],
           "actual_km": 0,
           "actual_runs": []
         },
@@ -1596,27 +1612,22 @@
           "date": "2026-11-27",
           "dow": 4,
           "type": "rest",
-          "title": "Rest (optional swim)",
+          "title": "Rest (consolidation)",
           "planned_km": 0,
           "optional_km": 0,
-          "detail": "No running. Optional 20–30 min easy swim or pool-jog for recovery.",
-          "extras": [
-            {
-              "kind": "swim",
-              "text": "Optional: 20–30 min easy swim. Recovery only; skip if tired."
-            }
-          ],
+          "detail": "No running. Recovery buffer after re-entry jogs (skip optional swim unless completely symptom-free).",
+          "extras": [],
           "actual_km": 0,
           "actual_runs": []
         },
         {
           "date": "2026-11-28",
           "dow": 5,
-          "type": "key",
-          "title": "parkrun split",
-          "planned_km": 10,
-          "optional_km": 6,
-          "detail": "2.5 km jog there. First 3 km @ {T}, last 2 km @ {CV}. Jog home. Optional 5:45 social +6 km first, if feeling fresh.",
+          "type": "easy",
+          "title": "parkrun easy aerobic + strides",
+          "planned_km": 9,
+          "optional_km": 0,
+          "detail": "Adjusted due to sickness (replaces 3 km @ {T} + 2 km @ {CV} split): 2 km jog there, 5 km parkrun strictly easy @ {E} (HR ≤150, zero racing), 4 × 20 s relaxed strides only if feeling 100%, 2 km jog home.",
           "extras": [],
           "actual_km": 0,
           "actual_runs": []
@@ -1625,14 +1636,14 @@
           "date": "2026-11-29",
           "dow": 6,
           "type": "long",
-          "title": "Long run",
-          "planned_km": 16,
+          "title": "Aerobic long run (trimmed)",
+          "planned_km": 12,
           "optional_km": 0,
-          "detail": "16 km easy @ {E}. Trails or soft surfaces are fine.",
+          "detail": "Adjusted due to sickness (trimmed from 16 km): 12 km easy @ {E} (HR ≤148). Keep effort relaxed; road, trail, or treadmill flexible if wet.",
           "extras": [
             {
               "kind": "sauna",
-              "text": "Sauna 20–30 min after the run (can split 2 × 12–15 min with a cool break). Rehydrate ~500–750 ml with sodium."
+              "text": "Optional 15–20 min sauna only if 100% symptom-free and fully recovered; rehydrate with sodium."
             }
           ],
           "actual_km": 0,
@@ -1644,10 +1655,10 @@
       "week": 8,
       "start": "2026-11-30",
       "phase": "base",
-      "planned_km": 43,
+      "planned_km": 50,
       "optional_km": 5,
       "actual_km": 0,
-      "down": true,
+      "down": false,
       "mark": null,
       "days": [
         {
@@ -1657,7 +1668,7 @@
           "title": "Rest day",
           "planned_km": 0,
           "optional_km": 0,
-          "detail": "No running. Mobility 10 min if you like.",
+          "detail": "No running. Recovery buffer after Sunday's 12 km before reintroducing threshold work Tuesday.",
           "extras": [],
           "actual_km": 0,
           "actual_runs": []
@@ -1666,10 +1677,10 @@
           "date": "2026-12-01",
           "dow": 1,
           "type": "key",
-          "title": "VO2 intro",
-          "planned_km": 9,
+          "title": "Norwegian threshold re-entry",
+          "planned_km": 11,
           "optional_km": 0,
-          "detail": "2 km warm-up + 4 strides, 6 × 800 m @ {I} (2 min jog), 2 km cool-down.",
+          "detail": "Adjusted post-sickness (replaces VO2 800s with controlled threshold): 2 km warm-up, 8 × 1 km @ {T} (60 s jog, Z3 cap HR ≤168), 1.5 km cool-down. Smooth rhythm — finish feeling you had 2 reps left.",
           "extras": [
             {
               "kind": "gym",
@@ -1729,10 +1740,10 @@
           "date": "2026-12-05",
           "dow": 5,
           "type": "steady",
-          "title": "parkrun progression",
-          "planned_km": 8,
+          "title": "parkrun threshold progression",
+          "planned_km": 10,
           "optional_km": 0,
-          "detail": "Lighter week. 1.5 km jog there; start easy, finish the last km at {T}. Jog home.",
+          "detail": "Adjusted post-sickness (rebuilt from 8 km): 2.5 km jog there; open km 1–2 easy @ {E}, then cruise the final 3 km smoothly @ {T} (controlled effort — save all-out racing for TT2 next Saturday). 2.5 km jog home.",
           "extras": [],
           "actual_km": 0,
           "actual_runs": []
@@ -1741,10 +1752,10 @@
           "date": "2026-12-06",
           "dow": 6,
           "type": "long",
-          "title": "Long run",
-          "planned_km": 12,
+          "title": "Long run (rebuilt)",
+          "planned_km": 15,
           "optional_km": 0,
-          "detail": "12 km easy @ {E}. Trails or soft surfaces are fine.",
+          "detail": "Adjusted post-sickness (Week 7 absorbed the down-week role, rebuilding Sunday from 12 km to 15 km): 15 km easy @ {E}. Trails or soft surfaces are fine.",
           "extras": [
             {
               "kind": "sauna",
