@@ -19,19 +19,92 @@ window.initUNEPlannerApp = function () {
     sharedDocLabel: "Shared Feedback Tracker",
   };
 
+  // Safe storage helpers so sandboxed myLearn / Moodle iframes & strict privacy modes never throw SecurityError
+  function safeLocalGet(key) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function safeLocalSet(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function safeSessionGet(key) {
+    try {
+      return window.sessionStorage.getItem(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function safeSessionSet(key, value) {
+    try {
+      window.sessionStorage.setItem(key, value);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function safeHttpUrl(rawUrl, fallback) {
+    const fb = fallback || "";
+    if (typeof rawUrl !== "string") return fb;
+    const trimmed = rawUrl.trim();
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return fb;
+  }
+
+  function csvSafeCell(v) {
+    const s = String(v === null || v === undefined ? "" : v);
+    if (/^[=+\-@\t\r]/.test(s) && !/^-\d+(\.\d+)?$/.test(s)) {
+      return "'" + s;
+    }
+    return s;
+  }
+
+  function formatValidAtar(atar) {
+    if (atar === null || atar === undefined) return null;
+    const s = String(atar).trim();
+    if (!s || /^(not applicable|n\/a|none|na|-|tba)$/i.test(s)) return null;
+    const num = parseFloat(s);
+    if (!Number.isFinite(num) || num <= 0) return null;
+    return s;
+  }
+
+  function getCourseNotOfferedLabel(c) {
+    if (!c) return null;
+    const intakes = String(c.intakes || "");
+    if (c.offered2027 === false || /not offered/i.test(intakes)) {
+      if (/exit award/i.test(intakes)) return "Exit Award Only";
+      if (/pending withdrawal/i.test(intakes)) return "Not Offered · Pending Withdrawal";
+      if (/pending review/i.test(intakes)) return "Not Offered · Pending Review";
+      return "Not Offered 2027";
+    }
+    return null;
+  }
+
   function loadFeedbackLog() {
     try {
-      const raw = localStorage.getItem(FEEDBACK_LOG_KEY);
-      return raw ? JSON.parse(raw) : [];
+      const raw = safeLocalGet(FEEDBACK_LOG_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((x) => x && typeof x === "object" && !Array.isArray(x));
     } catch (_) {
       return [];
     }
   }
 
   function saveFeedbackLog(list) {
-    try {
-      localStorage.setItem(FEEDBACK_LOG_KEY, JSON.stringify(list));
-    } catch (_) {}
+    safeLocalSet(FEEDBACK_LOG_KEY, JSON.stringify(Array.isArray(list) ? list : []));
   }
 
   const CAT_LABELS = {
@@ -43,6 +116,10 @@ window.initUNEPlannerApp = function () {
     listed: "Listed",
     elective: "Elective",
   };
+
+  function safeCat(cat) {
+    return Object.prototype.hasOwnProperty.call(CAT_LABELS, cat) ? cat : "elective";
+  }
 
   const CAT_COLORS = {
     core: "var(--cat-core)",
@@ -64,7 +141,7 @@ window.initUNEPlannerApp = function () {
 
   const FINDER_TOPICS = [
     { label: "Science & Tech", school: "School of Science and Technology", query: "" },
-    { label: "Data, AI & Computing", school: "ALL", query: "data computer ai cyber" },
+    { label: "Data, AI & Computing", school: "ALL", query: "computer science OR data science OR ai OR cyber OR it" },
     { label: "Double Degrees (17)", school: "ALL", studyLevel: "Double", query: "" },
     { label: "Health & Medicine", faculty: "Faculty of Medicine and Health", query: "" },
     { label: "Law & Criminology", school: "School of Law", query: "" },
@@ -101,14 +178,18 @@ window.initUNEPlannerApp = function () {
     catalogLevel: "all",
     catalogTri: "all",
     catalogPrefix: "all",
-    catalogShowIneligible: false,
+    catalogShowIneligible: null, // null = auto, true = force open, false = force collapsed
+    catEligLimit: 80,
+    catIneligLimit: 60,
 
     targetSlot: null,
     slotQuery: "",
     slotPoolFilter: "all",
     slotLevelFilter: "all",
-    slotShowIneligible: false,
+    slotShowIneligible: null, // null = auto, true = force open, false = force collapsed
     slotForceElectives: false,
+    slotEligLimit: 100,
+    slotIneligLimit: 80,
 
     // Responsive UI state
     mobilePane: "plan", // 'plan' | 'units'
@@ -152,34 +233,177 @@ window.initUNEPlannerApp = function () {
     return state.savedPlansByCourse[c.code];
   }
 
+  function validateAndSanitizePlan(rawPlan, expectedCourseCode) {
+    if (!rawPlan || typeof rawPlan !== "object" || Array.isArray(rawPlan)) return null;
+    const rawCode = typeof rawPlan.courseCode === "string" ? rawPlan.courseCode.trim().toUpperCase() : "";
+    const courseCode = expectedCourseCode || rawCode;
+    const course = DATA.courses.find((c) => c.code === courseCode);
+    if (!course) return null;
+    if (rawCode && expectedCourseCode && rawCode !== expectedCourseCode) return null;
+
+    if (!Array.isArray(rawPlan.years) || rawPlan.years.length === 0 || rawPlan.years.length > 20) {
+      return null;
+    }
+
+    const sanitizedYears = [];
+    for (let yIdx = 0; yIdx < rawPlan.years.length; yIdx++) {
+      const yr = rawPlan.years[yIdx];
+      if (!yr || typeof yr !== "object" || Array.isArray(yr)) return null;
+      if (!yr.trimesters || typeof yr.trimesters !== "object" || Array.isArray(yr.trimesters)) return null;
+      const tris = { 1: [], 2: [], 3: [] };
+      for (const t of [1, 2, 3]) {
+        const rawArr = yr.trimesters[t] ?? yr.trimesters[String(t)];
+        if (rawArr !== undefined && !Array.isArray(rawArr)) return null;
+        if (!Array.isArray(rawArr)) continue;
+        for (const s of rawArr) {
+          if (!s || typeof s !== "object" || Array.isArray(s)) continue;
+          const sid = typeof s.id === "string" && s.id.trim() && !s.id.includes("|") ? s.id.trim() : Engine.uid("s");
+          if (s.type === "unit") {
+            const uCode = typeof s.code === "string" ? s.code.trim().toUpperCase() : "";
+            if (!uCode || uCode.includes("|")) continue;
+            const parsedCp = Number(s.cp);
+            const cleanSlot = { id: sid, type: "unit", code: uCode };
+            if (s.cp !== undefined && Number.isFinite(parsedCp) && parsedCp >= 0 && parsedCp <= 96) {
+              cleanSlot.cp = parsedCp;
+            }
+            tris[t].push(cleanSlot);
+          } else if (s.type === "placeholder") {
+            const parsedCp = Number(s.cp);
+            tris[t].push({
+              id: sid,
+              type: "placeholder",
+              label: typeof s.label === "string" && s.label.trim() ? s.label.trim() : "Listed or Elective Unit",
+              cp: Number.isFinite(parsedCp) && parsedCp >= 0 && parsedCp <= 96 ? parsedCp : 6,
+              slotKind: typeof s.slotKind === "string" ? s.slotKind : "",
+              hintCodes: Array.isArray(s.hintCodes) ? s.hintCodes.filter((h) => typeof h === "string" && !h.includes("|")) : [],
+            });
+          }
+        }
+      }
+      const yearNum = Number.isInteger(yr.yearNum) && yr.yearNum > 0 ? yr.yearNum : yIdx + 1;
+      sanitizedYears.push({
+        id: typeof yr.id === "string" && yr.id.trim() ? yr.id.trim() : Engine.uid("yr"),
+        yearNum,
+        name: typeof yr.name === "string" && yr.name.trim() ? yr.name.trim() : `Year ${yearNum} (${2026 + yearNum})`,
+        trimesters: tris,
+      });
+    }
+
+    const def = Engine.createDefaultPlan(course, DATA);
+    const sanitizedCustomUnits = {};
+    if (rawPlan.customUnits && typeof rawPlan.customUnits === "object" && !Array.isArray(rawPlan.customUnits)) {
+      for (const [k, cu] of Object.entries(rawPlan.customUnits)) {
+        if (!cu || typeof cu !== "object" || Array.isArray(cu)) continue;
+        const code = String(cu.code || k || "").trim().toUpperCase();
+        if (!/^[A-Z0-9][A-Z0-9_-]{1,19}$/.test(code)) continue;
+        if (DATA.units[code]) continue; // Never allow custom unit import to shadow an official UNE unit
+        const cpNum = Number(cu.cp);
+        const lvlNum = Number(cu.level);
+        const cp = Number.isFinite(cpNum) && cpNum >= 0 && cpNum <= 96 ? cpNum : 6;
+        const level = Number.isFinite(lvlNum) && lvlNum >= 0 && lvlNum <= 900 ? lvlNum : 100;
+        const trimesters = Array.isArray(cu.trimesters)
+          ? cu.trimesters.map(Number).filter((t) => t === 1 || t === 2 || t === 3)
+          : [1, 2, 3];
+        const modes = Array.isArray(cu.modes)
+          ? cu.modes.filter((m) => typeof m === "string" && m.trim()).slice(0, 5)
+          : ["Online", "On Campus"];
+        sanitizedCustomUnits[code] = {
+          code,
+          title: typeof cu.title === "string" && cu.title.trim() ? cu.title.trim().slice(0, 180) : "General Elective Unit",
+          cp,
+          level,
+          prefix: typeof cu.prefix === "string" && /^[A-Z0-9]{1,10}$/.test(cu.prefix) ? cu.prefix : (code.match(/^[A-Z]+/) || ["ELEC"])[0],
+          school: typeof cu.school === "string" && cu.school.trim() ? cu.school.trim().slice(0, 120) : "Cross-Faculty Elective",
+          offered2027: cu.offered2027 !== false,
+          trimesters: trimesters.length ? trimesters : [1, 2, 3],
+          modes: modes.length ? modes : ["Online", "On Campus"],
+          offerings: [],
+          prereqText: typeof cu.prereqText === "string" ? cu.prereqText.slice(0, 500) : "",
+          coreqText: typeof cu.coreqText === "string" ? cu.coreqText.slice(0, 500) : "",
+          restrictionText: typeof cu.restrictionText === "string" ? cu.restrictionText.slice(0, 500) : "",
+          assessments: [],
+          outcomes: [],
+          url: safeHttpUrl(cu.url, `https://handbook.une.edu.au/units/2027/${encodeURIComponent(code)}?year=2027`),
+        };
+      }
+    }
+
+    const dynSel = {};
+    if (rawPlan.dynamicAosSelections && typeof rawPlan.dynamicAosSelections === "object" && !Array.isArray(rawPlan.dynamicAosSelections)) {
+      for (const [k, v] of Object.entries(rawPlan.dynamicAosSelections)) {
+        if (typeof k === "string" && typeof v === "string") dynSel[k] = v;
+      }
+    }
+
+    const cTri = Number(rawPlan.commencingTrimester);
+    const t3Strat = ["none", "spread", "accelerate"].includes(rawPlan.t3Strategy) ? rawPlan.t3Strategy : def.t3Strategy;
+
+    return {
+      ...def,
+      courseCode: course.code,
+      admissionRule: typeof rawPlan.admissionRule === "string" && rawPlan.admissionRule ? rawPlan.admissionRule : def.admissionRule,
+      aosStructure: typeof rawPlan.aosStructure === "string" && rawPlan.aosStructure ? rawPlan.aosStructure : def.aosStructure,
+      selectedMajors: Array.isArray(rawPlan.selectedMajors)
+        ? rawPlan.selectedMajors.filter((x) => typeof x === "string")
+        : def.selectedMajors,
+      selectedMinor: typeof rawPlan.selectedMinor === "string" ? rawPlan.selectedMinor : "",
+      dynamicAosSelections: dynSel,
+      commencingTrimester: cTri === 1 || cTri === 2 || cTri === 3 ? cTri : def.commencingTrimester,
+      studyLoad: rawPlan.studyLoad === "Part-time" ? "Part-time" : "Full-time",
+      preferredMode: rawPlan.preferredMode === "On Campus" ? "On Campus" : "Online",
+      t3Strategy: t3Strat,
+      includeT3InAuto: t3Strat !== "none",
+      t3Analysis: rawPlan.t3Analysis && typeof rawPlan.t3Analysis === "object" && !Array.isArray(rawPlan.t3Analysis) ? rawPlan.t3Analysis : null,
+      customUnits: sanitizedCustomUnits,
+      years: sanitizedYears,
+    };
+  }
+
   function saveState() {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          currentCourseCode: state.currentCourseCode,
-          savedPlansByCourse: state.savedPlansByCourse,
-        })
-      );
-    } catch (_) {}
+    safeLocalSet(
+      STORAGE_KEY,
+      JSON.stringify({
+        currentCourseCode: state.currentCourseCode,
+        savedPlansByCourse: state.savedPlansByCourse,
+      })
+    );
   }
 
   function loadState() {
     try {
-      const savedTheme = localStorage.getItem(THEME_KEY);
+      const savedTheme = safeLocalGet(THEME_KEY);
       if (savedTheme === "dark") document.documentElement.classList.add("dark");
 
-      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+      const raw = safeLocalGet(STORAGE_KEY) || safeLocalGet(LEGACY_STORAGE_KEY);
       let hasSaved = false;
+      let hadCorruption = false;
       if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.savedPlansByCourse && Object.keys(parsed.savedPlansByCourse).length > 0) {
-          state.savedPlansByCourse = parsed.savedPlansByCourse;
-          hasSaved = true;
+        let parsed = null;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (_) {
+          hadCorruption = true;
         }
-        if (parsed.currentCourseCode && DATA.courses.some((c) => c.code === parsed.currentCourseCode)) {
-          state.currentCourseCode = parsed.currentCourseCode;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          if (parsed.savedPlansByCourse && typeof parsed.savedPlansByCourse === "object" && !Array.isArray(parsed.savedPlansByCourse)) {
+            const cleanMap = {};
+            for (const [code, rawPlan] of Object.entries(parsed.savedPlansByCourse)) {
+              const valid = validateAndSanitizePlan(rawPlan, code);
+              if (valid) cleanMap[code] = valid;
+              else hadCorruption = true;
+            }
+            state.savedPlansByCourse = cleanMap;
+            hasSaved = Object.keys(cleanMap).length > 0;
+          }
+          if (typeof parsed.currentCourseCode === "string" && DATA.courses.some((c) => c.code === parsed.currentCourseCode)) {
+            state.currentCourseCode = parsed.currentCourseCode;
+          }
+        } else if (raw) {
+          hadCorruption = true;
         }
+      }
+      if (hadCorruption) {
+        saveState();
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -199,6 +423,7 @@ window.initUNEPlannerApp = function () {
         state.view = "finder";
       }
     } catch (_) {
+      state.savedPlansByCourse = {};
       state.view = "finder";
     }
   }
@@ -208,10 +433,14 @@ window.initUNEPlannerApp = function () {
     state.currentCourseCode = courseCode;
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
+    let aosApplied = false;
     if (matchedAosEntry) {
-      Engine.preselectAOS(course, plan, matchedAosEntry, DATA);
+      aosApplied = Boolean(Engine.preselectAOS(course, plan, matchedAosEntry, DATA));
     }
     exitSlotPicker();
+    state.catalogShowIneligible = null;
+    state.catEligLimit = 80;
+    state.catIneligLimit = 60;
     state.view = "planner";
     state.mobilePane = "plan";
     state.tabletDrawerOpen = false;
@@ -219,7 +448,7 @@ window.initUNEPlannerApp = function () {
     saveState();
     renderAll({ resetSidebarScroll: true });
     window.scrollTo({ top: 0, behavior: "instant" });
-    if (matchedAosEntry) {
+    if (matchedAosEntry && aosApplied) {
       showToast(`Opened ${course.code} with ${matchedAosEntry.title} pre-selected!`);
     }
   }
@@ -263,8 +492,10 @@ window.initUNEPlannerApp = function () {
     state.slotQuery = "";
     state.slotPoolFilter = "all";
     state.slotLevelFilter = "all";
-    state.slotShowIneligible = false;
+    state.slotShowIneligible = null;
     state.slotForceElectives = false;
+    state.slotEligLimit = 100;
+    state.slotIneligLimit = 80;
     if (openUiPane !== false) {
       if (isMobileViewport()) state.mobilePane = "units";
       else if (isTabletViewport()) state.tabletDrawerOpen = true;
@@ -279,9 +510,17 @@ window.initUNEPlannerApp = function () {
   }
 
   function syncResponsiveClasses() {
-    document.body.classList.toggle("drawer-open", state.tabletDrawerOpen && state.view === "planner");
+    if (!isTabletViewport() && state.tabletDrawerOpen) {
+      state.tabletDrawerOpen = false;
+    }
+    document.body.classList.toggle("drawer-open", state.tabletDrawerOpen && state.view === "planner" && isTabletViewport());
     document.body.classList.toggle("mobile-pane-units", state.view === "planner" && state.mobilePane === "units");
     document.body.classList.toggle("mobile-pane-plan", state.view === "planner" && state.mobilePane !== "units");
+  }
+
+  function getUnitEffectiveCp(uObj, fallbackCp) {
+    const rawCp = uObj ? (uObj.cp ?? 6) : (fallbackCp ?? 6);
+    return uObj && uObj.yearLong ? Math.ceil(rawCp / 2) : rawCp;
   }
 
   function addUnitToPlan(code) {
@@ -291,10 +530,12 @@ window.initUNEPlannerApp = function () {
     if (!u) return;
 
     const existingLoc = isUnitPlanned(code, plan);
-    if (existingLoc) {
+    if (existingLoc && !u.repeatable) {
       showToast(`${code} is already in your plan (${existingLoc}).`);
       return;
     }
+
+    const maxPerTri = plan.studyLoad === "Part-time" ? 12 : 24;
 
     if (state.targetSlot) {
       const { yearIdx, triNum, replaceSlotId } = state.targetSlot;
@@ -330,9 +571,9 @@ window.initUNEPlannerApp = function () {
           yr.trimesters[triNum].push(newSlot);
           const newLoadCp = yr.trimesters[triNum].reduce((s, x) => {
             const xu = x.type === "unit" ? Engine.getUnit(x.code, DATA, plan.customUnits) : null;
-            return s + (xu ? xu.cp : (x.cp || 6));
+            return s + getUnitEffectiveCp(xu, x.cp);
           }, 0);
-          if (newLoadCp >= (plan.studyLoad === "Part-time" ? 12 : 24)) {
+          if (newLoadCp >= maxPerTri) {
             exitSlotPicker();
             if (isMobileViewport()) state.mobilePane = "plan";
             if (isTabletViewport()) state.tabletDrawerOpen = false;
@@ -346,14 +587,17 @@ window.initUNEPlannerApp = function () {
     }
 
     // Smart earliest valid placement preserving left sidebar scroll
-    const maxPerTri = plan.studyLoad === "Part-time" ? 12 : 24;
     const placements = Engine.getPlannedPlacements(plan, DATA);
     const advCp = Engine.getAdvancedStandingCp(course, plan.admissionRule);
+    const uEffCp = getUnitEffectiveCp(u, 6);
+    const startTri = plan.commencingTrimester || 1;
+    const isPgCourse = course.studyLevel === "Postgraduate" || course.studyLevel === "Postgraduate Research";
+    const allPlannedCodes = new Set(placements.filter((p) => p.type === "unit").map((p) => p.code));
 
     let best = null;
     plan.years.forEach((yr, yIdx) => {
       for (const tNum of [1, 2, 3]) {
-        if (yIdx === 0 && tNum < (plan.commencingTrimester || 1)) continue;
+        if (yIdx === 0 && tNum < startTri) continue;
         const offeredOk = !u.trimesters || u.trimesters.length === 0 || u.trimesters.includes(tNum);
         if (!offeredOk) continue;
         if (
@@ -363,41 +607,120 @@ window.initUNEPlannerApp = function () {
         ) {
           continue;
         }
+        if (tNum === 3 && u.t3RepeatOnly && u.trimesters && u.trimesters.length > 1) {
+          continue;
+        }
         const slots = yr.trimesters[tNum] || [];
-        const curCp = slots.reduce((sum, s) => {
+        const curEffCp = slots.reduce((sum, s) => {
           const su = s.type === "unit" ? Engine.getUnit(s.code, DATA, plan.customUnits) : null;
-          return sum + (su ? su.cp : (s.cp || 6));
+          return sum + getUnitEffectiveCp(su, s.cp);
         }, 0);
-        if (curCp + u.cp > maxPerTri) continue;
+        // Allow giant units (e.g., 42/48/72 CP honours/research units) in an empty trimester
+        const fitsLoad = curEffCp + uEffCp <= maxPerTri || (curEffCp === 0 && uEffCp > maxPerTri);
+        if (!fitsLoad) continue;
 
         const chrono = yIdx * 3 + (tNum - 1);
-        const priorSet = new Set(placements.filter((p) => p.type === "unit" && p.chrono < chrono).map((p) => p.code));
-        const priorCp = advCp + placements.filter((p) => p.chrono < chrono).reduce((s, p) => s + p.cp, 0);
-        const pm = u.prereqMeta;
-        let prereqOk = true;
-        if (pm && !(pm.pgWaiver && course.studyLevel === "Postgraduate")) {
-          if (pm.minCp > 0 && priorCp < pm.minCp) prereqOk = false;
-          if (pm.tokens && pm.tokens.length > 0 && !Engine.evalPrereqTokens(pm.tokens, priorSet)) prereqOk = false;
+        const priorSet = new Set();
+        const sameOrPriorSet = new Set();
+        let priorCp = advCp;
+        const priorPrefixCp = {};
+        const priorLevelCp = {};
+        for (const p of placements) {
+          const pCp = p.cp ?? 6;
+          if (p.chrono < chrono) {
+            priorCp += pCp;
+            if (p.type === "unit") {
+              priorSet.add(p.code);
+              sameOrPriorSet.add(p.code);
+              const pref = p.unit?.prefix || "";
+              if (pref) priorPrefixCp[pref] = (priorPrefixCp[pref] || 0) + pCp;
+              const lvl = p.unit?.level ?? 100;
+              priorLevelCp[lvl] = (priorLevelCp[lvl] || 0) + pCp;
+            }
+          } else if (p.chrono === chrono && p.type === "unit") {
+            sameOrPriorSet.add(p.code);
+          }
         }
-        const score = (prereqOk ? 0 : 100) + chrono;
+
+        let penalty = 0;
+        const pm = u.prereqMeta;
+        if (pm && !(pm.pgWaiver && isPgCourse)) {
+          let prereqOk = true;
+          if (pm.combineOp === "OR" || (Array.isArray(pm.alternatives) && pm.alternatives.length > 0)) {
+            // Soft check: satisfied if any listed condition passes
+            let anyPass = false;
+            if (pm.minCp > 0 && priorCp >= pm.minCp) anyPass = true;
+            if (pm.prefixCp) {
+              const prefs = pm.prefixCp.prefixes || [pm.prefixCp.prefix];
+              const havePref = prefs.reduce((s, pr) => s + (priorPrefixCp[pr] || 0), 0);
+              if (havePref >= pm.prefixCp.cp) anyPass = true;
+            }
+            if (pm.tokens && pm.tokens.length > 0 && Engine.evalPrereqTokens(pm.tokens, priorSet)) anyPass = true;
+            if (!anyPass && (pm.minCp > 0 || pm.prefixCp || (pm.tokens && pm.tokens.length > 0))) prereqOk = false;
+          } else {
+            if (pm.minCp > 0 && priorCp < pm.minCp) prereqOk = false;
+            if (pm.prefixCp) {
+              const prefs = pm.prefixCp.prefixes || [pm.prefixCp.prefix];
+              const havePref = prefs.reduce((s, pr) => s + (priorPrefixCp[pr] || 0), 0);
+              if (havePref < pm.prefixCp.cp) prereqOk = false;
+            }
+            if (pm.levelCp && Array.isArray(pm.levelCp.levels)) {
+              const haveLvl = pm.levelCp.levels.reduce((s, l) => s + (priorLevelCp[l] || 0), 0);
+              if (haveLvl < pm.levelCp.cp) prereqOk = false;
+            }
+            if (pm.tokens && pm.tokens.length > 0 && !Engine.evalPrereqTokens(pm.tokens, priorSet)) prereqOk = false;
+          }
+          if (!prereqOk) penalty += 100;
+        }
+
+        const cm = u.coreqMeta;
+        if (cm) {
+          const courseApplies = !cm.onlyCourses || cm.onlyCourses.includes(course.code);
+          const ruleApplies = !cm.onlyRulePattern || (plan.admissionRule || "").includes(cm.onlyRulePattern);
+          const waived = cm.pgWaiver && isPgCourse;
+          if (courseApplies && ruleApplies && !waived && cm.tokens && cm.tokens.length > 0) {
+            if (!Engine.evalPrereqTokens(cm.tokens, sameOrPriorSet)) penalty += 50;
+          }
+        }
+
+        for (const rCode of u.restrictedUnits || []) {
+          const rUnit = Engine.getUnit(rCode, DATA, plan.customUnits);
+          const isMutual = rUnit && (rUnit.restrictedUnits || []).includes(code);
+          if ((isMutual && allPlannedCodes.has(rCode)) || (!isMutual && sameOrPriorSet.has(rCode))) {
+            penalty += 500;
+          }
+        }
+
+        const score = penalty + chrono;
         if (!best || score < best.score) best = { yIdx, tNum, score };
       }
     });
 
     let placedLabel = "";
     if (!best) {
-      const fallbackTri = (u.trimesters && u.trimesters[0]) || 1;
+      const offeredTris = (u.trimesters && u.trimesters.length > 0)
+        ? u.trimesters.filter((t) => !(t === 3 && u.t3RepeatOnly && u.trimesters.length > 1))
+        : [startTri];
+      const fallbackTris = offeredTris.length ? offeredTris : [1];
       let placed = false;
-      for (let yIdx = 0; yIdx < plan.years.length; yIdx++) {
-        const slots = plan.years[yIdx].trimesters[fallbackTri] || [];
-        if (slots.length * 6 < 24) {
-          slots.push({ id: Engine.uid("u"), type: "unit", code });
-          placedLabel = `Y${plan.years[yIdx].yearNum} · T${fallbackTri}`;
-          placed = true;
-          break;
+      for (let yIdx = 0; yIdx < plan.years.length && !placed; yIdx++) {
+        for (const fTri of fallbackTris) {
+          if (yIdx === 0 && fTri < startTri) continue;
+          const slots = plan.years[yIdx].trimesters[fTri] || [];
+          const curEffCp = slots.reduce((sum, s) => {
+            const su = s.type === "unit" ? Engine.getUnit(s.code, DATA, plan.customUnits) : null;
+            return sum + getUnitEffectiveCp(su, s.cp);
+          }, 0);
+          if (curEffCp + uEffCp <= maxPerTri || (curEffCp === 0 && uEffCp > maxPerTri)) {
+            slots.push({ id: Engine.uid("u"), type: "unit", code });
+            placedLabel = `Y${plan.years[yIdx].yearNum} · T${fTri}`;
+            placed = true;
+            break;
+          }
         }
       }
       if (!placed) {
+        const fallbackTri = fallbackTris[0] || 1;
         const newYNum = plan.years.length + 1;
         const newYr = {
           id: Engine.uid("yr"),
@@ -435,10 +758,18 @@ window.initUNEPlannerApp = function () {
     if (!yr) return;
     const idx = yr.trimesters[triNum].findIndex((s) => s.id === slotId);
     if (idx === -1) return;
-    const [slot] = yr.trimesters[triNum].splice(idx, 1);
 
-    let flatIdx = yearIdx * 3 + (triNum - 1) + delta;
+    const minFlatIdx = Math.max(0, (plan.commencingTrimester || 1) - 1);
+    const curFlatIdx = yearIdx * 3 + (triNum - 1);
+    let flatIdx = curFlatIdx + delta;
+    if (delta < 0 && curFlatIdx === 0) return;
+    if (delta < 0 && flatIdx < minFlatIdx && curFlatIdx >= minFlatIdx) {
+      showToast(`Trimester ${(flatIdx % 3) + 1} is before your commencing Trimester T${plan.commencingTrimester || 1}.`);
+      return;
+    }
     if (flatIdx < 0) flatIdx = 0;
+
+    const [slot] = yr.trimesters[triNum].splice(idx, 1);
     const newY = Math.floor(flatIdx / 3);
     const newT = (flatIdx % 3) + 1;
     while (plan.years.length <= newY) {
@@ -532,13 +863,13 @@ window.initUNEPlannerApp = function () {
               <button class="btn btn-hdr-lime" id="btn-auto-plan" title="Automatically schedule required units into valid 2027 trimesters">
                 <span>✨ <span class="auto-plan-full">Auto-Plan</span><span class="auto-plan-short">Auto</span></span>
               </button>
-              <button class="btn btn-hdr hdr-hide-tablet hdr-hide-mobile" id="btn-course-info" title="Course Rules, Outcomes & Handbook">
+              <button class="btn btn-hdr hdr-hide-mobile" id="btn-course-info" title="Course Rules, Outcomes &amp; Handbook">
                 <span>📖 Info</span>
               </button>
               <button class="btn btn-hdr hdr-hide-mobile" id="btn-export-menu" title="Print, Export CSV/JSON or Reset">
                 <span>⬇ Export</span>
               </button>
-              <button class="btn btn-hdr hdr-hide-mobile" id="btn-report-bug" title="Log a bug or rule issue (auto-captures current course & plan)">
+              <button class="btn btn-hdr hdr-hide-mobile" id="btn-report-bug" title="Log a bug or rule issue (auto-captures current course &amp; plan)">
                 <span>🐞 Bug${bugLogCount ? ` (${bugLogCount})` : ""}</span>
               </button>
             `
@@ -609,7 +940,7 @@ window.initUNEPlannerApp = function () {
 
     document.getElementById("btn-theme-toggle").onclick = () => {
       document.documentElement.classList.toggle("dark");
-      localStorage.setItem(THEME_KEY, document.documentElement.classList.contains("dark") ? "dark" : "light");
+      safeLocalSet(THEME_KEY, document.documentElement.classList.contains("dark") ? "dark" : "light");
       renderAll({ resetSidebarScroll: false });
     };
   }
@@ -884,6 +1215,12 @@ window.initUNEPlannerApp = function () {
       fv.querySelectorAll("[data-flvl]").forEach((btn) => {
         btn.onclick = () => {
           state.finderLevel = btn.dataset.flvl;
+          if (state.finderActiveTopic !== -1) {
+            const activeTopic = FINDER_TOPICS[state.finderActiveTopic];
+            if (!activeTopic || (activeTopic.studyLevel || "ALL") !== state.finderLevel) {
+              state.finderActiveTopic = -1;
+            }
+          }
           state.finderLimit = 48;
           renderCourseFinder(true);
         };
@@ -1006,9 +1343,11 @@ window.initUNEPlannerApp = function () {
               .map((r) => {
                 const c = r.course;
                 const m0 = r.matchedMajors && r.matchedMajors[0];
+                const notOff = getCourseNotOfferedLabel(c);
                 const subBits = [
                   c.school.replace(/^School of /, ""),
                   `${c.totalCp} CP`,
+                  notOff ? `⚠ ${notOff}` : "",
                   r.matchedUnit ? `Includes ${r.matchedUnit}` : "",
                   m0 ? `${m0.isMinor ? "Minor" : "Major"}: ${m0.title}` : "",
                 ].filter(Boolean);
@@ -1148,6 +1487,8 @@ window.initUNEPlannerApp = function () {
     const majorCount = majorTitles.length;
     const minorCount = (c.minorTitles || []).length;
     const topMatchAos = res.matchedMajors && res.matchedMajors[0];
+    const validAtar = formatValidAtar(c.atar);
+    const notOfferedLabel = getCourseNotOfferedLabel(c);
 
     const majorsPreviewHtml =
       majorCount > 0 && !(res.matchedMajors && res.matchedMajors.length > 0)
@@ -1159,14 +1500,15 @@ window.initUNEPlannerApp = function () {
         : "";
 
     return `
-      <article class="finder-card ${cardTone}">
+      <article class="finder-card ${cardTone} ${notOfferedLabel ? "not-offered-card" : ""}">
         <div class="finder-card-top">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <span class="course-code-pill teal">${esc(c.code)}</span>
             <span class="meta-chip">${esc(c.studyLevel)}</span>
             ${c.isDoubleDegree ? `<span class="meta-chip" style="color:var(--une-blue);border-color:var(--info-border);background:var(--info-bg);">Double Degree</span>` : ""}
+            ${notOfferedLabel ? `<span class="meta-chip not-offered" title="${esc(c.intakes || notOfferedLabel)}">⚠ ${esc(notOfferedLabel)}</span>` : ""}
           </div>
-          <span style="font-weight:800;font-size:12.5px;color:var(--primary);font-variant-numeric:tabular-nums;">${c.totalCp} CP</span>
+          <span style="font-weight:800;font-size:12.5px;color:var(--primary);font-variant-numeric:tabular-nums;">${esc(c.totalCp)} CP</span>
         </div>
 
         <div class="finder-card-title">${esc(c.title)}</div>
@@ -1182,7 +1524,7 @@ window.initUNEPlannerApp = function () {
 
         <div class="finder-card-meta">
           ${c.modes?.length ? `<span class="meta-chip">${esc(c.modes.join(" / "))}</span>` : ""}
-          ${c.atar ? `<span class="meta-chip">ATAR ${esc(c.atar)}</span>` : ""}
+          ${validAtar ? `<span class="meta-chip">ATAR ${esc(validAtar)}</span>` : ""}
           ${majorCount ? `<span class="meta-chip">${majorCount} Major${majorCount > 1 ? "s" : ""}</span>` : ""}
           ${minorCount ? `<span class="meta-chip">${minorCount} Minor${minorCount > 1 ? "s" : ""}</span>` : ""}
           ${c.studyPlanIds?.length ? `<span class="meta-chip">${c.studyPlanIds.length} Official Plan${c.studyPlanIds.length > 1 ? "s" : ""}</span>` : ""}
@@ -1218,6 +1560,51 @@ window.initUNEPlannerApp = function () {
   /* ==========================================================================
      3. PLANNER CONFIG RIBBON (INCLUDING DYNAMIC AOS FOR ALL 233 COURSES!)
      ========================================================================== */
+  function getActiveAosLabels(course, plan) {
+    const cfg = course.structureConfig || {};
+    const labels = [];
+    const cleanAos = (code) =>
+      (DATA.aos[code]?.title || code)
+        .replace(/^[A-Z0-9]+\s*-\s*/, "")
+        .replace(/\s*\((Major|Minor)\)\s*$/i, "");
+
+    if (cfg.aosMode === "dynamic") {
+      const activeGroups = Engine.getDynamicAOSGroups(course, plan, DATA).filter((g) => !g.isMandatorySingle);
+      const dynSel = plan.dynamicAosSelections || {};
+      for (const grp of activeGroups) {
+        const chosen = dynSel[grp.id];
+        if (chosen && grp.items.some((it) => it.code === chosen)) {
+          labels.push(cleanAos(chosen));
+        }
+      }
+      return labels;
+    }
+
+    const needMajors =
+      (cfg.aosMode === "bsc" && plan.aosStructure === "2m") ||
+      (cfg.aosMode === "bcomp" && plan.aosStructure === "opt3") ||
+      (cfg.aosMode === "bit01" && plan.aosStructure === "2m")
+        ? 2
+        : ["bsc", "bcomp", "bit01", "single_major"].includes(cfg.aosMode)
+        ? 1
+        : 0;
+    if (needMajors > 0) {
+      const activeMajors = (plan.selectedMajors || []).slice(0, needMajors).filter(Boolean);
+      activeMajors.forEach((mc) => labels.push(cleanAos(mc)));
+    }
+
+    const showMinor =
+      (cfg.aosMode === "bsc" && plan.aosStructure === "1m1n") ||
+      (cfg.aosMode === "bcomp" && plan.aosStructure === "opt2") ||
+      (cfg.aosMode === "bbiosc" && plan.aosStructure === "minor") ||
+      cfg.aosMode === "dscnce" ||
+      cfg.aosMode === "mnsc_pathway";
+    if (showMinor && plan.selectedMinor) {
+      labels.push(`Minor/Pathway: ${cleanAos(plan.selectedMinor)}`);
+    }
+    return labels;
+  }
+
   function renderConfigRibbon(course, plan, report) {
     const cfg = course.structureConfig;
     const opts = report.resolved.aosOptions;
@@ -1225,25 +1612,12 @@ window.initUNEPlannerApp = function () {
     const mobToggle = document.getElementById("btn-mobile-config-toggle");
     const parts = [];
 
-    // Summary line for mobile collapsible config button
+    // Summary line for mobile collapsible config button (active AOS only!)
     const summaryPieces = [];
     if (cfg.hasAdmissionRules && plan.admissionRule) summaryPieces.push(plan.admissionRule);
-    if (plan.selectedMajors?.length) {
-      summaryPieces.push(
-        plan.selectedMajors
-          .map((mc) => (DATA.aos[mc]?.title || mc).replace(/^[A-Z0-9]+\s*-\s*/, "").replace(/\s*\((Major|Minor)\)\s*$/i, ""))
-          .join(" + ")
-      );
-    } else if (cfg.aosMode === "dynamic") {
-      const selVals = Object.values(plan.dynamicAosSelections || {}).filter(Boolean);
-      if (selVals.length) {
-        summaryPieces.push(
-          selVals
-            .slice(0, 2)
-            .map((ac) => (DATA.aos[ac]?.title || ac).replace(/^[A-Z0-9]+\s*-\s*/, "").replace(/\s*\((Major|Minor)\)\s*$/i, ""))
-            .join(" + ")
-        );
-      }
+    const activeAos = getActiveAosLabels(course, plan);
+    if (activeAos.length) {
+      summaryPieces.push(activeAos.slice(0, 2).join(" + "));
     }
     summaryPieces.push(`T${plan.commencingTrimester} · ${plan.studyLoad} · ${plan.preferredMode}`);
     mobToggle.innerHTML = `
@@ -1486,6 +1860,10 @@ window.initUNEPlannerApp = function () {
     ribbon.querySelectorAll("[data-struct]").forEach((btn) => {
       btn.onclick = () => {
         plan.aosStructure = btn.dataset.struct;
+        // Collapse blank placeholder slot in selectedMajors if switching back to 1-major mode
+        if (!["2m", "opt3"].includes(plan.aosStructure) && Array.isArray(plan.selectedMajors)) {
+          plan.selectedMajors = plan.selectedMajors.filter(Boolean);
+        }
         saveState();
         renderAll({ resetSidebarScroll: false });
       };
@@ -1504,7 +1882,12 @@ window.initUNEPlannerApp = function () {
     if (m1El) {
       m1El.onchange = (e) => {
         const v = e.target.value;
-        plan.selectedMajors = v ? [v, ...(plan.selectedMajors.slice(1).filter((x) => x !== v))] : [];
+        const second = plan.selectedMajors[1] && plan.selectedMajors[1] !== v ? plan.selectedMajors[1] : "";
+        if (v) {
+          plan.selectedMajors = second ? [v, second] : [v];
+        } else {
+          plan.selectedMajors = second ? ["", second] : [];
+        }
         saveState();
         renderAll({ resetSidebarScroll: false });
       };
@@ -1514,7 +1897,11 @@ window.initUNEPlannerApp = function () {
       m2El.onchange = (e) => {
         const v = e.target.value;
         const first = plan.selectedMajors[0] || "";
-        plan.selectedMajors = v ? [first, v].filter(Boolean) : [first].filter(Boolean);
+        if (v) {
+          plan.selectedMajors = [first, v];
+        } else {
+          plan.selectedMajors = first ? [first] : [];
+        }
         saveState();
         renderAll({ resetSidebarScroll: false });
       };
@@ -1543,16 +1930,88 @@ window.initUNEPlannerApp = function () {
       renderAll({ resetSidebarScroll: false });
     };
     document.getElementById("sel-t3-strategy").onchange = (e) => {
-      plan.t3Strategy = e.target.value;
-      plan.includeT3InAuto = e.target.value !== "none";
-      if (Engine.getPlannedPlacements(plan, DATA).length > 0) {
-        const updated = Engine.autoSchedulePlan(course, plan, DATA);
-        state.savedPlansByCourse[course.code] = updated;
-        const openPh = findOpenPlaceholders(updated);
-        if (openPh.length > 0 && state.sidebarTab === "slot") activateSlotPicker(openPh[0], false);
+      const nextVal = e.target.value;
+      const prevVal = plan.t3Strategy || "none";
+      const existingCount = Engine.getPlannedPlacements(plan, DATA).length;
+      const stratNames = {
+        none: "Off (T1 & T2)",
+        spread: "Spread Load (3+3+2)",
+        accelerate: "Fast-Track (If Possible)",
+      };
+
+      if (existingCount === 0) {
+        plan.t3Strategy = nextVal;
+        plan.includeT3InAuto = nextVal !== "none";
+        plan.t3Analysis = null;
+        exitSlotPicker();
+        saveState();
+        renderAll({ resetSidebarScroll: false });
+        return;
       }
-      saveState();
-      renderAll({ resetSidebarScroll: false });
+
+      // Confirm before wiping manually placed or existing units on the board!
+      openModal(
+        `<div style="font-weight:800;font-size:15.5px;">Change Trimester 3 Strategy?</div>`,
+        `
+          <div style="font-size:13px;color:var(--text-muted);line-height:1.45;">
+            Switching T3 strategy to <strong>${esc(stratNames[nextVal] || nextVal)}</strong> can re-run <strong>Auto-Plan</strong>, which will replace the <strong>${existingCount}</strong> slot${existingCount === 1 ? "" : "s"} currently on your board (including any manually placed units or electives).
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:8px;">
+            <button class="btn" id="btn-t3-cancel" type="button">Cancel</button>
+            <button class="btn btn-soft" id="btn-t3-keep" type="button">Keep Current Units (Update Preference Only)</button>
+            <button class="btn btn-primary" id="btn-t3-resched" type="button">✨ Re-schedule Board</button>
+          </div>
+        `,
+        (modal) => {
+          const revertSel = () => {
+            const sEl = document.getElementById("sel-t3-strategy");
+            if (sEl) sEl.value = prevVal;
+          };
+          const closeBtn = modal.querySelector("#btn-modal-close");
+          if (closeBtn) {
+            closeBtn.onclick = () => {
+              revertSel();
+              closeModal();
+            };
+          }
+          modal.onclick = (ev) => {
+            if (ev.target === modal) {
+              revertSel();
+              closeModal();
+            }
+          };
+          modal.querySelector("#btn-t3-cancel").onclick = () => {
+            revertSel();
+            closeModal();
+          };
+          modal.querySelector("#btn-t3-keep").onclick = () => {
+            plan.t3Strategy = nextVal;
+            plan.includeT3InAuto = nextVal !== "none";
+            plan.t3Analysis = null;
+            exitSlotPicker();
+            saveState();
+            closeModal();
+            renderAll({ resetSidebarScroll: false });
+            showToast(`Updated T3 preference to ${stratNames[nextVal] || nextVal} (existing units kept).`);
+          };
+          modal.querySelector("#btn-t3-resched").onclick = () => {
+            plan.t3Strategy = nextVal;
+            plan.includeT3InAuto = nextVal !== "none";
+            const updated = Engine.autoSchedulePlan(course, plan, DATA);
+            state.savedPlansByCourse[course.code] = updated;
+            const openPh = findOpenPlaceholders(updated);
+            if (openPh.length > 0 && state.sidebarTab === "slot" && !isMobileViewport()) {
+              activateSlotPicker(openPh[0], false);
+            } else {
+              exitSlotPicker();
+            }
+            saveState();
+            closeModal();
+            renderAll({ resetSidebarScroll: false });
+            showToast(`Re-scheduled ${course.code} with T3 strategy: ${stratNames[nextVal] || nextVal}.`);
+          };
+        }
+      );
     };
 
     const presetBar = document.getElementById("preset-bar");
@@ -1586,6 +2045,75 @@ window.initUNEPlannerApp = function () {
   /* ==========================================================================
      4. SIDEBAR (SLOT OPTIONS | REQUIREMENTS | ALL 1,720 UNITS) + SCROLL LOCK
      ========================================================================== */
+  const UNIT_LEVEL_FILTERS = [0, 100, 200, 300, 400, 500, 600];
+
+  function getFallbackBaseIneligibility(u, course) {
+    const reasons = [];
+    if (!u) return reasons;
+    if (u.offered2027 === false) reasons.push("Not offered in 2027 (archived unit)");
+    const pm = u.prereqMeta;
+    const isUg = course.studyLevel === "Undergraduate" || course.studyLevel === "Pathway Programs" || course.studyLevel === "Other";
+    const isPg = course.studyLevel === "Postgraduate" || course.studyLevel === "Postgraduate Research";
+    if (isUg && u.level >= 500) {
+      reasons.push(`Restricted to Postgraduate candidature (${u.level}-level)`);
+    } else if (pm?.pgOnly && !isPg) {
+      reasons.push("Restricted to Postgraduate candidature");
+    } else if (pm?.honoursOnly && course.studyLevel !== "Bachelor Honours") {
+      reasons.push("Restricted to Honours candidature");
+    } else if (pm?.courseRestricted) {
+      reasons.push(`Restricted candidature (${pm.courseRestricted})`);
+    }
+    if (Array.isArray(u.courseExclusions) && u.courseExclusions.includes(course.code)) {
+      reasons.push(u.courseExclusionNote || `Excluded from ${course.code}`);
+    }
+    return reasons;
+  }
+
+  function getUnitIneligibilityReasons(u, course, plan, slotEval, slotEligSet, slotIneligMap, includePoolCheck) {
+    if (!u) return null;
+    if (state.targetSlot && slotEval) {
+      if (isUnitPlanned(u.code, plan) && !u.repeatable) return null;
+      if (slotEligSet.has(u.code)) return null;
+      if (slotIneligMap.has(u.code)) return slotIneligMap.get(u.code);
+      if (typeof slotEval.evaluateAnyUnit === "function") {
+        const ev = slotEval.evaluateAnyUnit(u.code, !includePoolCheck);
+        return ev && !ev.eligible && ev.reasons?.length ? ev.reasons : null;
+      }
+      // Defensive fallback if Engine.resolveSlotCandidates doesn't expose evaluateAnyUnit
+      const reasons = getFallbackBaseIneligibility(u, course);
+      const triNum = state.targetSlot.triNum;
+      if (u.offered2027 !== false && u.trimesters && u.trimesters.length > 0 && !u.trimesters.includes(triNum)) {
+        reasons.push(`Not offered in Trimester ${triNum} (offered in T${u.trimesters.join(", T")})`);
+      }
+      if (u.t3RepeatOnly && triNum === 3) {
+        reasons.push("Trimester 3 is for repeating students only");
+      }
+      if (slotEval.spec?.allowedLevels && !slotEval.spec.allowedLevels.includes(u.level)) {
+        reasons.push(`Slot requires ${slotEval.spec.allowedLevels.join("/")}-level (${u.code} is ${u.level}-level)`);
+      }
+      if (slotEval.spec?.allowedPrefixes && !slotEval.spec.allowedPrefixes.includes(u.prefix)) {
+        reasons.push(`Slot requires ${slotEval.spec.allowedPrefixes.join("/")} prefix`);
+      }
+      const maxLoad = plan.studyLoad === "Part-time" ? 12 : 24;
+      const uEffCp = getUnitEffectiveCp(u, 6);
+      const curCp = slotEval.curTriCp ?? 0;
+      if (curCp + uEffCp > maxLoad && !(curCp === 0 && uEffCp > maxLoad)) {
+        reasons.push(`Exceeds ${maxLoad} CP trimester load (${curCp + uEffCp} CP)`);
+      }
+      if (includePoolCheck && slotEval.spec?.strictPoolOnly && !slotEval.spec.coursePoolMap?.has(u.code)) {
+        reasons.push(`Outside this slot's required pool (${slotEval.spec.title || "Prescribed Units"})`);
+      }
+      return reasons.length > 0 ? reasons : null;
+    }
+
+    if (typeof Engine.getBaseUnitIneligibility === "function") {
+      const reasons = Engine.getBaseUnitIneligibility(u, course, plan, DATA);
+      return reasons && reasons.length > 0 ? reasons : null;
+    }
+    const reasons = getFallbackBaseIneligibility(u, course);
+    return reasons.length > 0 ? reasons : null;
+  }
+
   function renderSidebar(course, plan, report, opts) {
     const sb = document.getElementById("sidebar");
     const prevBodyEl = document.getElementById("sidebar-body-scroll");
@@ -1596,11 +2124,13 @@ window.initUNEPlannerApp = function () {
 
     const { buckets, majorCoreHints } = report.resolved;
     let slotEval = null;
+    const slotEligSet = new Set();
     const slotIneligMap = new Map();
     if (state.targetSlot) {
       slotEval = Engine.resolveSlotCandidates(state.targetSlot, course, plan, DATA, {
         forceIncludeElectives: state.slotForceElectives,
       });
+      slotEval.eligible.forEach((i) => slotEligSet.add(i.code));
       slotEval.ineligible.forEach((i) => slotIneligMap.set(i.code, i.reasons));
     }
 
@@ -1619,6 +2149,33 @@ window.initUNEPlannerApp = function () {
           </div>
         </div>
       `;
+    }
+
+    function computeCatalogPartition(qRaw) {
+      const q2 = qRaw.trim().toLowerCase();
+      const allList = [
+        ...Object.values(DATA.units),
+        ...Object.values(plan.customUnits || {}).filter((cu) => !DATA.units[cu.code]),
+      ].filter((u) => {
+        if (state.catalogLevel !== "all" && String(u.level) !== state.catalogLevel) return false;
+        if (state.catalogTri !== "all" && !(u.trimesters || []).includes(parseInt(state.catalogTri, 10))) return false;
+        if (state.catalogPrefix !== "all" && u.prefix !== state.catalogPrefix) return false;
+        if (q2 && !`${u.code} ${u.title} ${u.school}`.toLowerCase().includes(q2)) return false;
+        return true;
+      });
+      const topUnits = [];
+      const bottomInelig = [];
+      const includePool = !state.slotForceElectives;
+      for (const u of allList) {
+        const reasons = getUnitIneligibilityReasons(u, course, plan, slotEval, slotEligSet, slotIneligMap, includePool);
+        if (reasons && reasons.length > 0) bottomInelig.push({ unit: u, reasons });
+        else topUnits.push(u);
+      }
+      topUnits.sort((a, b) => a.code.localeCompare(b.code));
+      bottomInelig.sort((a, b) => a.unit.code.localeCompare(b.unit.code));
+      const showCatInelig =
+        state.catalogShowIneligible !== null ? state.catalogShowIneligible : topUnits.length === 0 || q2.length > 0;
+      return { topUnits, bottomInelig, showCatInelig };
     }
 
     let bodyHtml = "";
@@ -1641,7 +2198,8 @@ window.initUNEPlannerApp = function () {
 
       const filteredEligible = slotEval.eligible.filter(filterFn);
       const filteredIneligible = slotEval.ineligible.filter(filterFn);
-      const autoExpandInelig = state.slotShowIneligible || filteredEligible.length === 0 || q.length > 0;
+      const autoExpandInelig =
+        state.slotShowIneligible !== null ? state.slotShowIneligible : filteredEligible.length === 0 || q.length > 0;
       const courseEligCount = slotEval.eligible.filter((x) => x.inCoursePool).length;
       const elecEligCount = slotEval.eligible.filter((x) => !x.inCoursePool).length;
 
@@ -1666,9 +2224,12 @@ window.initUNEPlannerApp = function () {
                   )}" style="flex:1;min-width:0;background:var(--surface);" />
                   <select class="select-input" id="sel-slot-level" style="background:var(--surface);">
                     <option value="all">Levels</option>
-                    ${[100, 200, 300, 400, 500]
-                      .map((l) => `<option value="${l}" ${state.slotLevelFilter === String(l) ? "selected" : ""}>L${l}</option>`)
-                      .join("")}
+                    ${UNIT_LEVEL_FILTERS.map(
+                      (l) =>
+                        `<option value="${l}" ${state.slotLevelFilter === String(l) ? "selected" : ""}>${
+                          l === 0 ? "L0 (Pathway)" : `L${l}`
+                        }</option>`
+                    ).join("")}
                   </select>
                 </div>`
               : ""
@@ -1698,7 +2259,7 @@ window.initUNEPlannerApp = function () {
         </div>
 
         <div id="slot-results-wrap" style="display:flex;flex-direction:column;gap:8px;">
-          ${renderSlotListInner(slotEval, filteredEligible, filteredIneligible, autoExpandInelig)}
+          ${renderSlotListInner(slotEval, filteredEligible, filteredIneligible, autoExpandInelig, plan)}
         </div>
       `;
     } else if (state.sidebarTab === "requirements") {
@@ -1729,14 +2290,20 @@ window.initUNEPlannerApp = function () {
                 <button class="btn btn-sm" id="btn-open-custom-unit">+ Custom Elective</button>
               </div>
             `;
-          } else if (state.targetSlot) {
+          } else if (state.targetSlot && slotEval) {
             const eligInBucket = [];
             const plannedInBucket = [];
             const ineligInBucket = [];
+            const includePool = !state.slotForceElectives;
             for (const uCode of baseUnits) {
-              if (isUnitPlanned(uCode, plan)) plannedInBucket.push(uCode);
-              else if (slotIneligMap.has(uCode)) ineligInBucket.push(uCode);
-              else eligInBucket.push(uCode);
+              const uObj = Engine.getUnit(uCode, DATA, plan.customUnits);
+              if (isUnitPlanned(uCode, plan) && !uObj?.repeatable) {
+                plannedInBucket.push(uCode);
+              } else {
+                const reasons = getUnitIneligibilityReasons(uObj, course, plan, slotEval, slotEligSet, slotIneligMap, includePool);
+                if (reasons && reasons.length > 0) ineligInBucket.push({ code: uCode, unit: uObj, reasons });
+                else eligInBucket.push(uCode);
+              }
             }
             bucketCardsHtml = [
               ...eligInBucket.map((uCode) => renderPoolUnitCard(uCode, plan, majorCoreHints)),
@@ -1746,14 +2313,8 @@ window.initUNEPlannerApp = function () {
                     `<div style="font-size:10.5px;font-weight:700;color:var(--warn);margin-top:4px;padding-top:4px;border-top:1px dashed var(--border);">
                       Not eligible for Y${plan.years[state.targetSlot.yearIdx]?.yearNum || 1} · T${state.targetSlot.triNum} (${ineligInBucket.length}):
                     </div>`,
-                    ...ineligInBucket.map((uCode) =>
-                      renderIneligibleUnitCard(
-                        uCode,
-                        Engine.getUnit(uCode, DATA, plan.customUnits),
-                        slotIneligMap.get(uCode) || [],
-                        null,
-                        false
-                      )
+                    ...ineligInBucket.map((entry) =>
+                      renderIneligibleUnitCard(entry.code, entry.unit, entry.reasons, null, false)
                     ),
                   ]
                 : []),
@@ -1770,7 +2331,7 @@ window.initUNEPlannerApp = function () {
                   <span style="overflow:hidden;text-overflow:ellipsis;">${esc(b.title)}</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;">
-                  <span class="bucket-cp-pill ${b.status}">${esc(cpLabel)}</span>
+                  <span class="bucket-cp-pill ${esc(b.status)}">${esc(cpLabel)}</span>
                   <span style="font-size:11px;color:var(--text-subtle);">${isCollapsed ? "▸" : "▾"}</span>
                 </div>
               </button>
@@ -1788,60 +2349,22 @@ window.initUNEPlannerApp = function () {
         .join("");
     } else {
       const prefixes = Array.from(new Set(Object.values(DATA.units).map((u) => u.prefix).filter(Boolean))).sort();
-      const q = state.catalogQuery.trim().toLowerCase();
-
-      const allUnitsList = [
-        ...Object.values(DATA.units),
-        ...Object.values(plan.customUnits || {}).filter((cu) => !DATA.units[cu.code]),
-      ].filter((u) => {
-        if (state.catalogLevel !== "all" && String(u.level) !== state.catalogLevel) return false;
-        if (state.catalogTri !== "all" && !(u.trimesters || []).includes(parseInt(state.catalogTri, 10))) return false;
-        if (state.catalogPrefix !== "all" && u.prefix !== state.catalogPrefix) return false;
-        if (q && !`${u.code} ${u.title} ${u.school}`.toLowerCase().includes(q)) return false;
-        return true;
-      });
-
-      const topUnits = [];
-      const bottomInelig = [];
-
-      for (const u of allUnitsList) {
-        if (state.targetSlot) {
-          if (isUnitPlanned(u.code, plan)) topUnits.push(u);
-          else if (slotIneligMap.has(u.code)) bottomInelig.push({ unit: u, reasons: slotIneligMap.get(u.code) });
-          else topUnits.push(u);
-        } else {
-          const reasons = [];
-          if (u.offered2027 === false) reasons.push("Not offered in 2027 (archived unit)");
-          const pm = u.prereqMeta;
-          if (course.studyLevel === "Undergraduate" && u.level >= 500) {
-            reasons.push(`Restricted to Postgraduate candidature (${u.level}-level)`);
-          } else if (pm?.pgOnly && course.studyLevel !== "Postgraduate") {
-            reasons.push("Restricted to Postgraduate candidature");
-          } else if (pm?.honoursOnly && course.studyLevel !== "Bachelor Honours") {
-            reasons.push("Restricted to Honours candidature");
-          } else if (pm?.courseRestricted) {
-            reasons.push(`Restricted candidature (${pm.courseRestricted})`);
-          }
-          if (reasons.length > 0) bottomInelig.push({ unit: u, reasons });
-          else topUnits.push(u);
-        }
-      }
-
-      topUnits.sort((a, b) => a.code.localeCompare(b.code));
-      bottomInelig.sort((a, b) => a.unit.code.localeCompare(b.unit.code));
-      const showCatInelig = state.catalogShowIneligible || topUnits.length === 0 || q.length > 0;
+      const { topUnits, bottomInelig, showCatInelig } = computeCatalogPartition(state.catalogQuery);
 
       bodyHtml = `
-        <div style="display:flex;flex-direction:column;gap:8px;position:sticky;top:0;background:var(--surface);padding-bottom:8px;z-index:5;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div class="catalog-search-sticky" style="display:flex;flex-direction:column;gap:8px;position:sticky;top:0;background:var(--surface);padding-bottom:8px;z-index:5;border-bottom:1px solid var(--border);flex-shrink:0;">
           <input type="search" class="text-input" id="inp-catalog-search" placeholder="Search ${DATA.meta.counts.units.toLocaleString()} UNE units by code, title, school…" value="${esc(
             state.catalogQuery
           )}" style="width:100%;" />
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
             <select class="select-input" id="sel-cat-level">
               <option value="all">All Levels</option>
-              ${[100, 200, 300, 400, 500]
-                .map((l) => `<option value="${l}" ${state.catalogLevel === String(l) ? "selected" : ""}>L${l}</option>`)
-                .join("")}
+              ${UNIT_LEVEL_FILTERS.map(
+                (l) =>
+                  `<option value="${l}" ${state.catalogLevel === String(l) ? "selected" : ""}>${
+                    l === 0 ? "L0 (Pathway)" : `L${l}`
+                  }</option>`
+              ).join("")}
             </select>
             <select class="select-input" id="sel-cat-tri">
               <option value="all">Any Tri</option>
@@ -1932,50 +2455,98 @@ window.initUNEPlannerApp = function () {
       };
     }
 
+    function refreshSlotResultsInPlace() {
+      if (!slotEval) return;
+      const wrap = document.getElementById("slot-results-wrap");
+      if (!wrap) return;
+      const q2 = state.slotQuery.trim().toLowerCase();
+      const hasBoth2 = slotEval.spec.allowsElectives && slotEval.spec.coursePoolMap && slotEval.spec.coursePoolMap.size > 0;
+      const filter2 = (item) => {
+        if (state.slotLevelFilter !== "all" && String(item.unit.level) !== state.slotLevelFilter) return false;
+        if (hasBoth2) {
+          if (state.slotPoolFilter === "course" && !item.inCoursePool) return false;
+          if (state.slotPoolFilter === "elective" && item.inCoursePool) return false;
+        }
+        if (q2 && !`${item.code} ${item.unit.title} ${item.poolLabel} ${item.unit.school}`.toLowerCase().includes(q2)) return false;
+        return true;
+      };
+      const fe = slotEval.eligible.filter(filter2);
+      const fi = slotEval.ineligible.filter(filter2);
+      const autoExp = state.slotShowIneligible !== null ? state.slotShowIneligible : fe.length === 0 || q2.length > 0;
+      wrap.innerHTML = renderSlotListInner(slotEval, fe, fi, autoExp, plan);
+      bindSlotListControls(wrap, autoExp);
+      bindUnitTriggers(wrap, plan);
+    }
+
+    function bindSlotListControls(wrap, currentExpanded) {
+      const tBtn = wrap.querySelector("#btn-toggle-slot-inelig");
+      if (tBtn) {
+        tBtn.onclick = () => {
+          state.slotShowIneligible = !currentExpanded;
+          refreshSlotResultsInPlace();
+        };
+      }
+      const moreElig = wrap.querySelector("#btn-slot-more-elig");
+      if (moreElig) {
+        moreElig.onclick = () => {
+          state.slotEligLimit += 100;
+          refreshSlotResultsInPlace();
+        };
+      }
+      const moreInelig = wrap.querySelector("#btn-slot-more-inelig");
+      if (moreInelig) {
+        moreInelig.onclick = () => {
+          state.slotIneligLimit += 80;
+          refreshSlotResultsInPlace();
+        };
+      }
+    }
+
+    const slotWrapEl = document.getElementById("slot-results-wrap");
+    if (slotWrapEl && slotEval) {
+      const qInit = state.slotQuery.trim().toLowerCase();
+      const hasBothInit = slotEval.spec.allowsElectives && slotEval.spec.coursePoolMap && slotEval.spec.coursePoolMap.size > 0;
+      const feCount = slotEval.eligible.filter((item) => {
+        if (state.slotLevelFilter !== "all" && String(item.unit.level) !== state.slotLevelFilter) return false;
+        if (hasBothInit) {
+          if (state.slotPoolFilter === "course" && !item.inCoursePool) return false;
+          if (state.slotPoolFilter === "elective" && item.inCoursePool) return false;
+        }
+        if (qInit && !`${item.code} ${item.unit.title} ${item.poolLabel} ${item.unit.school}`.toLowerCase().includes(qInit)) return false;
+        return true;
+      }).length;
+      const initExpanded = state.slotShowIneligible !== null ? state.slotShowIneligible : feCount === 0 || qInit.length > 0;
+      bindSlotListControls(slotWrapEl, initExpanded);
+    }
+
     const slotSearchInp = document.getElementById("inp-slot-search");
     if (slotSearchInp && slotEval) {
-      const updateSlotInPlace = () => {
+      const onSlotSearch = () => {
         state.slotQuery = slotSearchInp.value;
-        const wrap = document.getElementById("slot-results-wrap");
-        if (!wrap) return;
-        const q2 = state.slotQuery.trim().toLowerCase();
-        const hasBoth2 = slotEval.spec.allowsElectives && slotEval.spec.coursePoolMap && slotEval.spec.coursePoolMap.size > 0;
-        const filter2 = (item) => {
-          if (state.slotLevelFilter !== "all" && String(item.unit.level) !== state.slotLevelFilter) return false;
-          if (hasBoth2) {
-            if (state.slotPoolFilter === "course" && !item.inCoursePool) return false;
-            if (state.slotPoolFilter === "elective" && item.inCoursePool) return false;
-          }
-          if (q2 && !`${item.code} ${item.unit.title} ${item.poolLabel} ${item.unit.school}`.toLowerCase().includes(q2)) return false;
-          return true;
-        };
-        const fe = slotEval.eligible.filter(filter2);
-        const fi = slotEval.ineligible.filter(filter2);
-        const autoExp = state.slotShowIneligible || fe.length === 0 || q2.length > 0;
-        wrap.innerHTML = renderSlotListInner(slotEval, fe, fi, autoExp);
-        const tBtn = document.getElementById("btn-toggle-slot-inelig");
-        if (tBtn) {
-          tBtn.onclick = () => {
-            state.slotShowIneligible = !state.slotShowIneligible;
-            updateSlotInPlace();
-          };
-        }
-        bindUnitTriggers(wrap, plan);
+        state.slotShowIneligible = null;
+        state.slotEligLimit = 100;
+        state.slotIneligLimit = 80;
+        refreshSlotResultsInPlace();
       };
-      slotSearchInp.addEventListener("input", updateSlotInPlace);
-      slotSearchInp.addEventListener("search", updateSlotInPlace);
-      slotSearchInp.addEventListener("compositionend", updateSlotInPlace);
+      slotSearchInp.addEventListener("input", onSlotSearch);
+      slotSearchInp.addEventListener("search", onSlotSearch);
+      slotSearchInp.addEventListener("compositionend", onSlotSearch);
     }
     const slotLvlSel = document.getElementById("sel-slot-level");
     if (slotLvlSel) {
       slotLvlSel.onchange = (e) => {
         state.slotLevelFilter = e.target.value;
+        state.slotShowIneligible = null;
+        state.slotEligLimit = 100;
+        state.slotIneligLimit = 80;
         renderSidebar(course, plan, report, { resetScroll: true });
       };
     }
     sb.querySelectorAll("[data-spool]").forEach((btn) => {
       btn.onclick = () => {
         state.slotPoolFilter = btn.dataset.spool;
+        state.slotEligLimit = 100;
+        state.slotIneligLimit = 80;
         renderSidebar(course, plan, report, { resetScroll: true });
       };
     });
@@ -1983,21 +2554,10 @@ window.initUNEPlannerApp = function () {
     if (forceElecChk) {
       forceElecChk.onchange = (e) => {
         state.slotForceElectives = e.target.checked;
+        state.slotShowIneligible = null;
+        state.slotEligLimit = 100;
+        state.slotIneligLimit = 80;
         renderSidebar(course, plan, report, { resetScroll: true });
-      };
-    }
-    const toggleSlotInelig = document.getElementById("btn-toggle-slot-inelig");
-    if (toggleSlotInelig) {
-      toggleSlotInelig.onclick = () => {
-        state.slotShowIneligible = !state.slotShowIneligible;
-        renderSidebar(course, plan, report, { resetScroll: false });
-      };
-    }
-    const toggleCatInelig = document.getElementById("btn-toggle-cat-inelig");
-    if (toggleCatInelig) {
-      toggleCatInelig.onclick = () => {
-        state.catalogShowIneligible = !state.catalogShowIneligible;
-        renderSidebar(course, plan, report, { resetScroll: false });
       };
     }
 
@@ -2022,65 +2582,67 @@ window.initUNEPlannerApp = function () {
       if (el) el.onclick = openCustomUnitModal;
     });
 
+    function refreshCatalogInPlace() {
+      const wrap = document.getElementById("catalog-results-wrap");
+      if (!wrap) return;
+      const { topUnits, bottomInelig, showCatInelig } = computeCatalogPartition(state.catalogQuery);
+      const cLbl = document.getElementById("cat-count-lbl");
+      if (cLbl) cLbl.textContent = `${topUnits.length} eligible${bottomInelig.length ? ` · ${bottomInelig.length} restricted below` : ""}`;
+      wrap.innerHTML = renderCatalogListInner(topUnits, bottomInelig, showCatInelig, course, plan, majorCoreHints);
+      bindCatalogListControls(wrap, showCatInelig);
+      bindUnitTriggers(wrap, plan);
+    }
+
+    function bindCatalogListControls(wrap, currentExpanded) {
+      const tBtn = wrap.querySelector("#btn-toggle-cat-inelig");
+      if (tBtn) {
+        tBtn.onclick = () => {
+          state.catalogShowIneligible = !currentExpanded;
+          refreshCatalogInPlace();
+        };
+      }
+      const moreElig = wrap.querySelector("#btn-cat-more-elig");
+      if (moreElig) {
+        moreElig.onclick = () => {
+          state.catEligLimit += 80;
+          refreshCatalogInPlace();
+        };
+      }
+      const moreInelig = wrap.querySelector("#btn-cat-more-inelig");
+      if (moreInelig) {
+        moreInelig.onclick = () => {
+          state.catIneligLimit += 60;
+          refreshCatalogInPlace();
+        };
+      }
+    }
+
+    const catWrapEl = document.getElementById("catalog-results-wrap");
+    if (catWrapEl) {
+      const { showCatInelig } = computeCatalogPartition(state.catalogQuery);
+      bindCatalogListControls(catWrapEl, showCatInelig);
+    }
+
     const searchInp = document.getElementById("inp-catalog-search");
     if (searchInp) {
-      const updateCatInPlace = () => {
+      const onCatSearch = () => {
         state.catalogQuery = searchInp.value;
-        const wrap = document.getElementById("catalog-results-wrap");
-        if (!wrap) return;
-        const q2 = state.catalogQuery.trim().toLowerCase();
-        const allList2 = [
-          ...Object.values(DATA.units),
-          ...Object.values(plan.customUnits || {}).filter((cu) => !DATA.units[cu.code]),
-        ].filter((u) => {
-          if (state.catalogLevel !== "all" && String(u.level) !== state.catalogLevel) return false;
-          if (state.catalogTri !== "all" && !(u.trimesters || []).includes(parseInt(state.catalogTri, 10))) return false;
-          if (state.catalogPrefix !== "all" && u.prefix !== state.catalogPrefix) return false;
-          if (q2 && !`${u.code} ${u.title} ${u.school}`.toLowerCase().includes(q2)) return false;
-          return true;
-        });
-        const top2 = [];
-        const bot2 = [];
-        for (const u of allList2) {
-          if (state.targetSlot) {
-            if (isUnitPlanned(u.code, plan)) top2.push(u);
-            else if (slotIneligMap.has(u.code)) bot2.push({ unit: u, reasons: slotIneligMap.get(u.code) });
-            else top2.push(u);
-          } else {
-            const reasons = [];
-            if (u.offered2027 === false) reasons.push("Not offered in 2027 (archived unit)");
-            const pm = u.prereqMeta;
-            if (course.studyLevel === "Undergraduate" && u.level >= 500) reasons.push(`Restricted to Postgraduate candidature (${u.level}-level)`);
-            else if (pm?.pgOnly && course.studyLevel !== "Postgraduate") reasons.push("Restricted to Postgraduate candidature");
-            else if (pm?.honoursOnly && course.studyLevel !== "Bachelor Honours") reasons.push("Restricted to Honours candidature");
-            else if (pm?.courseRestricted) reasons.push(`Restricted candidature (${pm.courseRestricted})`);
-            if (reasons.length > 0) bot2.push({ unit: u, reasons });
-            else top2.push(u);
-          }
-        }
-        top2.sort((a, b) => a.code.localeCompare(b.code));
-        bot2.sort((a, b) => a.unit.code.localeCompare(b.unit.code));
-        const showIn = state.catalogShowIneligible || top2.length === 0 || q2.length > 0;
-        const cLbl = document.getElementById("cat-count-lbl");
-        if (cLbl) cLbl.textContent = `${top2.length} eligible${bot2.length ? ` · ${bot2.length} restricted below` : ""}`;
-        wrap.innerHTML = renderCatalogListInner(top2, bot2, showIn, course, plan, majorCoreHints);
-        const tBtn = document.getElementById("btn-toggle-cat-inelig");
-        if (tBtn) {
-          tBtn.onclick = () => {
-            state.catalogShowIneligible = !state.catalogShowIneligible;
-            updateCatInPlace();
-          };
-        }
-        bindUnitTriggers(wrap, plan);
+        state.catalogShowIneligible = null;
+        state.catEligLimit = 80;
+        state.catIneligLimit = 60;
+        refreshCatalogInPlace();
       };
-      searchInp.addEventListener("input", updateCatInPlace);
-      searchInp.addEventListener("search", updateCatInPlace);
-      searchInp.addEventListener("compositionend", updateCatInPlace);
+      searchInp.addEventListener("input", onCatSearch);
+      searchInp.addEventListener("search", onCatSearch);
+      searchInp.addEventListener("compositionend", onCatSearch);
     }
     const lvlSel = document.getElementById("sel-cat-level");
     if (lvlSel) {
       lvlSel.onchange = (e) => {
         state.catalogLevel = e.target.value;
+        state.catalogShowIneligible = null;
+        state.catEligLimit = 80;
+        state.catIneligLimit = 60;
         renderSidebar(course, plan, report, { resetScroll: true });
       };
     }
@@ -2088,6 +2650,9 @@ window.initUNEPlannerApp = function () {
     if (triSel) {
       triSel.onchange = (e) => {
         state.catalogTri = e.target.value;
+        state.catalogShowIneligible = null;
+        state.catEligLimit = 80;
+        state.catIneligLimit = 60;
         renderSidebar(course, plan, report, { resetScroll: true });
       };
     }
@@ -2095,6 +2660,9 @@ window.initUNEPlannerApp = function () {
     if (prefSel) {
       prefSel.onchange = (e) => {
         state.catalogPrefix = e.target.value;
+        state.catalogShowIneligible = null;
+        state.catEligLimit = 80;
+        state.catIneligLimit = 60;
         renderSidebar(course, plan, report, { resetScroll: true });
       };
     }
@@ -2102,7 +2670,9 @@ window.initUNEPlannerApp = function () {
     bindUnitTriggers(sb, plan);
   }
 
-  function renderSlotListInner(slotEval, filteredEligible, filteredIneligible, autoExpandInelig) {
+  function renderSlotListInner(slotEval, filteredEligible, filteredIneligible, autoExpandInelig, plan) {
+    const eligShown = filteredEligible.slice(0, state.slotEligLimit);
+    const ineligShown = filteredIneligible.slice(0, state.slotIneligLimit);
     return `
       <div class="elig-category-hdr">
         <span>✅ Eligible for Y${slotEval.yearNum} · T${slotEval.triNum}</span>
@@ -2114,22 +2684,36 @@ window.initUNEPlannerApp = function () {
           ? `<div style="padding:12px;border:1px dashed var(--border-strong);border-radius:8px;font-size:12px;color:var(--text-subtle);text-align:center;">
               No eligible units match for Y${slotEval.yearNum} · T${slotEval.triNum}. See reasons in the Ineligible section below.
             </div>`
-          : filteredEligible.slice(0, 100).map((item) => renderSlotEligibleCard(item)).join("")
+          : eligShown.map((item) => renderSlotEligibleCard(item, plan)).join("")
+      }
+
+      ${
+        filteredEligible.length > eligShown.length
+          ? `<div class="catalog-trunc-bar">
+              <span>Showing ${eligShown.length} of ${filteredEligible.length} eligible units</span>
+              <button class="btn btn-sm btn-soft" id="btn-slot-more-elig" type="button">Show more (+${Math.min(100, filteredEligible.length - eligShown.length)})</button>
+            </div>`
+          : ""
       }
 
       ${
         filteredIneligible.length > 0
           ? `
-            <button class="inelig-category-toggle" id="btn-toggle-slot-inelig">
+            <button class="inelig-category-toggle" id="btn-toggle-slot-inelig" type="button">
               <span>🚫 Ineligible for Y${slotEval.yearNum} · T${slotEval.triNum} (${filteredIneligible.length})</span>
               <span style="font-size:11px;">${autoExpandInelig ? "Hide ▴" : "Show why ▾"}</span>
             </button>
             ${
               autoExpandInelig
-                ? filteredIneligible
-                    .slice(0, 80)
+                ? ineligShown
                     .map((item) => renderIneligibleUnitCard(item.code, item.unit, item.reasons, item.poolLabel, true))
-                    .join("")
+                    .join("") +
+                  (filteredIneligible.length > ineligShown.length
+                    ? `<div class="catalog-trunc-bar">
+                        <span>Showing ${ineligShown.length} of ${filteredIneligible.length} ineligible units</span>
+                        <button class="btn btn-sm btn-soft" id="btn-slot-more-inelig" type="button">Show more (+${Math.min(80, filteredIneligible.length - ineligShown.length)})</button>
+                      </div>`
+                    : "")
                 : ""
             }
           `
@@ -2139,26 +2723,42 @@ window.initUNEPlannerApp = function () {
   }
 
   function renderCatalogListInner(topUnits, bottomInelig, showCatInelig, course, plan, majorCoreHints) {
+    const eligShown = topUnits.slice(0, state.catEligLimit);
+    const ineligShown = bottomInelig.slice(0, state.catIneligLimit);
     return `
-      ${topUnits.slice(0, 80).map((u) => renderPoolUnitCard(u.code, plan, majorCoreHints)).join("")}
+      ${eligShown.map((u) => renderPoolUnitCard(u.code, plan, majorCoreHints)).join("")}
+
+      ${
+        topUnits.length > eligShown.length
+          ? `<div class="catalog-trunc-bar">
+              <span>Showing ${eligShown.length} of ${topUnits.length} eligible units — refine search or load more</span>
+              <button class="btn btn-sm btn-soft" id="btn-cat-more-elig" type="button">Show more (+${Math.min(80, topUnits.length - eligShown.length)})</button>
+            </div>`
+          : ""
+      }
 
       ${
         bottomInelig.length > 0
           ? `
-            <button class="inelig-category-toggle" id="btn-toggle-cat-inelig">
+            <button class="inelig-category-toggle" id="btn-toggle-cat-inelig" type="button">
               <span>🚫 ${
                 state.targetSlot
                   ? `Ineligible for Y${plan.years[state.targetSlot.yearIdx]?.yearNum || 1} · T${state.targetSlot.triNum}`
-                  : `Restricted / Not Eligible for ${course.code}`
+                  : `Restricted / Not Eligible for ${esc(course.code)}`
               } (${bottomInelig.length})</span>
               <span style="font-size:11px;">${showCatInelig ? "Hide ▴" : "Show reasons ▾"}</span>
             </button>
             ${
               showCatInelig
-                ? bottomInelig
-                    .slice(0, 60)
+                ? ineligShown
                     .map((it) => renderIneligibleUnitCard(it.unit.code, it.unit, it.reasons, null, false))
-                    .join("")
+                    .join("") +
+                  (bottomInelig.length > ineligShown.length
+                    ? `<div class="catalog-trunc-bar">
+                        <span>Showing ${ineligShown.length} of ${bottomInelig.length} restricted units</span>
+                        <button class="btn btn-sm btn-soft" id="btn-cat-more-inelig" type="button">Show more (+${Math.min(60, bottomInelig.length - ineligShown.length)})</button>
+                      </div>`
+                    : "")
                 : ""
             }
           `
@@ -2167,23 +2767,68 @@ window.initUNEPlannerApp = function () {
     `;
   }
 
-  function renderIntensiveBadgeMini(u, triNum) {
-    const info = Engine.getUnitIntensiveForTri(u, triNum);
+  function renderIntensiveBadgeMini(u, triNum, preferredMode) {
+    const info = Engine.getUnitIntensiveForTri(u, triNum, preferredMode);
     if (!info || info.kind !== "Mandatory") return "";
-    const shortLoc = info.location ? ` (${info.location.replace(" (TBC)", "")})` : "";
+    if (info.applicableForMode === false) return "";
+    const shortLoc = info.location
+      ? ` (${info.location.replace(" (TBC)", "").replace(" (Choice)", " · Choice")})`
+      : "";
+    const entries = info.entries || [];
+    const hasMixedTba = Boolean(info.mixedTba || (triNum == null && u.intensiveMixedTba));
+    const isMultiCohort = Boolean(info.multiCohort || Object.values(u.intensiveByTri || {}).some((x) => x?.multiCohort));
+    const sameTriMulti =
+      triNum != null
+        ? entries.length > 1
+        : Object.values(u.intensiveByTri || {}).some((x) => (x?.entries || []).length > 1);
+    const dateSummary =
+      entries.length > 1
+        ? entries
+            .map((e) => `${e.title ? e.title + ": " : Array.isArray(e.tris) && e.tris.length ? `T${e.tris.join("/T")}: ` : ""}${e.tba ? "TBA" : (e.dates || []).join(", ")}`)
+            .join(" | ")
+        : (info.dates || []).join(", ");
+
     if (info.tba) {
       return `<span class="badge-mini badge-int-tba" title="Mandatory Intensive School (${esc(info.location)}) — Dates TBA (check dates)">🔴 Intensive${esc(shortLoc)} · TBA</span>`;
     }
-    return `<span class="badge-mini badge-intensive" title="Mandatory Intensive School (${esc(info.location)}): ${esc(info.dates.join(", "))}">🏫 Intensive${esc(shortLoc)}</span>`;
+    if (hasMixedTba) {
+      return `<span class="badge-mini badge-int-tba" title="Mandatory Intensive School (${esc(info.location)}): ${esc(dateSummary)} — Some trimesters TBA">🔴 Intensive${esc(shortLoc)} · Some TBA</span>`;
+    }
+    const cohortTag =
+      sameTriMulti && entries.length > 1
+        ? `<span class="badge-mini badge-int-cohort" title="${esc(dateSummary)}">${isMultiCohort ? `${entries.length} Cohorts` : `${entries.length} Blocks`}</span>`
+        : "";
+    return `<span class="badge-mini badge-intensive" title="Mandatory Intensive School (${esc(info.location)}): ${esc(dateSummary)}">🏫 Intensive${esc(shortLoc)}</span>${cohortTag}`;
   }
 
-  function renderSlotEligibleCard(item) {
+  function renderUnitTrimesterPills(u, activeTriNum) {
+    if (u && u.trimesters && u.trimesters.length > 0) {
+      if (activeTriNum !== undefined && activeTriNum !== null) {
+        return u.trimesters
+          .map((t) => `<span class="tri-pill ${t === activeTriNum ? "active-tri" : ""}">T${t}</span>`)
+          .join("");
+      }
+      return [1, 2, 3]
+        .map((t) =>
+          u.trimesters.includes(t)
+            ? `<span class="tri-pill active-tri">T${t}</span>`
+            : `<span class="tri-pill" style="opacity:0.35;">T${t}</span>`
+        )
+        .join("");
+    }
+    if (u && u.offered2027 !== false && u.nonStandardPeriods && u.nonStandardPeriods.length > 0) {
+      return `<span class="tri-pill active-tri" title="Non-standard teaching period: ${esc(u.nonStandardPeriods.join(", "))}">${esc(u.nonStandardPeriods[0])}</span>`;
+    }
+    return [1, 2, 3].map((t) => `<span class="tri-pill" style="opacity:0.35;">T${t}</span>`).join("");
+  }
+
+  function renderSlotEligibleCard(item, plan) {
     const u = item.unit;
     const targetTri = state.targetSlot ? state.targetSlot.triNum : null;
     return `
       <div class="pool-unit ${item.majorRequiredBy ? "major-req" : ""}" draggable="true" data-drag-pool-code="${esc(item.code)}">
         <div class="pool-unit-top">
-          <button class="unit-code-link" data-inspect-unit="${esc(item.code)}">${esc(item.code)} · ${u.cp} CP</button>
+          <button class="unit-code-link" data-inspect-unit="${esc(item.code)}">${esc(item.code)} · ${esc(u.cp ?? 6)} CP</button>
           <button class="btn btn-sm btn-primary" data-add-unit="${esc(item.code)}">Select →</button>
         </div>
         <div class="pool-unit-title">${esc(u.title)}</div>
@@ -2194,11 +2839,12 @@ window.initUNEPlannerApp = function () {
                 ? "background:var(--primary-soft);color:var(--primary);border:1px solid var(--primary-border);"
                 : "background:var(--surface-alt);color:var(--text-subtle);border:1px solid var(--border);"
             }">${esc(item.poolLabel)}</span>
-            ${item.helpsLevelMin ? `<span class="badge-mini" style="background:var(--cat-major1-bg);color:var(--cat-major1);border:1px solid var(--cat-major1);">L${u.level} Target</span>` : ""}
-            ${renderIntensiveBadgeMini(u, targetTri)}
+            ${item.helpsLevelMin ? `<span class="badge-mini" style="background:var(--cat-major1-bg);color:var(--cat-major1);border:1px solid var(--cat-major1);">L${esc(u.level)} Target</span>` : ""}
+            ${renderIntensiveBadgeMini(u, targetTri, plan?.preferredMode)}
+            ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
             ${item.modeWarning ? `<span class="badge-mini badge-intensive">${esc(item.modeWarning)}</span>` : ""}
           </div>
-          <div class="tri-pills">${(u.trimesters || []).map((t) => `<span class="tri-pill active-tri">T${t}</span>`).join("")}</div>
+          <div class="tri-pills">${(u.trimesters || []).length ? u.trimesters.map((t) => `<span class="tri-pill active-tri">T${t}</span>`).join("") : renderUnitTrimesterPills(u)}</div>
         </div>
       </div>
     `;
@@ -2209,7 +2855,7 @@ window.initUNEPlannerApp = function () {
     return `
       <div class="pool-unit ineligible-card">
         <div class="pool-unit-top">
-          <button class="unit-code-link" data-inspect-unit="${esc(code)}">${esc(code)} · ${u.cp} CP</button>
+          <button class="unit-code-link" data-inspect-unit="${esc(code)}">${esc(code)} · ${esc(u.cp ?? 6)} CP</button>
           <div style="display:flex;align-items:center;gap:4px;">
             ${poolLabel ? `<span style="font-size:10px;color:var(--text-subtle);">${esc(poolLabel)}</span>` : ""}
             ${
@@ -2227,7 +2873,7 @@ window.initUNEPlannerApp = function () {
                 `<div class="inelig-reason-pill ${
                   r.startsWith("Pre-requisite") || r.startsWith("Requires") || r.startsWith("Co-requisite") ? "soft" : ""
                 }">${
-                  r.startsWith("Not offered") || r.startsWith("Restricted") || r.startsWith("Incompatible") || r.startsWith("Cannot") || r.startsWith("Exceeds")
+                  r.startsWith("Not offered") || r.startsWith("Restricted") || r.startsWith("Incompatible") || r.startsWith("Cannot") || r.startsWith("Exceeds") || r.startsWith("Outside") || r.startsWith("Excluded")
                     ? "⛔"
                     : "⚠"
                 } ${esc(r)}</div>`
@@ -2248,30 +2894,25 @@ window.initUNEPlannerApp = function () {
       .map((g) => `${g.majorTitle} (${g.codes.join("/")})`);
 
     return `
-      <div class="pool-unit ${plannedLoc ? "planned" : ""} ${reqByMajors ? "major-req" : ""}"
-           draggable="${!plannedLoc && u.offered2027 !== false}"
+      <div class="pool-unit ${plannedLoc && !u.repeatable ? "planned" : ""} ${reqByMajors ? "major-req" : ""}"
+           draggable="${(!plannedLoc || u.repeatable) && u.offered2027 !== false}"
            data-drag-pool-code="${esc(code)}">
         <div class="pool-unit-top">
-          <button class="unit-code-link" data-inspect-unit="${esc(code)}">${esc(code)} · ${u.cp} CP</button>
+          <button class="unit-code-link" data-inspect-unit="${esc(code)}">${esc(code)} · ${esc(u.cp ?? 6)} CP</button>
           ${
-            plannedLoc
+            plannedLoc && !u.repeatable
               ? `<span class="badge-mini" style="background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-border);">✓ ${esc(plannedLoc)}</span>`
               : u.offered2027 === false
               ? `<span class="badge-mini badge-archived">Not offered 2027</span>`
-              : `<button class="btn btn-sm btn-soft" data-add-unit="${esc(code)}">+ Add</button>`
+              : `<button class="btn btn-sm btn-soft" data-add-unit="${esc(code)}">${plannedLoc && u.repeatable ? "+ Repeat" : "+ Add"}</button>`
           }
         </div>
         <div class="pool-unit-title">${esc(u.title)}</div>
         <div class="pool-unit-meta">
           <div class="tri-pills">
-            ${[1, 2, 3]
-              .map((t) =>
-                (u.trimesters || []).includes(t)
-                  ? `<span class="tri-pill active-tri">T${t}</span>`
-                  : `<span class="tri-pill" style="opacity:0.35;">T${t}</span>`
-              )
-              .join("")}
-            ${renderIntensiveBadgeMini(u, null)}
+            ${renderUnitTrimesterPills(u)}
+            ${renderIntensiveBadgeMini(u, null, plan?.preferredMode)}
+            ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
             ${reqByMajors ? `<span class="badge-mini badge-major-req">Req: ${esc(reqByMajors.join(", "))}</span>` : ""}
             ${!reqByMajors && choiceMajors.length ? `<span class="badge-mini badge-major-req">Choice: ${esc(choiceMajors[0])}</span>` : ""}
           </div>
@@ -2330,7 +2971,7 @@ window.initUNEPlannerApp = function () {
           </div>
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
             ${statusBadge}
-            <a href="${esc(course.url)}" target="_blank" rel="noopener" class="btn btn-sm no-print">Handbook ↗</a>
+            <a href="${esc(safeHttpUrl(course.url, "https://handbook.une.edu.au"))}" target="_blank" rel="noopener" class="btn btn-sm no-print">Handbook ↗</a>
           </div>
         </div>
 
@@ -2442,6 +3083,20 @@ window.initUNEPlannerApp = function () {
                     state.targetSlot.triNum === tNum &&
                     !state.targetSlot.replaceSlotId;
                   const mobHidden = state.mobileTriFilter !== "all" && state.mobileTriFilter !== String(tNum);
+                  const dateClashes = Array.isArray(tLoad.dateClashes) ? tLoad.dateClashes : [];
+                  const hasDateClash = Boolean(tLoad.hasDateClash || dateClashes.length > 0);
+                  const dateClashTip = dateClashes
+                    .map((dc) => dc.overlapText || `${dc.unitA} ↔ ${dc.unitB}`)
+                    .join(" | ");
+                  const maxTriLoad = tLoad.maxLoad || (plan.studyLoad === "Part-time" ? 12 : 24);
+                  const effCp = tLoad.effCp !== undefined ? tLoad.effCp : tLoad.cp;
+                  const isOverloaded = tLoad.isOverloaded !== undefined ? Boolean(tLoad.isOverloaded) : effCp > maxTriLoad;
+                  const loadTip =
+                    effCp !== tLoad.cp
+                      ? `${tLoad.cp} CP enrolled (${effCp} CP effective load${
+                          tLoad.carryOverCp ? `, incl. +${tLoad.carryOverCp} CP year-long carry-over` : ""
+                        }; max ${maxTriLoad} CP)`
+                      : `${tLoad.cp} CP (standard max ${maxTriLoad} CP)`;
 
                   return `
                     <div class="tri-col ${isTarget ? "target-active" : ""} ${mobHidden ? "mobile-hidden-tri" : ""}"
@@ -2458,12 +3113,19 @@ window.initUNEPlannerApp = function () {
                               : ""
                           }
                           ${
+                            hasDateClash
+                              ? `<span class="badge-mini badge-int-clash" title="Overlapping published Mandatory Intensive dates: ${esc(
+                                  dateClashTip || "Check intensive school dates"
+                                )}">⛔ Date Clash${dateClashes.length > 1 ? ` (${dateClashes.length})` : ""}</span>`
+                              : ""
+                          }
+                          ${
                             tLoad.campusConflict
-                              ? `<span class="badge-mini badge-campus-clash" title="Mandatory intensives in this trimester span different campuses (e.g. Armidale vs Sydney)">⚠ Mixed Campuses</span>`
+                              ? `<span class="badge-mini badge-campus-clash" title="Mandatory intensives in this trimester span different physical campuses/locations">⚠ Mixed Campuses</span>`
                               : ""
                           }
                         </div>
-                        <span class="tri-load-badge ${tLoad.cp > 24 ? "overload" : ""}">${tLoad.cp} CP</span>
+                        <span class="tri-load-badge ${isOverloaded ? "overload" : ""}" title="${esc(loadTip)}">${tLoad.cp} CP</span>
                       </div>
                       <div class="tri-slots">
                         ${slots
@@ -2507,6 +3169,12 @@ window.initUNEPlannerApp = function () {
         plan.includeT3InAuto = true;
         const updated = Engine.autoSchedulePlan(course, plan, DATA);
         state.savedPlansByCourse[course.code] = updated;
+        const openPh = findOpenPlaceholders(updated);
+        if (openPh.length > 0 && state.sidebarTab === "slot" && !isMobileViewport()) {
+          activateSlotPicker(openPh[0], false);
+        } else {
+          exitSlotPicker();
+        }
         saveState();
         renderAll({ resetSidebarScroll: false });
         showToast("Switched T3 to Spread Load (lighter 18 CP trimesters where possible)!");
@@ -2634,7 +3302,7 @@ window.initUNEPlannerApp = function () {
         }">
           <div class="slot-top">
             <span style="font-weight:700;font-size:12px;color:${isSelected ? "var(--info)" : "var(--text-muted)"};">
-              🎯 ${esc(slot.label)} (${slot.cp || 6} CP)
+              🎯 ${esc(slot.label)} (${esc(slot.cp ?? 6)} CP)
             </span>
             <button class="icon-action remove no-print" data-remove-slot="${yIdx}|${tNum}|${esc(slot.id)}" title="Remove slot">✕</button>
           </div>
@@ -2651,30 +3319,36 @@ window.initUNEPlannerApp = function () {
     const u = Engine.getUnit(slot.code, DATA, plan.customUnits);
     const bId = attributedBucketByCode[slot.code];
     const bucket = bucketMap[bId];
-    const cat = bucket?.category || "elective";
-    const diag = report.slotDiagnostics[slot.id] || { errors: [], warnings: [], infos: [] };
-    const statusCls = diag.errors.length ? "has-error" : diag.warnings.length ? "has-warning" : "";
+    const cat = safeCat(bucket?.category);
+    const diag = report.slotDiagnostics[slot.id] || { errors: [], warnings: [], infos: [], intensiveAlerts: [], intensiveClashes: [] };
+    const intClashes = diag.intensiveClashes || [];
+    const statusCls = diag.errors.length ? "has-error" : diag.warnings.length || intClashes.length ? "has-warning" : "";
+    const curFlatIdx = yIdx * 3 + (tNum - 1);
+    const minFlatIdx = Math.max(0, (plan.commencingTrimester || 1) - 1);
+    const disableMoveBack = curFlatIdx === 0 || curFlatIdx === minFlatIdx;
 
     return `
       <div class="slot-card cat-${cat} ${statusCls}" draggable="true" data-drag-board="${yIdx}|${tNum}|${esc(slot.id)}|${esc(slot.code)}">
         <div class="slot-top">
           <button class="unit-code-link" data-inspect-unit="${esc(slot.code)}">
-            ${esc(slot.code)} <span style="font-weight:500;color:var(--text-subtle);">· ${u ? u.cp : (slot.cp || 6)} CP</span>
+            ${esc(slot.code)} <span style="font-weight:500;color:var(--text-subtle);">· ${esc(u ? (u.cp ?? 6) : (slot.cp ?? 6))} CP</span>
           </button>
           <div class="slot-actions no-print">
-            <button class="icon-action" data-move-slot="${yIdx}|${tNum}|${esc(slot.id)}|-1" title="Move earlier">◀</button>
+            <button class="icon-action" data-move-slot="${yIdx}|${tNum}|${esc(slot.id)}|-1" title="${disableMoveBack ? "At earliest trimester" : "Move earlier"}" ${disableMoveBack ? "disabled" : ""}>◀</button>
             <button class="icon-action" data-move-slot="${yIdx}|${tNum}|${esc(slot.id)}|1" title="Move later">▶</button>
             <button class="icon-action remove" data-remove-slot="${yIdx}|${tNum}|${esc(slot.id)}" title="Remove unit">✕</button>
           </div>
         </div>
         <div class="slot-title">${esc(u ? u.title : slot.code)}</div>
         <div class="slot-footer">
-          <span class="cat-tag cat-${cat}">${esc(CAT_LABELS[cat] || "Unit")}</span>
-          <div class="tri-pills">${
-            u ? (u.trimesters || []).map((t) => `<span class="tri-pill ${t === tNum ? "active-tri" : ""}">T${t}</span>`).join("") : ""
-          }</div>
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+            <span class="cat-tag cat-${cat}">${esc(CAT_LABELS[cat] || "Unit")}</span>
+            ${u?.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
+          </div>
+          <div class="tri-pills">${u ? renderUnitTrimesterPills(u, tNum) : ""}</div>
         </div>
         ${diag.errors.map((m) => `<div class="slot-msg err">⛔ ${esc(m)}</div>`).join("")}
+        ${intClashes.map((m) => `<div class="slot-msg int-clash">⛔ ${esc(m)}</div>`).join("")}
         ${(diag.intensiveAlerts || []).map((m) => `<div class="slot-msg int-tba">🔴 ${esc(m)}</div>`).join("")}
         ${diag.warnings.map((m) => `<div class="slot-msg warn">⚠ ${esc(m)}</div>`).join("")}
         ${diag.infos.map((m) => `<div class="slot-msg info">ℹ ${esc(m)}</div>`).join("")}
@@ -2784,7 +3458,7 @@ window.initUNEPlannerApp = function () {
         modal.querySelector("#mtool-bug").onclick = () => { closeModal(); openBugReportModal(); };
         modal.querySelector("#mtool-theme").onclick = () => {
           document.documentElement.classList.toggle("dark");
-          localStorage.setItem(THEME_KEY, document.documentElement.classList.contains("dark") ? "dark" : "light");
+          safeLocalSet(THEME_KEY, document.documentElement.classList.contains("dark") ? "dark" : "light");
           closeModal();
           renderAll({ resetSidebarScroll: false });
         };
@@ -2859,7 +3533,8 @@ window.initUNEPlannerApp = function () {
         highlightOfferingColumns(null, plan, false);
         if (!drag) return;
         if (drag.source === "pool") {
-          if (isUnitPlanned(drag.code, plan)) {
+          const dragU = Engine.getUnit(drag.code, DATA, plan.customUnits);
+          if (isUnitPlanned(drag.code, plan) && !dragU?.repeatable) {
             showToast(`${drag.code} is already on your board.`);
             return;
           }
@@ -2902,6 +3577,159 @@ window.initUNEPlannerApp = function () {
     document.getElementById("modal-backdrop").classList.add("hidden");
   }
 
+  function renderUnitModalIntensiveBox(u, preferredMode) {
+    const intInfo = Engine.getUnitIntensiveForTri(u, null, preferredMode);
+    if (!intInfo) return "";
+
+    const rawEntries = Array.isArray(u.intensiveEntries) && u.intensiveEntries.length
+      ? u.intensiveEntries
+      : Array.isArray(intInfo.entries) && intInfo.entries.length
+      ? intInfo.entries
+      : null;
+
+    // Also synthesize per-trimester rows if mixed dated + TBA across trimesters and no rawEntries
+    let entries = rawEntries;
+    if ((!entries || entries.length <= 1) && u.intensiveByTri && Object.keys(u.intensiveByTri).length > 1) {
+      const triKeys = Object.keys(u.intensiveByTri).sort();
+      const hasDiff = triKeys.some((k) => {
+        const cur = u.intensiveByTri[k];
+        const first = u.intensiveByTri[triKeys[0]];
+        return Boolean(cur?.tba) !== Boolean(first?.tba) || (cur?.dates || []).join(",") !== (first?.dates || []).join(",") || (cur?.location || "") !== (first?.location || "");
+      });
+      if (hasDiff) {
+        entries = [];
+        for (const tk of triKeys) {
+          const ti = Engine.getUnitIntensiveForTri(u, Number(tk), preferredMode);
+          if (!ti) continue;
+          if (Array.isArray(ti.entries) && ti.entries.length) {
+            ti.entries.forEach((e) => entries.push({ ...e, tris: [Number(tk)] }));
+          } else {
+            entries.push({
+              title: `Trimester ${tk}`,
+              tris: [Number(tk)],
+              dates: ti.dates || [],
+              tba: Boolean(ti.tba),
+              location: ti.location || intInfo.location,
+              duration: ti.duration || intInfo.duration,
+              note: ti.note || intInfo.note,
+              onlineOnly: Boolean(ti.onlineOnlyIntensive),
+              kind: ti.kind || intInfo.kind,
+            });
+          }
+        }
+      }
+    }
+
+    const onlineOnlyNote =
+      intInfo.onlineOnlyIntensive || u.intensiveOnlineOnly
+        ? `<div style="font-size:11.5px;font-weight:600;color:var(--info);">ℹ Mandatory for Online students only (On-Campus students attend regular campus classes).</div>`
+        : "";
+    const choiceNote =
+      intInfo.isStudentChoice || u.intensiveIsStudentChoice
+        ? `<div style="font-size:11.5px;color:var(--text-muted);">✓ Students nominate their preferred campus (Armidale or Sydney).</div>`
+        : "";
+
+    if (entries && entries.length > 1) {
+      const anyTba = Boolean(intInfo.tba || intInfo.hasTba || intInfo.mixedTba || entries.some((e) => e.tba));
+      const allTba = entries.every((e) => e.tba);
+      const badgeCls = anyTba ? "badge-int-tba" : "badge-intensive";
+      const isMultiCohort = Boolean(intInfo.multiCohort || Object.values(u.intensiveByTri || {}).some((x) => x?.multiCohort));
+      const uniqueTriKeys = new Set(entries.flatMap((e) => (Array.isArray(e.tris) ? e.tris : [])));
+      const headerLabel = isMultiCohort
+        ? `${entries.length} Cohorts`
+        : uniqueTriKeys.size > 1
+        ? `${uniqueTriKeys.size} Trimesters`
+        : `${entries.length} Blocks`;
+      return `
+        <div style="border:1px solid ${anyTba ? "var(--err-border)" : "var(--warn-border)"};background:${anyTba ? "var(--err-bg)" : "var(--warn-bg)"};border-radius:8px;padding:9px 11px;margin-bottom:9px;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="badge-mini ${badgeCls}">${anyTba ? "🔴" : "🏫"} ${esc(intInfo.kind)} Intensive School${
+        intInfo.mixedTba && !allTba ? " · Mixed Dated & TBA" : ""
+      }</span>
+            <span class="badge-mini badge-int-cohort">${esc(headerLabel)}</span>
+            <span style="font-weight:700;font-size:12px;color:${anyTba ? "var(--err)" : "var(--warn)"};">${esc(intInfo.location)}${
+        intInfo.duration ? ` · ${esc(intInfo.duration)}` : ""
+      }</span>
+          </div>
+          ${onlineOnlyNote}
+          ${choiceNote}
+          <div class="int-entry-list">
+            ${entries
+              .map((e) => {
+                const triTag =
+                  Array.isArray(e.tris) && e.tris.length
+                    ? `<span class="tri-pill active-tri">${e.tris.map((t) => `T${t}`).join("/")}</span>`
+                    : "";
+                const entryDates = e.tba
+                  ? "🔴 Dates TBA — check UNE Handbook / myLearn"
+                  : (e.dates || []).join(" · ") || "Dates published in handbook";
+                const locDur = [e.location, e.duration].filter(Boolean).join(" · ");
+                return `
+                  <div class="int-entry-item ${e.tba ? "is-tba" : ""}">
+                    <div class="int-entry-hdr">
+                      ${triTag}
+                      <span>${esc(e.title || e.kind || "Intensive Session")}</span>
+                      ${locDur ? `<span style="font-weight:500;color:var(--text-subtle);">· ${esc(locDur)}</span>` : ""}
+                      ${e.onlineOnly ? `<span class="badge-mini badge-int-cohort">Online only</span>` : ""}
+                    </div>
+                    <div class="int-entry-dates">${esc(entryDates)}</div>
+                    ${e.note ? `<div class="int-entry-note">${esc(e.note)}</div>` : ""}
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    const isTba = Boolean(intInfo.tba || intInfo.mixedTba);
+    const badgeCls = isTba ? "badge-int-tba" : "badge-intensive";
+    const dateTxt = intInfo.tba
+      ? "Dates TBA — check dates"
+      : intInfo.mixedTba
+      ? `${(intInfo.dates || []).join(" / ")} (other trimester(s) TBA — check dates)`
+      : (intInfo.dates || []).join(" / ");
+    return `
+      <div style="border:1px solid ${isTba ? "var(--err-border)" : "var(--warn-border)"};background:${isTba ? "var(--err-bg)" : "var(--warn-bg)"};border-radius:8px;padding:9px 11px;margin-bottom:9px;display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span class="badge-mini ${badgeCls}">${isTba ? "🔴" : "🏫"} ${esc(intInfo.kind)} Intensive School</span>
+          <span style="font-weight:700;font-size:12px;color:${isTba ? "var(--err)" : "var(--warn)"};">${esc(intInfo.location)}${
+      intInfo.duration ? ` · ${esc(intInfo.duration)}` : ""
+    }</span>
+        </div>
+        ${onlineOnlyNote}
+        ${choiceNote}
+        <div style="font-size:12px;font-weight:700;color:${isTba ? "var(--err)" : "var(--text)"};">${esc(dateTxt)}</div>
+        ${intInfo.note ? `<div style="font-size:11.5px;color:var(--text-muted);line-height:1.35;">${esc(intInfo.note)}</div>` : ""}
+      </div>
+    `;
+  }
+
+  function renderPlanningNotesHtml(u) {
+    const notes = Array.isArray(u?.planningNotes) ? u.planningNotes : [];
+    if (!notes.length) return "";
+    return `
+      <div>
+        <div class="config-label" style="margin-bottom:6px;">Planning Notes &amp; Enrolment Conditions</div>
+        <div class="planning-notes-list">
+          ${notes
+            .map((n) => {
+              const obj = typeof n === "string" ? { severity: "info", label: n, detail: "" } : n || {};
+              const sev = obj.severity === "err" ? "err" : obj.severity === "warn" ? "warn" : "info";
+              const ico = sev === "err" ? "⛔" : sev === "warn" ? "⚠" : "ℹ";
+              const titleAttr = obj.detail ? ` title="${esc(obj.detail)}"` : "";
+              const labelTxt = obj.label || obj.detail || "";
+              return `<span class="planning-note-chip ${sev}"${titleAttr}>${ico} <strong>${esc(labelTxt)}</strong>${
+                obj.detail && obj.detail !== labelTxt ? ` — ${esc(obj.detail)}` : ""
+              }</span>`;
+            })
+            .join("")}
+        </div>
+      </div>
+    `;
+  }
+
   function openUnitModal(code) {
     const plan = getCurrentPlan();
     const u = Engine.getUnit(code, DATA, plan.customUnits);
@@ -2910,15 +3738,15 @@ window.initUNEPlannerApp = function () {
     const colors = ["#1d7880", "#2774ae", "#95c236", "#b45309", "#b91c4a", "#6d28d9"];
     const assessBar = (u.assessments || [])
       .filter((a) => a.weight > 0)
-      .map((a, i) => `<div style="width:${a.weight}%;background:${colors[i % colors.length]};" title="${esc(a.name)}: ${a.weight}%"></div>`)
+      .map((a, i) => `<div style="width:${Number(a.weight) || 0}%;background:${colors[i % colors.length]};" title="${esc(a.name)}: ${esc(a.weight)}%"></div>`)
       .join("");
 
     function linkifyCodes(txt) {
       if (!txt) return "<span style='color:var(--text-subtle);'>None</span>";
-      return esc(txt).replace(/\b([A-Z]{2,4}\d{3}[A-Z]?)\b/g, (m) =>
+      return esc(txt).replace(/\b(MEDI\d{4}[A-Z]?|PRAC[A-Z]{2,10}|LANTITE-[LN]|[A-Z]{2,4}\d{3}[A-Z]?)\b/g, (m) =>
         DATA.units[m]
-          ? `<button class="unit-code-link" style="color:var(--primary);" data-jump-unit="${m}">${m}</button>`
-          : `<strong>${m}</strong>`
+          ? `<button class="unit-code-link" style="color:var(--primary);" data-jump-unit="${esc(m)}">${esc(m)}</button>`
+          : `<strong>${esc(m)}</strong>`
       );
     }
 
@@ -2931,17 +3759,24 @@ window.initUNEPlannerApp = function () {
       )
       .join(" ");
 
+    const safeUnitUrl = safeHttpUrl(
+      u.url,
+      `https://handbook.une.edu.au/units/2027/${encodeURIComponent(u.code)}?year=2027`
+    );
+
     openModal(
       `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
          <span class="course-code-pill teal">${esc(u.code)}</span>
          <span style="font-weight:800;font-size:15.5px;">${esc(u.title)}</span>
+         ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
+         ${u.repeatable ? `<span class="badge-mini badge-int-cohort">Repeatable</span>` : ""}
        </div>
-       <div style="font-size:12px;color:var(--text-subtle);margin-top:3px;">${u.cp} Credit Points · ${u.level}-Level · ${esc(u.school || "UNE")}</div>`,
+       <div style="font-size:12px;color:var(--text-subtle);margin-top:3px;">${esc(u.cp ?? 6)} Credit Points · ${esc(u.level ?? 100)}-Level · ${esc(u.school || "UNE")}</div>`,
       `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface-alt);padding:10px 12px;border-radius:8px;border:1px solid var(--border);">
           <div>
             ${
-              plannedLoc
+              plannedLoc && !u.repeatable
                 ? `<span style="color:var(--ok);font-weight:700;">✓ Planned in ${esc(plannedLoc)}</span>`
                 : u.offered2027 === false
                 ? `<span style="color:var(--err);font-weight:700;">⛔ No 2027 Offering Published</span>`
@@ -2949,6 +3784,8 @@ window.initUNEPlannerApp = function () {
                     <button class="btn btn-sm btn-primary" id="btn-modal-smart-add">${
                       state.targetSlot
                         ? `Select for Y${plan.years[state.targetSlot.yearIdx]?.yearNum || 1} T${state.targetSlot.triNum} →`
+                        : plannedLoc && u.repeatable
+                        ? `+ Add Repeat (Already in ${esc(plannedLoc)})`
                         : "✨ Best Available Trimester"
                     }</button>
                     ${addButtons}
@@ -2957,9 +3794,10 @@ window.initUNEPlannerApp = function () {
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <button class="btn btn-sm" id="btn-unit-report-bug" type="button" title="Report a prerequisite, offering or intensive issue on this unit">🐞 Flag Issue</button>
-            <a href="${esc(u.url)}" target="_blank" rel="noopener" class="btn btn-sm">Official 2027 Unit Page ↗</a>
+            <a href="${esc(safeUnitUrl)}" target="_blank" rel="noopener" class="btn btn-sm">Official 2027 Unit Page ↗</a>
           </div>
         </div>
+        ${renderPlanningNotesHtml(u)}
         ${u.overview ? `<div><div class="config-label" style="margin-bottom:4px;">Unit Description</div><div style="white-space:pre-line;color:var(--text-muted);">${esc(u.overview)}</div></div>` : ""}
         <div class="info-grid">
           <div class="info-stat"><div class="info-stat-label">Pre-requisites</div><div style="font-size:12.5px;margin-top:4px;">${linkifyCodes(u.prereqText)}</div></div>
@@ -2974,26 +3812,7 @@ window.initUNEPlannerApp = function () {
               ? `<div class="slot-msg warn" style="margin-bottom:8px;">⚠ Trimester 3 is available to repeating students only (requires Head of School permission).</div>`
               : ""
           }
-          ${
-            (() => {
-              const intInfo = Engine.getUnitIntensiveForTri(u, null);
-              if (!intInfo) return "";
-              const badgeCls = intInfo.tba ? "badge-int-tba" : "badge-intensive";
-              const dateTxt = intInfo.tba
-                ? "Dates TBA — check dates"
-                : intInfo.dates.join(" / ");
-              return `
-                <div style="border:1px solid ${intInfo.tba ? "var(--err-border)" : "var(--warn-border)"};background:${intInfo.tba ? "var(--err-bg)" : "var(--warn-bg)"};border-radius:8px;padding:9px 11px;margin-bottom:9px;display:flex;flex-direction:column;gap:4px;">
-                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                    <span class="badge-mini ${badgeCls}">${intInfo.tba ? "🔴" : "🏫"} ${esc(intInfo.kind)} Intensive School</span>
-                    <span style="font-weight:700;font-size:12px;color:${intInfo.tba ? "var(--err)" : "var(--warn)"};">${esc(intInfo.location)}${intInfo.duration ? ` · ${esc(intInfo.duration)}` : ""}</span>
-                  </div>
-                  <div style="font-size:12px;font-weight:700;color:${intInfo.tba ? "var(--err)" : "var(--text)"};">${esc(dateTxt)}</div>
-                  ${intInfo.note ? `<div style="font-size:11.5px;color:var(--text-muted);line-height:1.35;">${esc(intInfo.note)}</div>` : ""}
-                </div>
-              `;
-            })()
-          }
+          ${renderUnitModalIntensiveBox(u, plan?.preferredMode)}
           ${
             (u.offerings || []).length
               ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:8px;">
@@ -3001,7 +3820,7 @@ window.initUNEPlannerApp = function () {
                     .map(
                       (o) => `<div style="border:1px solid var(--border);border-radius:6px;padding:7px 10px;background:var(--surface-alt);">
                         <div style="font-weight:700;font-size:12.5px;">${esc(o.period)}</div>
-                        <div style="font-size:11.5px;color:var(--text-muted);">${esc(o.modes.join(", ") || "Standard")} · ${esc(o.location || "UNE")}</div>
+                        <div style="font-size:11.5px;color:var(--text-muted);">${esc((o.modes || []).join(", ") || "Standard")} · ${esc(o.location || "UNE")}</div>
                       </div>`
                     )
                     .join("")}
@@ -3117,18 +3936,28 @@ window.initUNEPlannerApp = function () {
     const c = typeof courseCode === "string" ? getCourse(courseCode) : getCurrentCourse();
     const isOtherOrFinder = state.view === "finder" || c.code !== state.currentCourseCode;
     const majorList = (c.majorTitles || []).filter((t) => !/listed unit/i.test(t));
+    const validAtar = formatValidAtar(c.atar);
+    const notOfferedLabel = getCourseNotOfferedLabel(c);
+    const safeCourseUrl = safeHttpUrl(c.url, "https://handbook.une.edu.au");
+
     openModal(
       `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
          <span class="course-code-pill teal">${esc(c.code)}</span>
          <span style="font-weight:800;font-size:15.5px;">${esc(c.title)} (2027)</span>
+         ${notOfferedLabel ? `<span class="meta-chip not-offered" title="${esc(c.intakes || notOfferedLabel)}">⚠ ${esc(notOfferedLabel)}</span>` : ""}
        </div>`,
       `
+        ${
+          notOfferedLabel
+            ? `<div class="slot-msg warn" style="font-size:12px;">⚠ <strong>2027 Offering Status:</strong> ${esc(c.intakes || notOfferedLabel)}</div>`
+            : ""
+        }
         <div class="info-grid">
-          <div class="info-stat"><div class="info-stat-label">Award Credit Points</div><div class="info-stat-val">${c.totalCp} CP</div></div>
+          <div class="info-stat"><div class="info-stat-label">Award Credit Points</div><div class="info-stat-val">${esc(c.totalCp)} CP</div></div>
           <div class="info-stat"><div class="info-stat-label">School</div><div class="info-stat-val">${esc(c.school)}</div></div>
           <div class="info-stat"><div class="info-stat-label">Study / AQF Level</div><div class="info-stat-val">${esc(c.aqfLevel || c.studyLevel)}</div></div>
-          <div class="info-stat"><div class="info-stat-label">Delivery</div><div class="info-stat-val">${esc(c.modes.join(", ") || "Standard")}</div></div>
-          ${c.atar ? `<div class="info-stat"><div class="info-stat-label">Selection Rank (ATAR)</div><div class="info-stat-val">${esc(c.atar)}</div></div>` : ""}
+          <div class="info-stat"><div class="info-stat-label">Delivery</div><div class="info-stat-val">${esc((c.modes || []).join(", ") || "Standard")}</div></div>
+          ${validAtar ? `<div class="info-stat"><div class="info-stat-label">Selection Rank (ATAR)</div><div class="info-stat-val">${esc(validAtar)}</div></div>` : ""}
           ${c.cricos ? `<div class="info-stat"><div class="info-stat-label">CRICOS Code</div><div class="info-stat-val">${esc(c.cricos)}</div></div>` : ""}
         </div>
         ${
@@ -3157,7 +3986,7 @@ window.initUNEPlannerApp = function () {
             : ""
         }
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-          <a href="${esc(c.url)}" target="_blank" rel="noopener" class="btn">Official 2027 UNE Handbook Page ↗</a>
+          <a href="${esc(safeCourseUrl)}" target="_blank" rel="noopener" class="btn">Official 2027 UNE Handbook Page ↗</a>
           ${isOtherOrFinder ? `<button class="btn btn-primary" id="btn-modal-launch-course">Plan ${esc(c.code)} Now →</button>` : ""}
         </div>
       `,
@@ -3181,15 +4010,17 @@ window.initUNEPlannerApp = function () {
         <div class="form-grid-2">
           <div>
             <label class="config-label">Unit Code</label>
-            <input type="text" class="text-input" id="cust-code" placeholder="e.g. FREN101" style="width:100%;margin-top:4px;text-transform:uppercase;" />
+            <input type="text" class="text-input" id="cust-code" placeholder="e.g. XELEC101" style="width:100%;margin-top:4px;text-transform:uppercase;" />
           </div>
           <div>
             <label class="config-label">Unit Title</label>
-            <input type="text" class="text-input" id="cust-title" placeholder="e.g. Introductory French 1" style="width:100%;margin-top:4px;" />
+            <input type="text" class="text-input" id="cust-title" placeholder="e.g. Cross-Institutional Elective" style="width:100%;margin-top:4px;" />
           </div>
           <div>
             <label class="config-label">Credit Points</label>
             <select class="select-input" id="cust-cp" style="width:100%;margin-top:4px;">
+              <option value="0">0 CP</option>
+              <option value="2">2 CP</option>
               <option value="6" selected>6 CP</option>
               <option value="12">12 CP</option>
               <option value="24">24 CP</option>
@@ -3198,11 +4029,13 @@ window.initUNEPlannerApp = function () {
           <div>
             <label class="config-label">Unit Level</label>
             <select class="select-input" id="cust-lvl" style="width:100%;margin-top:4px;">
-              <option value="100">100-level</option>
+              <option value="0">0-level (Pathway)</option>
+              <option value="100" selected>100-level</option>
               <option value="200">200-level</option>
               <option value="300">300-level</option>
               <option value="400">400-level</option>
               <option value="500">500-level</option>
+              <option value="600">600-level</option>
             </select>
           </div>
         </div>
@@ -3214,9 +4047,19 @@ window.initUNEPlannerApp = function () {
         modal.querySelector("#btn-save-custom").onclick = () => {
           const code = (modal.querySelector("#cust-code").value || "").trim().toUpperCase().replace(/\s+/g, "");
           const title = (modal.querySelector("#cust-title").value || "").trim() || "General Elective Unit";
-          const cp = parseInt(modal.querySelector("#cust-cp").value, 10) || 6;
-          const level = parseInt(modal.querySelector("#cust-lvl").value, 10) || 100;
+          const parsedCp = parseInt(modal.querySelector("#cust-cp").value, 10);
+          const cp = Number.isFinite(parsedCp) && parsedCp >= 0 ? parsedCp : 6;
+          const parsedLvl = parseInt(modal.querySelector("#cust-lvl").value, 10);
+          const level = Number.isFinite(parsedLvl) && parsedLvl >= 0 ? parsedLvl : 100;
           if (!code) { showToast("Please enter a unit code."); return; }
+          if (code.includes("|") || !/^[A-Z0-9][A-Z0-9_-]{1,19}$/.test(code)) {
+            showToast("Unit code must be 2–20 letters/numbers (no '|' or special characters).");
+            return;
+          }
+          if (DATA.units[code]) {
+            showToast(`${code} is an official UNE unit — select it from the All Units tab instead.`);
+            return;
+          }
           plan.customUnits = plan.customUnits || {};
           plan.customUnits[code] = {
             code, title, cp, level,
@@ -3228,7 +4071,7 @@ window.initUNEPlannerApp = function () {
             offerings: [],
             prereqText: "", coreqText: "", restrictionText: "",
             assessments: [], outcomes: [],
-            url: `https://handbook.une.edu.au/units/2027/${code}?year=2027`,
+            url: `https://handbook.une.edu.au/units/2027/${encodeURIComponent(code)}?year=2027`,
           };
           closeModal();
           addUnitToPlan(code);
@@ -3266,14 +4109,30 @@ window.initUNEPlannerApp = function () {
                   const u = Engine.getUnit(s.code, DATA, plan.customUnits);
                   const bId = report.resolved.attributedBucketByCode[s.code];
                   const b = report.resolved.buckets.find((x) => x.id === bId);
-                  rows.push([course.code, yr.name, `Trimester ${t}`, s.code, u?.title || s.code, u?.cp || 6, b?.title || "Elective"]);
+                  rows.push([
+                    course.code,
+                    yr.name,
+                    `Trimester ${t}`,
+                    s.code,
+                    u?.title || s.code,
+                    u ? (u.cp ?? 6) : (s.cp ?? 6),
+                    b?.title || "Elective",
+                  ]);
                 } else {
-                  rows.push([course.code, yr.name, `Trimester ${t}`, "PLACEHOLDER", s.label, s.cp || 6, "Placeholder"]);
+                  rows.push([
+                    course.code,
+                    yr.name,
+                    `Trimester ${t}`,
+                    "PLACEHOLDER",
+                    s.label || "Placeholder",
+                    s.cp ?? 6,
+                    "Placeholder",
+                  ]);
                 }
               }
             }
           });
-          const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+          const csv = rows.map((r) => r.map((v) => `"${csvSafeCell(v).replace(/"/g, '""')}"`).join(",")).join("\n");
           downloadBlob(`${course.code}_2027_StudyPlan.csv`, csv, "text/csv;charset=utf-8;");
           closeModal();
         };
@@ -3283,22 +4142,31 @@ window.initUNEPlannerApp = function () {
         };
         modal.querySelector("#inp-import-json").onchange = (e) => {
           const file = e.target.files?.[0];
+          e.target.value = "";
           if (!file) return;
           const reader = new FileReader();
           reader.onload = () => {
             try {
               const imported = JSON.parse(reader.result);
-              if (imported.courseCode && DATA.courses.some((c) => c.code === imported.courseCode)) {
-                state.currentCourseCode = imported.courseCode;
-                state.savedPlansByCourse[imported.courseCode] = imported;
-                state.view = "planner";
-                exitSlotPicker();
-                saveState();
-                closeModal();
-                renderAll({ resetSidebarScroll: true });
-                showToast(`Imported plan for ${imported.courseCode}!`);
-              } else showToast("Invalid plan JSON file.");
-            } catch (_) { showToast("Could not parse JSON file."); }
+              const sanitized = validateAndSanitizePlan(imported);
+              if (!sanitized) {
+                showToast("Invalid plan JSON file — missing valid course or trimester structure.");
+                return;
+              }
+              const targetCourse = getCourse(sanitized.courseCode);
+              // Dry-run validation BEFORE mutating state or persisting to localStorage
+              Engine.validatePlan(targetCourse, sanitized, DATA);
+              state.currentCourseCode = sanitized.courseCode;
+              state.savedPlansByCourse[sanitized.courseCode] = sanitized;
+              state.view = "planner";
+              exitSlotPicker();
+              closeModal();
+              renderAll({ resetSidebarScroll: true });
+              saveState();
+              showToast(`Imported plan for ${sanitized.courseCode}!`);
+            } catch (_) {
+              showToast("Could not import JSON file — invalid or corrupted study plan.");
+            }
           };
           reader.readAsText(file);
         };
@@ -3315,17 +4183,51 @@ window.initUNEPlannerApp = function () {
   }
 
   function capturePlannerContext() {
+    const vp = `${window.innerWidth}x${window.innerHeight} (${isMobileViewport() ? "Mobile" : isTabletViewport() ? "Tablet" : "Desktop"})`;
+    const baseUrl = window.location.href.split("?")[0].split("#")[0];
+
+    if (state.view === "finder") {
+      const topicObj = state.finderActiveTopic >= 0 ? FINDER_TOPICS[state.finderActiveTopic] : null;
+      const finderFilters = [
+        "View: Course Finder",
+        state.finderQuery ? `Query: "${state.finderQuery}"` : "",
+        topicObj ? `Topic: ${topicObj.label}` : "",
+        state.finderLevel !== "ALL" ? `Level: ${state.finderLevel}` : "",
+        state.finderSchool !== "ALL" ? `School: ${state.finderSchool}` : "",
+        state.finderFaculty !== "ALL" ? `Faculty: ${state.finderFaculty}` : "",
+        state.finderMode !== "ALL" ? `Mode: ${state.finderMode}` : "",
+        state.finderIntake !== "ALL" ? `Intake: T${state.finderIntake}` : "",
+        state.finderAtar !== "ALL" ? `Max ATAR: ${state.finderAtar}` : "",
+        state.finderSort !== "relevance" ? `Sort: ${state.finderSort}` : "",
+      ].filter(Boolean);
+
+      const activeSchool =
+        state.finderSchool !== "ALL"
+          ? state.finderSchool
+          : state.finderFaculty !== "ALL"
+          ? state.finderFaculty
+          : "All UNE Schools";
+
+      return {
+        view: "finder",
+        courseCode: "FINDER",
+        courseTitle: "Course Finder",
+        school: activeSchool,
+        configSummary: finderFilters.join(" | "),
+        boardSnapshot: "(Course Finder view — no degree board active)",
+        diagnosticsSummary: "N/A (Course Finder)",
+        viewport: vp,
+        directUrl: `${baseUrl}?browse=1`,
+      };
+    }
+
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
-    const report = state.view === "planner" ? Engine.validatePlan(course, plan, DATA) : null;
-    const majors = (plan.selectedMajors || []).map((mc) => DATA.aos[mc]?.title || mc);
-    const dynSel = Object.values(plan.dynamicAosSelections || {}).filter(Boolean).map((ac) => DATA.aos[ac]?.title || ac);
-    const minor = plan.selectedMinor ? (DATA.aos[plan.selectedMinor]?.title || plan.selectedMinor) : "";
+    const report = Engine.validatePlan(course, plan, DATA);
+    const activeAos = getActiveAosLabels(course, plan);
     const configParts = [
       plan.admissionRule || "",
-      ...majors,
-      ...dynSel,
-      minor ? `Minor: ${minor}` : "",
+      ...activeAos,
       `Start T${plan.commencingTrimester || 1}`,
       plan.studyLoad || "Full-time",
       plan.preferredMode || "Online",
@@ -3337,23 +4239,23 @@ window.initUNEPlannerApp = function () {
       for (const t of [1, 2, 3]) {
         const sl = yr.trimesters[t] || [];
         if (sl.length) {
-          boardRows.push(`Y${yr.yearNum}T${t}: ${sl.map((x) => (x.type === "unit" ? x.code : `[${x.label}]`)).join(",")}`);
+          boardRows.push(`Y${yr.yearNum}T${t}: ${sl.map((x) => (x.type === "unit" ? x.code : `[${x.label || "Placeholder"}]`)).join(",")}`);
         }
       }
     }
     const diagList = report
       ? [
           ...report.globalIssues.map((g) => g.text),
-          ...Object.values(report.slotDiagnostics || {}).flatMap((d) => [...(d.errors || []), ...(d.warnings || [])]),
+          ...Object.values(report.slotDiagnostics || {}).flatMap((d) => [
+            ...(d.errors || []),
+            ...(d.intensiveClashes || []),
+            ...(d.warnings || []),
+          ]),
         ].slice(0, 6)
       : [];
 
-    const vp = `${window.innerWidth}x${window.innerHeight} (${isMobileViewport() ? "Mobile" : isTabletViewport() ? "Tablet" : "Desktop"})`;
-    const baseUrl = window.location.href.split("?")[0].split("#")[0];
-    const directUrl = `${baseUrl}?course=${encodeURIComponent(course.code)}`;
-
     return {
-      view: state.view,
+      view: "planner",
       courseCode: course.code,
       courseTitle: course.title,
       school: course.school,
@@ -3361,7 +4263,7 @@ window.initUNEPlannerApp = function () {
       boardSnapshot: boardRows.join(" ; ") || "(empty board)",
       diagnosticsSummary: diagList.join(" ; ") || "None",
       viewport: vp,
-      directUrl,
+      directUrl: `${baseUrl}?course=${encodeURIComponent(course.code)}`,
     };
   }
 
@@ -3379,31 +4281,95 @@ window.initUNEPlannerApp = function () {
   function fallbackCopyText(text, okMsg) {
     const ta = document.createElement("textarea");
     ta.value = text;
+    ta.setAttribute("readonly", "");
     ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.top = "0";
     ta.style.opacity = "0";
     document.body.appendChild(ta);
+    ta.focus();
     ta.select();
     try {
-      document.execCommand("copy");
-      showToast(okMsg);
+      ta.setSelectionRange(0, text.length);
+    } catch (_) {}
+    let copied = false;
+    try {
+      copied = document.execCommand("copy") === true;
     } catch (_) {
-      showToast("Copy blocked — use Download CSV instead.");
+      copied = false;
     }
     ta.remove();
+    if (copied) {
+      showToast(okMsg);
+    } else {
+      showToast("Copy blocked by browser — use Download CSV instead.");
+    }
   }
 
-  function openBugReportModal(prefillUnitCode) {
+  function openBugReportModal(prefillUnitCode, preservedDraft) {
     const ctx = capturePlannerContext();
-    const savedReviewer = localStorage.getItem(FEEDBACK_REVIEWER_KEY) || "";
+    const savedReviewer = preservedDraft?.reviewer !== undefined ? preservedDraft.reviewer : (safeLocalGet(FEEDBACK_REVIEWER_KEY) || "");
+    const savedCat = preservedDraft?.category || (ctx.view === "finder" ? "Mobile / Tablet / Search glitch" : "Prerequisite / Co-requisite error");
+    const unitInit =
+      preservedDraft?.units !== undefined
+        ? preservedDraft.units
+        : typeof prefillUnitCode === "string"
+        ? prefillUnitCode
+        : "";
+    const descInit = preservedDraft?.description || "";
     const log = loadFeedbackLog();
-    const unitInit = typeof prefillUnitCode === "string" ? prefillUnitCode : "";
+
+    // Canonical 12-column schema matching dist/UNE_2027_Planner_Bug_Tracker_Template.csv
+    const TRACKER_HEADERS = [
+      "Timestamp",
+      "Reviewer",
+      "Course",
+      "School",
+      "Category",
+      "Units",
+      "Issue / Expected Behaviour",
+      "Active Config",
+      "Board Snapshot",
+      "Viewport",
+      "Status",
+      "Resolution Notes",
+    ];
+
+    function itemToTrackerRow(x) {
+      const courseCol =
+        x.view === "finder" || x.courseCode === "FINDER"
+          ? "Course Finder"
+          : `${x.courseCode || ""} - ${x.courseTitle || ""}`.replace(/\s*-\s*$/, "");
+      const boardCol =
+        x.diagnosticsSummary && x.diagnosticsSummary !== "None" && x.diagnosticsSummary !== "N/A (Course Finder)"
+          ? `${x.boardSnapshot || "(empty board)"} | Diag: ${x.diagnosticsSummary}`
+          : x.boardSnapshot || "(empty board)";
+      return [
+        x.timestamp || "",
+        x.reviewer || "Staff Tester",
+        courseCol,
+        x.school || "",
+        x.category || "",
+        x.units || "",
+        x.description || "",
+        x.configSummary || "",
+        boardCol,
+        x.viewport || "",
+        x.status || "New",
+        x.resolutionNotes || "",
+      ];
+    }
 
     function buildSingleText(item) {
+      const courseLine =
+        item.view === "finder" || item.courseCode === "FINDER"
+          ? `Course Finder (${item.school})`
+          : `${item.courseCode} — ${item.courseTitle} (${item.school})`;
       return [
         `UNE 2027 Course Planner — Tester Bug / Feedback Report`,
         `Date: ${item.timestamp}`,
         `Reviewer: ${item.reviewer || "Anonymous Staff"}`,
-        `Course: ${item.courseCode} — ${item.courseTitle} (${item.school})`,
+        `Context: ${courseLine}`,
         `Category: ${item.category}`,
         `Unit(s): ${item.units || "N/A"}`,
         `Issue / Feedback: ${item.description}`,
@@ -3415,19 +4381,28 @@ window.initUNEPlannerApp = function () {
       ].join("\n");
     }
 
+    // Paste-ready data rows ONLY (12 columns matching UNE_2027_Planner_Bug_Tracker_Template.csv — no duplicate header row!)
     function buildTsv(items) {
-      const headers = ["Timestamp", "Reviewer", "Course", "School", "Category", "Units", "Issue / Expected Behaviour", "Active Config", "Board Snapshot", "Viewport"];
-      const clean = (v) => String(v || "").replace(/[\t\r\n]+/g, " ").trim();
-      const rows = [headers, ...items.map((x) => [x.timestamp, x.reviewer, `${x.courseCode} - ${x.courseTitle}`, x.school, x.category, x.units, x.description, x.configSummary, x.boardSnapshot, x.viewport])];
-      return rows.map((r) => r.map(clean).join("\t")).join("\n");
+      const clean = (v) => csvSafeCell(String(v || "").replace(/[\t\r\n]+/g, " ").trim());
+      return items.map((x) => itemToTrackerRow(x).map(clean).join("\t")).join("\n");
     }
 
+    // Full 12-column CSV matching dist/UNE_2027_Planner_Bug_Tracker_Template.csv exactly
     function buildCsv(items) {
-      const headers = ["Timestamp", "Reviewer", "Course", "Title", "School", "Category", "Units", "Issue / Expected Behaviour", "Active Config", "Board Snapshot", "Diagnostics", "Viewport", "Direct Link"];
-      const q = (v) => `"${String(v || "").replace(/"/g, '""')}"`;
-      const rows = [headers, ...items.map((x) => [x.timestamp, x.reviewer, x.courseCode, x.courseTitle, x.school, x.category, x.units, x.description, x.configSummary, x.boardSnapshot, x.diagnosticsSummary, x.viewport, x.directUrl])];
+      const q = (v) => `"${csvSafeCell(v).replace(/"/g, '""')}"`;
+      const rows = [TRACKER_HEADERS, ...items.map(itemToTrackerRow)];
       return rows.map((r) => r.map(q).join(",")).join("\n");
     }
+
+    const categories = [
+      "Prerequisite / Co-requisite error",
+      "Intensive School dates or campus",
+      "Auto-Plan sequence / T3 issue",
+      "Trimester offering / missing unit",
+      "Course / Major / Minor rule",
+      "Mobile / Tablet / Search glitch",
+      "General suggestion",
+    ];
 
     const logHtml =
       log.length > 0
@@ -3436,7 +4411,7 @@ window.initUNEPlannerApp = function () {
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
               <span class="config-label">Your Testing Session Log (${log.length} item${log.length === 1 ? "" : "s"})</span>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <button class="btn btn-sm btn-primary" id="btn-bug-copy-tsv" type="button" title="Paste directly into a shared SharePoint Excel / Google Sheet / Teams table">📊 Copy All as Spreadsheet Rows</button>
+                <button class="btn btn-sm btn-primary" id="btn-bug-copy-tsv" type="button" title="Copies 12-column data rows (no duplicate header) matching the Tracker Template — paste into Row 2+">📊 Copy Rows (12-Col Template)</button>
                 <button class="btn btn-sm btn-soft" id="btn-bug-dl-csv" type="button">⬇ Download CSV</button>
                 <button class="btn btn-sm" id="btn-bug-clear-log" type="button" style="color:var(--err);">Clear Log</button>
               </div>
@@ -3460,9 +4435,11 @@ window.initUNEPlannerApp = function () {
         `
         : "";
 
+    const safeFormUrl = safeHttpUrl(FEEDBACK_CONFIG.formUrl);
+
     openModal(
       `<div style="font-weight:800;font-size:15.5px;">🐞 Report a Bug or Rule Issue (DC / CC Testing)</div>
-       <div style="font-size:12px;color:var(--text-subtle);">Log multiple issues as you test — auto-captures course, rules, and schedule so you don't need to send separate emails.</div>`,
+       <div style="font-size:12px;color:var(--text-subtle);">Log multiple issues as you test — auto-captures course, filters, rules, and schedule in the exact 12-column Bug Tracker schema.</div>`,
       `
         <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:11.5px;color:var(--text-muted);">
           <div><strong>Auto-captured context:</strong> <span class="course-code-pill teal" style="font-size:10.5px;padding:1px 6px;">${esc(ctx.courseCode)}</span> ${esc(ctx.courseTitle)} · ${esc(ctx.viewport)}</div>
@@ -3477,13 +4454,7 @@ window.initUNEPlannerApp = function () {
           <div>
             <label class="config-label">Issue Category</label>
             <select class="select-input" id="bug-category" style="width:100%;margin-top:4px;">
-              <option value="Prerequisite / Co-requisite error">Prerequisite / Co-requisite error</option>
-              <option value="Intensive School dates or campus">Intensive School dates or campus</option>
-              <option value="Auto-Plan sequence / T3 issue">Auto-Plan sequence / T3 issue</option>
-              <option value="Trimester offering / missing unit">Trimester offering / missing unit</option>
-              <option value="Course / Major / Minor rule">Course / Major / Minor rule</option>
-              <option value="Mobile / Tablet / Search glitch">Mobile / Tablet / Search glitch</option>
-              <option value="General suggestion">General suggestion</option>
+              ${categories.map((catOpt) => `<option value="${esc(catOpt)}" ${savedCat === catOpt ? "selected" : ""}>${esc(catOpt)}</option>`).join("")}
             </select>
           </div>
         </div>
@@ -3495,7 +4466,7 @@ window.initUNEPlannerApp = function () {
 
         <div>
           <label class="config-label">What happened &amp; what should happen instead?</label>
-          <textarea class="feedback-textarea" id="bug-desc" placeholder="Describe the issue clearly (e.g. 'EXSC390 was scheduled before EXSC381-384' or 'T2 intensive is in Sydney, not Armidale')…" style="margin-top:4px;"></textarea>
+          <textarea class="feedback-textarea" id="bug-desc" placeholder="Describe the issue clearly (e.g. 'EXSC390 was scheduled before EXSC381-384' or 'T2 intensive is in Sydney, not Armidale')…" style="margin-top:4px;">${esc(descInit)}</textarea>
         </div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
@@ -3504,22 +4475,32 @@ window.initUNEPlannerApp = function () {
             <button class="btn btn-soft" id="btn-bug-copy-one" type="button">📋 Copy Single Report</button>
           </div>
           ${
-            FEEDBACK_CONFIG.formUrl
-              ? `<a href="${esc(FEEDBACK_CONFIG.formUrl)}" target="_blank" rel="noopener" class="btn">Open ${esc(FEEDBACK_CONFIG.sharedDocLabel)} ↗</a>`
-              : `<span style="font-size:11px;color:var(--text-subtle);">Tip: Log all items, then click <strong>Copy All as Spreadsheet Rows</strong> to paste into the shared feedback doc.</span>`
+            safeFormUrl
+              ? `<a href="${esc(safeFormUrl)}" target="_blank" rel="noopener" class="btn">Open ${esc(FEEDBACK_CONFIG.sharedDocLabel)} ↗</a>`
+              : `<span style="font-size:11px;color:var(--text-subtle);">Tip: Log all items, then click <strong>Copy Rows</strong> to paste directly into Row 2+ of the shared tracker (or <strong>Download CSV</strong>).</span>`
           }
         </div>
 
         ${logHtml}
       `,
       (modal) => {
+        function readCurrentDraft() {
+          return {
+            reviewer: modal.querySelector("#bug-reviewer").value || "",
+            category: modal.querySelector("#bug-category").value,
+            units: modal.querySelector("#bug-units").value || "",
+            description: modal.querySelector("#bug-desc").value || "",
+          };
+        }
+
         function buildDraftItem() {
-          const reviewer = (modal.querySelector("#bug-reviewer").value || "").trim();
-          const category = modal.querySelector("#bug-category").value;
-          const units = (modal.querySelector("#bug-units").value || "").trim().toUpperCase();
-          const description = (modal.querySelector("#bug-desc").value || "").trim();
+          const d = readCurrentDraft();
+          const reviewer = d.reviewer.trim();
+          const category = d.category;
+          const units = d.units.trim().toUpperCase();
+          const description = d.description.trim();
           if (reviewer) {
-            try { localStorage.setItem(FEEDBACK_REVIEWER_KEY, reviewer); } catch (_) {}
+            safeLocalSet(FEEDBACK_REVIEWER_KEY, reviewer);
           }
           if (!description) {
             showToast("Please describe what happened first.");
@@ -3531,6 +4512,8 @@ window.initUNEPlannerApp = function () {
             category,
             units,
             description,
+            status: "New",
+            resolutionNotes: "",
             ...ctx,
           };
         }
@@ -3554,7 +4537,11 @@ window.initUNEPlannerApp = function () {
         const tsvBtn = modal.querySelector("#btn-bug-copy-tsv");
         if (tsvBtn) {
           tsvBtn.onclick = () => {
-            copyTextToClipboard(buildTsv(loadFeedbackLog()), "Copied all logged issues as spreadsheet rows — press Ctrl+V in Excel / SharePoint!");
+            const items = loadFeedbackLog();
+            copyTextToClipboard(
+              buildTsv(items),
+              `Copied ${items.length} row(s) (12-col template, no header) — paste into Row 2+ in Excel / SharePoint!`
+            );
           };
         }
 
@@ -3564,28 +4551,30 @@ window.initUNEPlannerApp = function () {
             const items = loadFeedbackLog();
             const who = (items[0]?.reviewer || "Staff").replace(/[^a-z0-9]+/gi, "_").slice(0, 24);
             downloadBlob(`UNE_2027_Planner_Feedback_${who}.csv`, buildCsv(items), "text/csv;charset=utf-8;");
-            showToast(`Downloaded ${items.length} feedback item(s) as CSV!`);
+            showToast(`Downloaded ${items.length} feedback item(s) as 12-column CSV!`);
           };
         }
 
         const clrBtn = modal.querySelector("#btn-bug-clear-log");
         if (clrBtn) {
           clrBtn.onclick = () => {
+            const draft = readCurrentDraft();
             saveFeedbackLog([]);
             renderHeader(getCurrentCourse(), getCurrentPlan());
             showToast("Cleared session feedback log.");
-            openBugReportModal("");
+            openBugReportModal("", draft);
           };
         }
 
         modal.querySelectorAll("[data-del-bug]").forEach((btn) => {
           btn.onclick = () => {
+            const draft = readCurrentDraft();
             const idx = parseInt(btn.dataset.delBug, 10);
             const list = loadFeedbackLog();
             list.splice(idx, 1);
             saveFeedbackLog(list);
             renderHeader(getCurrentCourse(), getCurrentPlan());
-            openBugReportModal("");
+            openBugReportModal("", draft);
           };
         });
       }
@@ -3617,7 +4606,7 @@ window.initUNEPlannerApp = function () {
     renderMobileBottomNav(course, plan);
 
     if (state.view === "finder") {
-      document.title = `Find a Course (233 Degrees) | UNE 2027 Interactive Course Planner`;
+      document.title = `Find a Course (${DATA.meta.counts.courses} Degrees) | UNE 2027 Interactive Course Planner`;
       finderEl.classList.remove("hidden");
       plannerEl.classList.add("hidden");
       renderCourseFinder();
@@ -3643,20 +4632,20 @@ window.initUNEPlannerApp = function () {
     };
   }
 
-  // Trial banner bug button & dismiss
+  // Trial banner bug button & dismiss (safe sessionStorage access for sandboxed myLearn / Moodle iframes)
   const bannerBugBtn = document.getElementById("btn-banner-bug");
   if (bannerBugBtn) {
     bannerBugBtn.onclick = () => openBugReportModal();
   }
   const dismissTrialBtn = document.getElementById("btn-dismiss-trial");
   const trialBannerEl = document.getElementById("trial-banner");
-  if (trialBannerEl && sessionStorage.getItem("une_trial_banner_dismissed") === "1") {
+  if (trialBannerEl && safeSessionGet("une_trial_banner_dismissed") === "1") {
     trialBannerEl.style.display = "none";
   }
   if (dismissTrialBtn && trialBannerEl) {
     dismissTrialBtn.onclick = () => {
       trialBannerEl.style.display = "none";
-      try { sessionStorage.setItem("une_trial_banner_dismissed", "1"); } catch (_) {}
+      safeSessionSet("une_trial_banner_dismissed", "1");
     };
   }
 

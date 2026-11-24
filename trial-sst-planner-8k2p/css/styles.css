@@ -925,6 +925,18 @@ html.dark .finder-card.pg-card {
   color: var(--ok);
 }
 
+.meta-chip.not-offered {
+  background: var(--err-bg);
+  border-color: var(--err-border);
+  color: var(--err);
+  font-weight: 700;
+}
+
+.finder-card.not-offered-card {
+  border-top-color: var(--err);
+  opacity: 0.92;
+}
+
 .finder-card-actions {
   margin-top: auto;
   padding-top: 8px;
@@ -1084,6 +1096,7 @@ html.dark .finder-card.pg-card {
 
 .sidebar-backdrop {
   display: none;
+  pointer-events: none;
 }
 
 /* Left Sidebar: Slot Options, Requirements & All Units */
@@ -1091,7 +1104,7 @@ html.dark .finder-card.pg-card {
   position: sticky;
   top: var(--header-h);
   height: calc(100vh - var(--header-h));
-  overflow: hidden;
+  overflow: clip;
   background: var(--surface);
   border-right: 1px solid var(--border);
   display: flex;
@@ -1168,6 +1181,7 @@ html.dark .finder-card.pg-card {
   padding: 12px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1243,6 +1257,39 @@ html.dark .finder-card.pg-card {
   background: var(--warn-bg);
   color: var(--warn);
   border-color: var(--warn-border);
+}
+
+.catalog-search-sticky {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  padding-bottom: 8px;
+  z-index: 5;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.catalog-trunc-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  border: 1px dashed var(--border-strong);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.catalog-trunc-bar .btn {
+  flex-shrink: 0;
 }
 
 /* Bucket Accordion Cards */
@@ -1416,8 +1463,12 @@ html.dark .finder-card.pg-card {
 }
 
 .badge-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 10.5px;
   font-weight: 700;
+  line-height: 1.3;
   padding: 1px 6px;
   border-radius: 4px;
 }
@@ -1446,10 +1497,34 @@ html.dark .finder-card.pg-card {
   border: 1px solid var(--err-border);
 }
 
-.badge-campus-clash {
+.badge-campus-clash,
+.badge-int-clash {
   background: var(--err);
   color: #ffffff;
   border: 1px solid var(--err);
+}
+
+html.dark .badge-campus-clash,
+html.dark .badge-int-clash {
+  background: #b91c1c;
+  color: #ffffff;
+  border-color: #f87171;
+}
+
+.badge-int-cohort {
+  background: var(--info-bg);
+  color: var(--info);
+  border: 1px solid var(--info-border);
+}
+
+.badge-yearlong {
+  background: var(--cat-major2-bg);
+  color: var(--cat-major2);
+  border: 1px solid rgba(109, 40, 217, 0.35);
+}
+
+html.dark .badge-yearlong {
+  border-color: rgba(183, 148, 244, 0.4);
 }
 
 /* ==========================================================================
@@ -1844,6 +1919,13 @@ html.dark .finder-card.pg-card {
 
 .slot-msg.err { background: var(--err-bg); color: var(--err); font-weight: 600; }
 .slot-msg.int-tba { background: var(--err-bg); color: var(--err); border: 1px solid var(--err-border); font-weight: 700; }
+.slot-msg.int-clash {
+  background: var(--err-bg);
+  color: var(--err);
+  border: 1px solid var(--err-border);
+  border-left: 3px solid var(--err);
+  font-weight: 700;
+}
 .slot-msg.warn { background: var(--warn-bg); color: var(--warn); }
 .slot-msg.info { background: var(--info-bg); color: var(--info); }
 
@@ -2005,6 +2087,98 @@ html.dark .finder-card.pg-card {
   border: 1px solid var(--border);
 }
 
+/* Multi-Cohort / Multi-Block Intensive Schedule List (Unit Modal) */
+.int-entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.int-entry-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.int-entry-item.is-tba {
+  border-color: var(--err-border);
+  border-left-color: var(--err);
+}
+
+.int-entry-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.int-entry-dates {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--warn);
+  font-variant-numeric: tabular-nums;
+}
+
+.int-entry-item.is-tba .int-entry-dates {
+  color: var(--err);
+}
+
+.int-entry-note {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* Structured Unit Planning Notes Chips (Unit Modal) */
+.planning-notes-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.planning-note-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+}
+
+.planning-note-chip.info {
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  color: var(--info);
+}
+
+.planning-note-chip.warn {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn);
+}
+
+.planning-note-chip.err {
+  background: var(--err-bg);
+  border-color: var(--err-border);
+  color: var(--err);
+}
+
 /* ==========================================================================
    MOBILE BOTTOM NAVIGATION BAR (HIDDEN ON DESKTOP / TABLET)
    ========================================================================== */
@@ -2013,11 +2187,48 @@ html.dark .finder-card.pg-card {
 }
 
 /* ==========================================================================
-   TABLET BREAKPOINT (768px – 1099px): Full-Width Board + Slide-Over Drawer
+   TABLET & COMPACT VIEWPORT (< 1100px, screen only — never triggers on Print)
    ========================================================================== */
-@media (max-width: 1099px) {
+@media screen and (max-width: 1099px) {
   .workspace {
     grid-template-columns: 1fr;
+  }
+
+  .hdr-hide-tablet:not(#btn-course-info) {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   TABLET BREAKPOINT (768px – 1099px): Full-Width Board + Slide-Over Drawer
+   ========================================================================== */
+@media screen and (min-width: 768px) and (max-width: 1099px) {
+  .app-header {
+    padding: 7px 14px;
+    gap: 10px;
+  }
+
+  /* Free horizontal room in Planner header so Course Info & all controls fit cleanly on Tablet */
+  body.mobile-pane-plan .une-brand-text,
+  body.mobile-pane-units .une-brand-text,
+  body.mobile-pane-plan .header-divider,
+  body.mobile-pane-units .header-divider {
+    display: none;
+  }
+
+  .course-switcher-btn {
+    max-width: 340px;
+    padding: 5px 9px;
+    gap: 8px;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .header-actions .btn {
+    padding: 6px 9px;
+    font-size: 12px;
   }
 
   .tablet-drawer-trigger {
@@ -2053,28 +2264,65 @@ html.dark .finder-card.pg-card {
     background: rgba(0, 14, 38, 0.45);
     z-index: 55;
     display: none;
+    pointer-events: none;
   }
 
   body.drawer-open .sidebar-backdrop {
     display: block;
+    pointer-events: auto;
   }
 
   .board-area {
     padding: 14px 16px 40px;
   }
-
-  .hdr-hide-tablet {
-    display: none !important;
-  }
 }
 
-@media (min-width: 768px) and (max-width: 900px) {
+@media screen and (min-width: 768px) and (max-width: 900px) {
+  .app-header {
+    padding: 7px 12px;
+    gap: 8px;
+  }
+
+  .brand-group {
+    gap: 8px;
+  }
+
+  .course-switcher-btn {
+    max-width: 230px;
+    padding: 4px 8px;
+    gap: 7px;
+  }
+
+  .header-actions {
+    gap: 5px;
+  }
+
+  .header-actions .btn {
+    padding: 5px 8px;
+    font-size: 11.5px;
+    min-height: 32px;
+  }
+
+  .header-actions .btn-icon {
+    padding: 5px 8px;
+  }
+
+  .auto-plan-full {
+    display: none;
+  }
+
+  .auto-plan-short {
+    display: inline;
+  }
+
   .trimester-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
   .tri-col:nth-child(2) {
     border-right: none;
   }
+
   .tri-col:nth-child(3) {
     grid-column: 1 / -1;
     border-top: 1px solid var(--border);
@@ -2084,9 +2332,9 @@ html.dark .finder-card.pg-card {
 }
 
 /* ==========================================================================
-   MOBILE BREAKPOINT (< 768px): Touch-First App Layout + Bottom Nav
+   MOBILE BREAKPOINT (< 768px, screen only): Touch-First App Layout + Bottom Nav
    ========================================================================== */
-@media (max-width: 767px) {
+@media screen and (max-width: 767px) {
   :root {
     --header-h: 54px;
   }
@@ -2097,7 +2345,20 @@ html.dark .finder-card.pg-card {
 
   .trial-banner {
     font-size: 11px;
-    padding: 5px 12px;
+    padding: 7px 12px;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    line-height: 1.35;
+  }
+
+  .trial-banner > span {
+    flex: 1 1 240px;
+    min-width: 0;
+  }
+
+  .trial-banner-actions {
+    margin-left: auto;
+    flex-wrap: wrap;
   }
 
   .app-header {
@@ -2149,8 +2410,9 @@ html.dark .finder-card.pg-card {
 
   .config-group .select-input {
     flex: 1;
+    min-width: 0;
     min-height: 38px;
-    font-size: 13.5px;
+    font-size: 16px;
   }
 
   .config-meta-grid {
@@ -2170,8 +2432,9 @@ html.dark .finder-card.pg-card {
 
   .config-pair .select-input {
     width: 100%;
+    min-width: 0;
     min-height: 38px;
-    font-size: 13px;
+    font-size: 16px;
   }
 
   .planner-toast {
@@ -2190,6 +2453,15 @@ html.dark .finder-card.pg-card {
     padding: 7px 12px;
   }
 
+  /* Prevent orphaned tablet backdrop from ever freezing mobile UI */
+  .sidebar-backdrop,
+  body.drawer-open .sidebar-backdrop,
+  body.mobile-pane-plan .sidebar-backdrop,
+  body.mobile-pane-units .sidebar-backdrop {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
   /* On Mobile, switch cleanly between full-screen Board vs full-screen Units/Slot Picker via bottom nav */
   body.mobile-pane-units .board-area,
   body.mobile-pane-units .config-ribbon-wrap,
@@ -2204,13 +2476,24 @@ html.dark .finder-card.pg-card {
     max-width: 100%;
     height: auto;
     min-height: calc(100dvh - var(--header-h) - var(--bottom-nav-h));
+    overflow: visible;
     box-shadow: none;
     border-right: none;
     z-index: 1;
   }
 
-  body.mobile-pane-units .sidebar-drawer-bar,
-  body.mobile-pane-units .sidebar-backdrop {
+  body.mobile-pane-units .sidebar-body {
+    overflow: visible;
+  }
+
+  body.mobile-pane-units .catalog-search-sticky,
+  body.mobile-pane-units .sidebar-body > div[style*="sticky"] {
+    top: var(--header-h) !important;
+    padding-top: 8px;
+    z-index: 20 !important;
+  }
+
+  body.mobile-pane-units .sidebar-drawer-bar {
     display: none !important;
   }
 
@@ -2280,10 +2563,27 @@ html.dark .finder-card.pg-card {
     border: 1px solid var(--border);
   }
 
-  /* Prevent iOS Safari zoom on all text inputs on mobile */
-  .text-input {
+  /* Prevent iOS Safari auto-zoom on all form controls on mobile (>= 16px) */
+  .text-input,
+  .select-input,
+  .feedback-textarea,
+  .finder-search-input,
+  input[type="search"],
+  input[type="text"],
+  input[type="url"],
+  select,
+  textarea {
     font-size: 16px;
+  }
+
+  .text-input,
+  .select-input {
     min-height: 38px;
+    min-width: 0;
+  }
+
+  .sidebar .select-input {
+    padding: 5px 6px;
   }
 
   /* Course Finder Mobile Polish: compact hero, swipeable topic chips, collapsible filters so results are visible immediately! */
@@ -2346,7 +2646,7 @@ html.dark .finder-card.pg-card {
     width: 100%;
     min-width: 0;
     min-height: 38px;
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .finder-school-sel {
@@ -2434,7 +2734,7 @@ html.dark .finder-card.pg-card {
   }
 }
 
-@media (max-width: 420px) {
+@media screen and (max-width: 420px) {
   .auto-plan-full {
     display: none;
   }
@@ -2445,16 +2745,85 @@ html.dark .finder-card.pg-card {
     padding: 2px 6px;
     font-size: 11px;
   }
+  .trial-bug-btn,
+  .trial-dismiss-btn {
+    padding: 4px 9px;
+  }
 }
 
 /* ==========================================================================
-   PRINT VIEW
+   PRINT VIEW (A4 / Letter — Forces High-Contrast Light Palette & 3-Col Board)
    ========================================================================== */
 @media print {
-  body {
-    padding-bottom: 0 !important;
+  :root,
+  html,
+  html.dark {
+    color-scheme: light !important;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-alt: #f4f6f8;
+    --surface-hover: #eef1f5;
+    --border: #cfd6de;
+    --border-strong: #aeb8c4;
+    --text: #00163d;
+    --text-muted: #2d3b52;
+    --text-subtle: #475569;
+
+    --primary: #155c62;
+    --primary-hover: #155c62;
+    --primary-soft: #e9f4f5;
+    --primary-border: #8ec4c9;
+    --primary-fg: #ffffff;
+
+    --accent: #1d5d8f;
+    --accent-soft: #eaf3fa;
+
+    --cat-core: #155c62;
+    --cat-core-bg: #e9f4f5;
+    --cat-major1: #1d5d8f;
+    --cat-major1-bg: #eaf3fa;
+    --cat-major2: #5b21b6;
+    --cat-major2-bg: #f3eeff;
+    --cat-minor: #4d6b10;
+    --cat-minor-bg: #f3f9e4;
+    --cat-capstone: #9f1239;
+    --cat-capstone-bg: #fdf0f4;
+    --cat-listed: #92400e;
+    --cat-listed-bg: #fef7e6;
+    --cat-elective: #374151;
+    --cat-elective-bg: #eeeeee;
+
+    --ok: #1f5e31;
+    --ok-bg: #edf7ef;
+    --ok-border: #9ecfa6;
+    --warn: #854007;
+    --warn-bg: #fff6e5;
+    --warn-border: #e7be72;
+    --err: #991010;
+    --err-bg: #fdf0f0;
+    --err-border: #eba3a3;
+    --info: #185582;
+    --info-bg: #ecf5fb;
+    --info-border: #9bc4e2;
+
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
   }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #00163d !important;
+    padding-bottom: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #btn-banner-bug,
+  .trial-bug-btn,
   .trial-dismiss-btn,
+  .trial-banner-actions,
   .app-header .header-actions,
   .config-ribbon-wrap,
   .preset-bar,
@@ -2464,33 +2833,118 @@ html.dark .finder-card.pg-card {
   .mobile-tri-filter,
   .slot-actions,
   .tri-empty-drop,
+  .planner-toast,
+  .modal-backdrop,
   .no-print {
     display: none !important;
   }
+
   .app-header {
+    position: static !important;
     background: #ffffff !important;
     color: #00163d !important;
     border-bottom: 2px solid #272525 !important;
     box-shadow: none !important;
   }
-  .course-title-main, .une-brand-name {
+
+  .une-brand-btn {
     color: #00163d !important;
   }
+
+  .une-brand-text {
+    display: flex !important;
+  }
+
+  .une-brand-name,
+  .course-title-main {
+    color: #00163d !important;
+  }
+
+  .une-brand-sub {
+    color: #155c62 !important;
+  }
+
+  .header-divider {
+    display: block !important;
+    background: #cfd6de !important;
+  }
+
+  .course-switcher-btn {
+    background: transparent !important;
+    border-color: #cfd6de !important;
+    color: #00163d !important;
+    max-width: none !important;
+  }
+
+  .course-title-main {
+    white-space: normal !important;
+  }
+
+  .course-subtitle-meta,
+  .course-subtitle-meta span {
+    color: #3d4c63 !important;
+    white-space: normal !important;
+  }
+
   .trial-banner {
     background: #f8fafc !important;
     color: #00163d !important;
     border: 1px solid #cbd5e1 !important;
     margin-bottom: 10px;
   }
+
+  .trial-banner a {
+    color: #155c62 !important;
+  }
+
   .workspace {
-    display: block;
+    display: block !important;
   }
-  .board-area {
-    padding: 0;
+
+  .board-area,
+  body.mobile-pane-units .board-area {
+    display: flex !important;
+    padding: 0 !important;
   }
-  .year-card, .progress-card {
-    box-shadow: none;
+
+  .trimester-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .tri-col,
+  .tri-col.mobile-hidden-tri {
+    display: flex !important;
+    border-right: 1px solid #cfd6de;
+    border-bottom: none;
+  }
+
+  .tri-col:last-child {
+    border-right: none;
+  }
+
+  .year-card,
+  .progress-card,
+  .slot-card {
+    background: #ffffff !important;
+    color: #00163d !important;
+    box-shadow: none !important;
     break-inside: avoid;
+  }
+
+  .year-card,
+  .progress-card {
     margin-bottom: 12px;
+  }
+
+  .slot-card.has-error {
+    background: #fdf0f0 !important;
+    border-color: #991010 !important;
+  }
+
+  .badge-campus-clash,
+  .badge-int-clash {
+    background: #b11010 !important;
+    color: #ffffff !important;
+    border-color: #8c0c0c !important;
   }
 }
