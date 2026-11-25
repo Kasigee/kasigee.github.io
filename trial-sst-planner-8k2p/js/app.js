@@ -233,6 +233,77 @@ window.initUNEPlannerApp = function () {
     return state.savedPlansByCourse[c.code];
   }
 
+  function getPlanYear(yr, yIdx) {
+    if (Engine && typeof Engine.getPlanYear === "function") {
+      return Engine.getPlanYear(yr, yIdx);
+    }
+    if (yr && Number.isInteger(yr.year) && yr.year >= 2020 && yr.year <= 2100) return yr.year;
+    if (yr && typeof yr.name === "string") {
+      const m = yr.name.match(/\b(20\d{2})\b/);
+      if (m) return parseInt(m[1], 10);
+    }
+    return 2026 + (yr?.yearNum || (yIdx || 0) + 1);
+  }
+
+  function getUnitPlannedYear(code, plan) {
+    for (let yIdx = 0; yIdx < (plan?.years || []).length; yIdx++) {
+      const yr = plan.years[yIdx];
+      for (const t of [1, 2, 3]) {
+        for (const s of yr.trimesters[t] || []) {
+          if (s.type === "unit" && s.code === code) return getPlanYear(yr, yIdx);
+        }
+      }
+    }
+    return null;
+  }
+
+  function getUnitBucketInfo(code, report, bucketMap) {
+    const ubMap = report?.unitBucketMap || report?.resolved?.unitBucketMap;
+    if (ubMap && ubMap[code]) {
+      const info = ubMap[code];
+      const cat = safeCat(info.category);
+      return {
+        bucketId: info.bucketId || null,
+        bucketTitle: info.bucketTitle || CAT_LABELS[cat] || "Elective",
+        shortTitle: info.shortTitle || info.bucketTitle || CAT_LABELS[cat] || "Elective",
+        category: cat,
+        badgeRole: info.badgeRole || CAT_LABELS[cat] || "Unit",
+      };
+    }
+    const bId = report?.resolved?.attributedBucketByCode?.[code];
+    const bucket = bucketMap ? bucketMap[bId] : report?.resolved?.buckets?.find((x) => x.id === bId);
+    const cat = safeCat(bucket?.category);
+    return {
+      bucketId: bId || null,
+      bucketTitle: bucket?.title || "Elective",
+      shortTitle: bucket?.title || "Elective",
+      category: cat,
+      badgeRole: CAT_LABELS[cat] || "Unit",
+    };
+  }
+
+  function buildPlaceholderTarget(ph, yr, yIdx, triNum) {
+    return {
+      yearIdx: yIdx,
+      yearNum: yr?.yearNum || yIdx + 1,
+      planYear: getPlanYear(yr, yIdx),
+      triNum,
+      replaceSlotId: ph.id,
+      label: ph.label || "Listed or Elective Unit",
+      slotKind: ph.slotKind || "",
+      category: ph.category || "",
+      bucketId: ph.bucketId || null,
+      bucketTitle: ph.bucketTitle || "",
+      hintCodes: Array.isArray(ph.hintCodes) ? ph.hintCodes : [],
+      strictHints: Boolean(ph.strictHints),
+      eligibleCount: ph.eligibleCount !== undefined && ph.eligibleCount !== null ? Number(ph.eligibleCount) : null,
+      allowedLevels: Array.isArray(ph.allowedLevels) ? ph.allowedLevels : null,
+      levelMin: ph.levelMin !== undefined && ph.levelMin !== null ? Number(ph.levelMin) : null,
+      levelMax: ph.levelMax !== undefined && ph.levelMax !== null ? Number(ph.levelMax) : null,
+      strictPoolOnly: typeof ph.strictPoolOnly === "boolean" ? ph.strictPoolOnly : undefined,
+    };
+  }
+
   function validateAndSanitizePlan(rawPlan, expectedCourseCode) {
     if (!rawPlan || typeof rawPlan !== "object" || Array.isArray(rawPlan)) return null;
     const rawCode = typeof rawPlan.courseCode === "string" ? rawPlan.courseCode.trim().toUpperCase() : "";
@@ -269,22 +340,49 @@ window.initUNEPlannerApp = function () {
             tris[t].push(cleanSlot);
           } else if (s.type === "placeholder") {
             const parsedCp = Number(s.cp);
-            tris[t].push({
+            const cleanPh = {
               id: sid,
               type: "placeholder",
               label: typeof s.label === "string" && s.label.trim() ? s.label.trim() : "Listed or Elective Unit",
               cp: Number.isFinite(parsedCp) && parsedCp >= 0 && parsedCp <= 96 ? parsedCp : 6,
               slotKind: typeof s.slotKind === "string" ? s.slotKind : "",
               hintCodes: Array.isArray(s.hintCodes) ? s.hintCodes.filter((h) => typeof h === "string" && !h.includes("|")) : [],
-            });
+            };
+            if (typeof s.category === "string" && Object.prototype.hasOwnProperty.call(CAT_LABELS, s.category)) {
+              cleanPh.category = s.category;
+            }
+            if (typeof s.bucketId === "string" && s.bucketId.trim()) {
+              cleanPh.bucketId = s.bucketId.trim();
+            }
+            if (typeof s.bucketTitle === "string" && s.bucketTitle.trim()) {
+              cleanPh.bucketTitle = s.bucketTitle.trim().slice(0, 120);
+            }
+            if (typeof s.strictHints === "boolean") cleanPh.strictHints = s.strictHints;
+            if (s.eligibleCount !== undefined && s.eligibleCount !== null && Number.isFinite(Number(s.eligibleCount))) {
+              cleanPh.eligibleCount = Math.max(0, Math.floor(Number(s.eligibleCount)));
+            }
+            if (Array.isArray(s.allowedLevels)) {
+              const lvls = s.allowedLevels.map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 900);
+              if (lvls.length) cleanPh.allowedLevels = lvls;
+            }
+            if (s.levelMin !== undefined && s.levelMin !== null && Number.isFinite(Number(s.levelMin))) {
+              cleanPh.levelMin = Number(s.levelMin);
+            }
+            if (s.levelMax !== undefined && s.levelMax !== null && Number.isFinite(Number(s.levelMax))) {
+              cleanPh.levelMax = Number(s.levelMax);
+            }
+            if (typeof s.strictPoolOnly === "boolean") cleanPh.strictPoolOnly = s.strictPoolOnly;
+            tris[t].push(cleanPh);
           }
         }
       }
       const yearNum = Number.isInteger(yr.yearNum) && yr.yearNum > 0 ? yr.yearNum : yIdx + 1;
+      const calYear = getPlanYear({ ...yr, yearNum }, yIdx);
       sanitizedYears.push({
         id: typeof yr.id === "string" && yr.id.trim() ? yr.id.trim() : Engine.uid("yr"),
         yearNum,
-        name: typeof yr.name === "string" && yr.name.trim() ? yr.name.trim() : `Year ${yearNum} (${2026 + yearNum})`,
+        year: calYear,
+        name: typeof yr.name === "string" && yr.name.trim() ? yr.name.trim() : `Year ${yearNum} (${calYear})`,
         trimesters: tris,
       });
     }
@@ -470,15 +568,7 @@ window.initUNEPlannerApp = function () {
       for (const tNum of [1, 2, 3]) {
         for (const s of yr.trimesters[tNum] || []) {
           if (s.type === "placeholder") {
-            list.push({
-              yearIdx: yIdx,
-              yearNum: yr.yearNum || yIdx + 1,
-              triNum: tNum,
-              replaceSlotId: s.id,
-              label: s.label || "Listed or Elective Unit",
-              slotKind: s.slotKind || "",
-              hintCodes: s.hintCodes || [],
-            });
+            list.push(buildPlaceholderTarget(s, yr, yIdx, tNum));
           }
         }
       }
@@ -595,19 +685,29 @@ window.initUNEPlannerApp = function () {
     const allPlannedCodes = new Set(placements.filter((p) => p.type === "unit").map((p) => p.code));
 
     let best = null;
+    const isRolling = u.offered2027 === false && Number.isInteger(u.rollingStartYear);
+    const effectiveTris =
+      u.trimesters && u.trimesters.length > 0
+        ? u.trimesters
+        : isRolling && Array.isArray(u.indicativeTrimesters) && u.indicativeTrimesters.length > 0
+        ? u.indicativeTrimesters
+        : [];
+
     plan.years.forEach((yr, yIdx) => {
+      const planYear = getPlanYear(yr, yIdx);
+      if (isRolling && planYear < u.rollingStartYear) return;
       for (const tNum of [1, 2, 3]) {
         if (yIdx === 0 && tNum < startTri) continue;
-        const offeredOk = !u.trimesters || u.trimesters.length === 0 || u.trimesters.includes(tNum);
+        const offeredOk = effectiveTris.length === 0 || effectiveTris.includes(tNum);
         if (!offeredOk) continue;
         if (
           tNum === 3 &&
           (!plan.t3Strategy || plan.t3Strategy === "none") &&
-          !(u.trimesters && u.trimesters.length === 1 && u.trimesters[0] === 3)
+          !(effectiveTris.length === 1 && effectiveTris[0] === 3)
         ) {
           continue;
         }
-        if (tNum === 3 && u.t3RepeatOnly && u.trimesters && u.trimesters.length > 1) {
+        if (tNum === 3 && u.t3RepeatOnly && effectiveTris.length > 1) {
           continue;
         }
         const slots = yr.trimesters[tNum] || [];
@@ -698,12 +798,13 @@ window.initUNEPlannerApp = function () {
 
     let placedLabel = "";
     if (!best) {
-      const offeredTris = (u.trimesters && u.trimesters.length > 0)
-        ? u.trimesters.filter((t) => !(t === 3 && u.t3RepeatOnly && u.trimesters.length > 1))
+      const offeredTris = effectiveTris.length > 0
+        ? effectiveTris.filter((t) => !(t === 3 && u.t3RepeatOnly && effectiveTris.length > 1))
         : [startTri];
       const fallbackTris = offeredTris.length ? offeredTris : [1];
       let placed = false;
       for (let yIdx = 0; yIdx < plan.years.length && !placed; yIdx++) {
+        if (isRolling && getPlanYear(plan.years[yIdx], yIdx) < u.rollingStartYear) continue;
         for (const fTri of fallbackTris) {
           if (yIdx === 0 && fTri < startTri) continue;
           const slots = plan.years[yIdx].trimesters[fTri] || [];
@@ -721,10 +822,21 @@ window.initUNEPlannerApp = function () {
       }
       if (!placed) {
         const fallbackTri = fallbackTris[0] || 1;
+        while (isRolling && 2026 + plan.years.length + 1 < u.rollingStartYear) {
+          const padNum = plan.years.length + 1;
+          plan.years.push({
+            id: Engine.uid("yr"),
+            yearNum: padNum,
+            year: 2026 + padNum,
+            name: `Year ${padNum} (${2026 + padNum})`,
+            trimesters: { 1: [], 2: [], 3: [] },
+          });
+        }
         const newYNum = plan.years.length + 1;
         const newYr = {
           id: Engine.uid("yr"),
           yearNum: newYNum,
+          year: 2026 + newYNum,
           name: `Year ${newYNum} (${2026 + newYNum})`,
           trimesters: { 1: [], 2: [], 3: [] },
         };
@@ -777,6 +889,7 @@ window.initUNEPlannerApp = function () {
       plan.years.push({
         id: Engine.uid("yr"),
         yearNum: n,
+        year: 2026 + n,
         name: `Year ${n} (${2026 + n})`,
         trimesters: { 1: [], 2: [], 3: [] },
       });
@@ -860,7 +973,7 @@ window.initUNEPlannerApp = function () {
                     </button>`
                   : ""
               }
-              <button class="btn btn-hdr-lime" id="btn-auto-plan" title="Automatically schedule required units into valid 2027 trimesters">
+              <button class="btn btn-hdr-lime" id="btn-auto-plan" title="Automatically schedule mandatory units and open student-choice slots">
                 <span>✨ <span class="auto-plan-full">Auto-Plan</span><span class="auto-plan-short">Auto</span></span>
               </button>
               <button class="btn btn-hdr hdr-hide-mobile" id="btn-course-info" title="Course Rules, Outcomes &amp; Handbook">
@@ -960,8 +1073,8 @@ window.initUNEPlannerApp = function () {
     renderAll({ resetSidebarScroll: true });
     showToast(
       openPh.length > 0
-        ? `Generated ${course.code} schedule! ${openPh.length} open slot(s) ready to choose.`
-        : `Generated complete 2027 schedule for ${course.code}!`
+        ? `Generated ${course.code} schedule! ${openPh.length} student-choice slot${openPh.length === 1 ? "" : "s"} ready to pick.`
+        : `Generated complete schedule for ${course.code}!`
     );
   }
 
@@ -2047,10 +2160,19 @@ window.initUNEPlannerApp = function () {
      ========================================================================== */
   const UNIT_LEVEL_FILTERS = [0, 100, 200, 300, 400, 500, 600];
 
-  function getFallbackBaseIneligibility(u, course) {
+  function getFallbackBaseIneligibility(u, course, targetYear) {
     const reasons = [];
     if (!u) return reasons;
-    if (u.offered2027 === false) reasons.push("Not offered in 2027 (archived unit)");
+    const isRolling = u.offered2027 === false && Number.isInteger(u.rollingStartYear);
+    if (u.offered2027 === false) {
+      if (isRolling) {
+        if (targetYear && targetYear < u.rollingStartYear) {
+          reasons.push(`Rolling-start unit — scheduled from ${u.rollingStartYear}`);
+        }
+      } else {
+        reasons.push("Not offered in 2027 (archived unit)");
+      }
+    }
     const pm = u.prereqMeta;
     const isUg = course.studyLevel === "Undergraduate" || course.studyLevel === "Pathway Programs" || course.studyLevel === "Other";
     const isPg = course.studyLevel === "Postgraduate" || course.studyLevel === "Postgraduate Research";
@@ -2080,10 +2202,15 @@ window.initUNEPlannerApp = function () {
         return ev && !ev.eligible && ev.reasons?.length ? ev.reasons : null;
       }
       // Defensive fallback if Engine.resolveSlotCandidates doesn't expose evaluateAnyUnit
-      const reasons = getFallbackBaseIneligibility(u, course);
+      const targetYr = state.targetSlot.planYear || getPlanYear(plan.years[state.targetSlot.yearIdx], state.targetSlot.yearIdx);
+      const reasons = getFallbackBaseIneligibility(u, course, targetYr);
       const triNum = state.targetSlot.triNum;
       if (u.offered2027 !== false && u.trimesters && u.trimesters.length > 0 && !u.trimesters.includes(triNum)) {
-        reasons.push(`Not offered in Trimester ${triNum} (offered in T${u.trimesters.join(", T")})`);
+        reasons.push(
+          targetYr > 2027
+            ? `Not offered in Trimester ${triNum} (based on 2027 Handbook: T${u.trimesters.join(", T")})`
+            : `Not offered in Trimester ${triNum} (offered in T${u.trimesters.join(", T")})`
+        );
       }
       if (u.t3RepeatOnly && triNum === 3) {
         reasons.push("Trimester 3 is for repeating students only");
@@ -2106,11 +2233,13 @@ window.initUNEPlannerApp = function () {
       return reasons.length > 0 ? reasons : null;
     }
 
+    // Outside a targeted slot, allow rolling-start units to appear browseable in future years
+    const maxPlanYr = Math.max(2027, ...(plan.years || []).map((yr, i) => getPlanYear(yr, i)));
     if (typeof Engine.getBaseUnitIneligibility === "function") {
-      const reasons = Engine.getBaseUnitIneligibility(u, course, plan, DATA);
+      const reasons = Engine.getBaseUnitIneligibility(u, course, plan, DATA, maxPlanYr);
       return reasons && reasons.length > 0 ? reasons : null;
     }
-    const reasons = getFallbackBaseIneligibility(u, course);
+    const reasons = getFallbackBaseIneligibility(u, course, maxPlanYr);
     return reasons.length > 0 ? reasons : null;
   }
 
@@ -2208,7 +2337,7 @@ window.initUNEPlannerApp = function () {
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
             <div>
               <div style="font-weight:800;font-size:13px;color:var(--info);">
-                🎯 Filling Year ${yr?.yearNum || state.targetSlot.yearIdx + 1} · Trimester ${state.targetSlot.triNum}
+                🎯 Filling Year ${yr?.yearNum || state.targetSlot.yearIdx + 1} (${getPlanYear(yr, state.targetSlot.yearIdx)}) · Trimester ${state.targetSlot.triNum}
               </div>
               <div style="font-weight:700;font-size:12px;color:var(--text);margin-top:1px;">${esc(slotEval.spec.title)}</div>
               <div style="font-size:11px;color:var(--text-subtle);">${esc(slotEval.spec.subtitle)}</div>
@@ -2331,7 +2460,11 @@ window.initUNEPlannerApp = function () {
                   <span style="overflow:hidden;text-overflow:ellipsis;">${esc(b.title)}</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;">
-                  <span class="bucket-cp-pill ${esc(b.status)}">${esc(cpLabel)}</span>
+                  <span class="bucket-cp-pill ${esc(b.status)}" title="${
+                    b.placeholderCp
+                      ? `${b.plannedCp} CP chosen + ${b.placeholderCp} CP open student-choice slot(s)`
+                      : `${b.plannedCp} CP planned`
+                  }">${esc(cpLabel)}${b.placeholderCount ? ` (+${b.placeholderCount} open)` : ""}</span>
                   <span style="font-size:11px;color:var(--text-subtle);">${isCollapsed ? "▸" : "▾"}</span>
                 </div>
               </button>
@@ -2767,8 +2900,8 @@ window.initUNEPlannerApp = function () {
     `;
   }
 
-  function renderIntensiveBadgeMini(u, triNum, preferredMode) {
-    const info = Engine.getUnitIntensiveForTri(u, triNum, preferredMode);
+  function renderIntensiveBadgeMini(u, triNum, preferredMode, planYear) {
+    const info = Engine.getUnitIntensiveForTri(u, triNum, preferredMode, planYear);
     if (!info || info.kind !== "Mandatory") return "";
     if (info.applicableForMode === false) return "";
     const shortLoc = info.location
@@ -2787,6 +2920,15 @@ window.initUNEPlannerApp = function () {
             .map((e) => `${e.title ? e.title + ": " : Array.isArray(e.tris) && e.tris.length ? `T${e.tris.join("/T")}: ` : ""}${e.tba ? "TBA" : (e.dates || []).join(", ")}`)
             .join(" | ")
         : (info.dates || []).join(", ");
+
+    // Future-year (2028+) calm guide badge: NEVER present 2027 dates as confirmed future dates or show red 2027 TBA
+    const isFutureGuide = Boolean(info.isHistoricalGuide || (Number.isInteger(planYear) && planYear > 2027));
+    if (isFutureGuide) {
+      const guideTip = dateSummary
+        ? `Mandatory Intensive School (${info.location}) — ${planYear} dates TBA (2027 guide: ${dateSummary})`
+        : `Mandatory Intensive School (${info.location}) — ${planYear} dates TBA (check UNE Handbook when published)`;
+      return `<span class="badge-mini badge-int-guide" title="${esc(guideTip)}">📅 Intensive${esc(shortLoc)} · ${esc(planYear)} TBA</span>`;
+    }
 
     if (info.tba) {
       return `<span class="badge-mini badge-int-tba" title="Mandatory Intensive School (${esc(info.location)}) — Dates TBA (check dates)">🔴 Intensive${esc(shortLoc)} · TBA</span>`;
@@ -2816,6 +2958,12 @@ window.initUNEPlannerApp = function () {
         )
         .join("");
     }
+    if (u && u.offered2027 === false && Number.isInteger(u.rollingStartYear)) {
+      const ind = Array.isArray(u.indicativeTrimesters) && u.indicativeTrimesters.length
+        ? u.indicativeTrimesters.map((t) => `<span class="tri-pill ${t === activeTriNum ? "active-tri" : ""}" title="Indicative trimester from study plan">~T${t}</span>`).join("")
+        : "";
+      return `${ind}<span class="badge-mini badge-rolling" title="Rolling-start unit scheduled from ${esc(u.rollingStartYear)}">From ${esc(u.rollingStartYear)}</span>`;
+    }
     if (u && u.offered2027 !== false && u.nonStandardPeriods && u.nonStandardPeriods.length > 0) {
       return `<span class="tri-pill active-tri" title="Non-standard teaching period: ${esc(u.nonStandardPeriods.join(", "))}">${esc(u.nonStandardPeriods[0])}</span>`;
     }
@@ -2825,6 +2973,10 @@ window.initUNEPlannerApp = function () {
   function renderSlotEligibleCard(item, plan) {
     const u = item.unit;
     const targetTri = state.targetSlot ? state.targetSlot.triNum : null;
+    const targetYr = state.targetSlot
+      ? state.targetSlot.planYear || getPlanYear(plan?.years?.[state.targetSlot.yearIdx], state.targetSlot.yearIdx)
+      : 2027;
+    const isRolling = u.offered2027 === false && Number.isInteger(u.rollingStartYear);
     return `
       <div class="pool-unit ${item.majorRequiredBy ? "major-req" : ""}" draggable="true" data-drag-pool-code="${esc(item.code)}">
         <div class="pool-unit-top">
@@ -2840,8 +2992,9 @@ window.initUNEPlannerApp = function () {
                 : "background:var(--surface-alt);color:var(--text-subtle);border:1px solid var(--border);"
             }">${esc(item.poolLabel)}</span>
             ${item.helpsLevelMin ? `<span class="badge-mini" style="background:var(--cat-major1-bg);color:var(--cat-major1);border:1px solid var(--cat-major1);">L${esc(u.level)} Target</span>` : ""}
-            ${renderIntensiveBadgeMini(u, targetTri, plan?.preferredMode)}
+            ${renderIntensiveBadgeMini(u, targetTri, plan?.preferredMode, targetYr)}
             ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
+            ${isRolling ? `<span class="badge-mini badge-rolling">🗓 From ${esc(u.rollingStartYear)}</span>` : ""}
             ${item.modeWarning ? `<span class="badge-mini badge-intensive">${esc(item.modeWarning)}</span>` : ""}
           </div>
           <div class="tri-pills">${(u.trimesters || []).length ? u.trimesters.map((t) => `<span class="tri-pill active-tri">T${t}</span>`).join("") : renderUnitTrimesterPills(u)}</div>
@@ -2852,6 +3005,7 @@ window.initUNEPlannerApp = function () {
 
   function renderIneligibleUnitCard(code, u, reasons, poolLabel, allowOverride) {
     if (!u) return "";
+    const canOverride = allowOverride && (u.offered2027 !== false || Number.isInteger(u.rollingStartYear));
     return `
       <div class="pool-unit ineligible-card">
         <div class="pool-unit-top">
@@ -2859,7 +3013,7 @@ window.initUNEPlannerApp = function () {
           <div style="display:flex;align-items:center;gap:4px;">
             ${poolLabel ? `<span style="font-size:10px;color:var(--text-subtle);">${esc(poolLabel)}</span>` : ""}
             ${
-              allowOverride && u.offered2027 !== false
+              canOverride
                 ? `<button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px;min-height:24px;color:var(--text-subtle);" data-add-unit="${esc(code)}" title="Add with manual override">Override</button>`
                 : ""
             }
@@ -2871,7 +3025,7 @@ window.initUNEPlannerApp = function () {
             .map(
               (r) =>
                 `<div class="inelig-reason-pill ${
-                  r.startsWith("Pre-requisite") || r.startsWith("Requires") || r.startsWith("Co-requisite") ? "soft" : ""
+                  r.startsWith("Pre-requisite") || r.startsWith("Requires") || r.startsWith("Co-requisite") || r.startsWith("Rolling-start") ? "soft" : ""
                 }">${
                   r.startsWith("Not offered") || r.startsWith("Restricted") || r.startsWith("Incompatible") || r.startsWith("Cannot") || r.startsWith("Exceeds") || r.startsWith("Outside") || r.startsWith("Excluded")
                     ? "⛔"
@@ -2892,17 +3046,19 @@ window.initUNEPlannerApp = function () {
     const choiceMajors = majorCoreHints.choiceGroups
       .filter((g) => g.codes.includes(code))
       .map((g) => `${g.majorTitle} (${g.codes.join("/")})`);
+    const isRolling = u.offered2027 === false && Number.isInteger(u.rollingStartYear);
+    const isArchived = u.offered2027 === false && !isRolling;
 
     return `
       <div class="pool-unit ${plannedLoc && !u.repeatable ? "planned" : ""} ${reqByMajors ? "major-req" : ""}"
-           draggable="${(!plannedLoc || u.repeatable) && u.offered2027 !== false}"
+           draggable="${(!plannedLoc || u.repeatable) && !isArchived}"
            data-drag-pool-code="${esc(code)}">
         <div class="pool-unit-top">
           <button class="unit-code-link" data-inspect-unit="${esc(code)}">${esc(code)} · ${esc(u.cp ?? 6)} CP</button>
           ${
             plannedLoc && !u.repeatable
               ? `<span class="badge-mini" style="background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-border);">✓ ${esc(plannedLoc)}</span>`
-              : u.offered2027 === false
+              : isArchived
               ? `<span class="badge-mini badge-archived">Not offered 2027</span>`
               : `<button class="btn btn-sm btn-soft" data-add-unit="${esc(code)}">${plannedLoc && u.repeatable ? "+ Repeat" : "+ Add"}</button>`
           }
@@ -2911,7 +3067,7 @@ window.initUNEPlannerApp = function () {
         <div class="pool-unit-meta">
           <div class="tri-pills">
             ${renderUnitTrimesterPills(u)}
-            ${renderIntensiveBadgeMini(u, null, plan?.preferredMode)}
+            ${renderIntensiveBadgeMini(u, null, plan?.preferredMode, 2027)}
             ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
             ${reqByMajors ? `<span class="badge-mini badge-major-req">Req: ${esc(reqByMajors.join(", "))}</span>` : ""}
             ${!reqByMajors && choiceMajors.length ? `<span class="badge-mini badge-major-req">Choice: ${esc(choiceMajors[0])}</span>` : ""}
@@ -3060,6 +3216,7 @@ window.initUNEPlannerApp = function () {
 
     const yearsHtml = (plan.years || [])
       .map((yr, yIdx) => {
+        const planYear = getPlanYear(yr, yIdx);
         const yrTotalCp = [1, 2, 3].reduce((s, t) => s + (report.trimesterLoads[`${yIdx}_${t}`]?.cp || 0), 0);
         return `
           <div class="year-card">
@@ -3077,6 +3234,7 @@ window.initUNEPlannerApp = function () {
                 .map((tNum) => {
                   const slots = yr.trimesters[tNum] || [];
                   const tLoad = report.trimesterLoads[`${yIdx}_${tNum}`] || { cp: 0, intensives: 0 };
+                  const isFutureYear = Boolean(tLoad.isFutureYear !== undefined ? tLoad.isFutureYear : planYear > 2027);
                   const isTarget =
                     state.targetSlot &&
                     state.targetSlot.yearIdx === yIdx &&
@@ -3084,8 +3242,13 @@ window.initUNEPlannerApp = function () {
                     !state.targetSlot.replaceSlotId;
                   const mobHidden = state.mobileTriFilter !== "all" && state.mobileTriFilter !== String(tNum);
                   const dateClashes = Array.isArray(tLoad.dateClashes) ? tLoad.dateClashes : [];
-                  const hasDateClash = Boolean(tLoad.hasDateClash || dateClashes.length > 0);
+                  const hasConfirmedDateClash = !isFutureYear && Boolean(tLoad.hasDateClash || dateClashes.length > 0);
                   const dateClashTip = dateClashes
+                    .map((dc) => dc.overlapText || `${dc.unitA} ↔ ${dc.unitB}`)
+                    .join(" | ");
+                  const histClashes = Array.isArray(tLoad.historicalDateClashes) ? tLoad.historicalDateClashes : [];
+                  const hasHistClash = isFutureYear && Boolean(tLoad.hasHistoricalDateClash || histClashes.length > 0);
+                  const histClashTip = histClashes
                     .map((dc) => dc.overlapText || `${dc.unitA} ↔ ${dc.unitB}`)
                     .join(" | ");
                   const maxTriLoad = tLoad.maxLoad || (plan.studyLoad === "Part-time" ? 12 : 24);
@@ -3098,6 +3261,20 @@ window.initUNEPlannerApp = function () {
                         }; max ${maxTriLoad} CP)`
                       : `${tLoad.cp} CP (standard max ${maxTriLoad} CP)`;
 
+                  let intensivePillHtml = "";
+                  if (tLoad.intensives > 0) {
+                    if (isFutureYear) {
+                      const guideTip = tLoad.futureGuideIntensives > 0
+                        ? `${tLoad.intensives} mandatory intensive(s) — ${planYear} dates TBA (2027 Handbook dates shown as indicative guide only)`
+                        : `${tLoad.intensives} mandatory intensive(s) — ${planYear} dates TBA (check UNE Handbook when published)`;
+                      intensivePillHtml = `<span class="badge-mini badge-int-guide" title="${esc(guideTip)}">📅 ${tLoad.intensives} Int · ${planYear} TBA</span>`;
+                    } else if (tLoad.tbaIntensives > 0) {
+                      intensivePillHtml = `<span class="badge-mini badge-int-tba" title="${tLoad.tbaIntensives} mandatory intensive(s) have dates TBA — check UNE Handbook / myLearn">🔴 ${tLoad.intensives} Int · Dates TBA</span>`;
+                    } else {
+                      intensivePillHtml = `<span class="badge-mini badge-intensive">${tLoad.intensives} Intensive${tLoad.intensives > 1 ? "s" : ""}</span>`;
+                    }
+                  }
+
                   return `
                     <div class="tri-col ${isTarget ? "target-active" : ""} ${mobHidden ? "mobile-hidden-tri" : ""}"
                          data-drop-year="${yIdx}"
@@ -3105,18 +3282,19 @@ window.initUNEPlannerApp = function () {
                       <div class="tri-col-header">
                         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                           <span class="tri-name">Trimester ${tNum}</span>
+                          ${intensivePillHtml}
                           ${
-                            tLoad.intensives > 0
-                              ? tLoad.tbaIntensives > 0
-                                ? `<span class="badge-mini badge-int-tba" title="${tLoad.tbaIntensives} mandatory intensive(s) have dates TBA — check UNE Handbook / myLearn">🔴 ${tLoad.intensives} Int · Dates TBA</span>`
-                                : `<span class="badge-mini badge-intensive">${tLoad.intensives} Intensive${tLoad.intensives > 1 ? "s" : ""}</span>`
+                            hasConfirmedDateClash
+                              ? `<span class="badge-mini badge-int-clash" title="Confirmed 2027 overlapping Mandatory Intensive dates: ${esc(
+                                  dateClashTip || "Check intensive school dates"
+                                )}">⛔ Date Clash${dateClashes.length > 1 ? ` (${dateClashes.length})` : ""}</span>`
                               : ""
                           }
                           ${
-                            hasDateClash
-                              ? `<span class="badge-mini badge-int-clash" title="Overlapping published Mandatory Intensive dates: ${esc(
-                                  dateClashTip || "Check intensive school dates"
-                                )}">⛔ Date Clash${dateClashes.length > 1 ? ` (${dateClashes.length})` : ""}</span>`
+                            hasHistClash
+                              ? `<span class="badge-mini badge-int-hist" title="Possible overlap based on 2027 timetable (${esc(
+                                  histClashTip || "Check dates when published"
+                                )}) — verify ${planYear} dates when released">ℹ Possible Overlap (2027 Guide)</span>`
                               : ""
                           }
                           ${
@@ -3198,6 +3376,7 @@ window.initUNEPlannerApp = function () {
       plan.years.push({
         id: Engine.uid("yr"),
         yearNum: n,
+        year: 2026 + n,
         name: `Year ${n} (${2026 + n})`,
         trimesters: { 1: [], 2: [], 3: [] },
       });
@@ -3220,6 +3399,7 @@ window.initUNEPlannerApp = function () {
         plan.years.splice(idx, 1);
         plan.years.forEach((y, i) => {
           y.yearNum = i + 1;
+          y.year = 2027 + i;
           y.name = `Year ${i + 1} (${2027 + i})`;
         });
         exitSlotPicker();
@@ -3240,11 +3420,14 @@ window.initUNEPlannerApp = function () {
           exitSlotPicker();
           renderAll({ resetSidebarScroll: false });
         } else {
+          const yrObj = plan.years[yIdx];
           activateSlotPicker(
             {
               yearIdx: yIdx,
+              yearNum: yrObj?.yearNum || yIdx + 1,
+              planYear: getPlanYear(yrObj, yIdx),
               triNum: tNum,
-              label: `Add Unit to Year ${plan.years[yIdx]?.yearNum || yIdx + 1} · Trimester ${tNum}`,
+              label: `Add Unit to Year ${yrObj?.yearNum || yIdx + 1} · Trimester ${tNum}`,
             },
             true
           );
@@ -3255,18 +3438,24 @@ window.initUNEPlannerApp = function () {
 
     board.querySelectorAll("[data-resolve-placeholder]").forEach((btn) => {
       btn.onclick = () => {
-        const [yIdx, tNum, slotId] = btn.dataset.resolvePlaceholder.split("|");
-        const yr = plan.years[Number(yIdx)];
-        const ph = (yr?.trimesters[Number(tNum)] || []).find((s) => s.id === slotId);
+        const [yIdxStr, tNumStr, slotId] = btn.dataset.resolvePlaceholder.split("|");
+        const yIdx = Number(yIdxStr);
+        const tNum = Number(tNumStr);
+        const yr = plan.years[yIdx];
+        const ph = (yr?.trimesters[tNum] || []).find((s) => s.id === slotId);
         activateSlotPicker(
-          {
-            yearIdx: Number(yIdx),
-            triNum: Number(tNum),
-            replaceSlotId: slotId,
-            label: ph?.label || "Listed or Elective Unit",
-            slotKind: ph?.slotKind || "",
-            hintCodes: ph?.hintCodes || [],
-          },
+          ph
+            ? buildPlaceholderTarget(ph, yr, yIdx, tNum)
+            : {
+                yearIdx: yIdx,
+                yearNum: yr?.yearNum || yIdx + 1,
+                planYear: getPlanYear(yr, yIdx),
+                triNum: tNum,
+                replaceSlotId: slotId,
+                label: "Listed or Elective Unit",
+                slotKind: "",
+                hintCodes: [],
+              },
           true
         );
         renderAll({ resetSidebarScroll: true });
@@ -3293,21 +3482,74 @@ window.initUNEPlannerApp = function () {
     bindDropZones(board, plan);
   }
 
+  function inferPlaceholderCategory(slot) {
+    if (slot.category && Object.prototype.hasOwnProperty.call(CAT_LABELS, slot.category)) return slot.category;
+    const sk = String(slot.slotKind || "").toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(CAT_LABELS, sk)) return sk;
+    const lbl = String(slot.label || "").toLowerCase();
+    if (lbl.includes("core")) return "core";
+    if (lbl.includes("major")) return "major1";
+    if (lbl.includes("minor") || lbl.includes("stream")) return "minor";
+    if (lbl.includes("capstone") || lbl.includes("research")) return "capstone";
+    if (lbl.includes("listed") || lbl.includes("prescribed")) return "listed";
+    return "elective";
+  }
+
+  const CHOICE_ROLE_LABELS = {
+    core: "Core Choice",
+    major1: "Major Choice",
+    major2: "Major 2 Choice",
+    minor: "Minor Choice",
+    capstone: "Capstone Choice",
+    listed: "Listed Choice",
+    elective: "Elective",
+  };
+
   function renderBoardSlot(slot, yIdx, tNum, plan, report, bucketMap, attributedBucketByCode) {
     if (slot.type === "placeholder") {
       const isSelected = state.targetSlot && state.targetSlot.replaceSlotId === slot.id;
+      const phCat = inferPlaceholderCategory(slot);
+      const roleLabel = CHOICE_ROLE_LABELS[phCat] || "Student Choice";
+      let lvlChip = "";
+      if (Array.isArray(slot.allowedLevels) && slot.allowedLevels.length) {
+        lvlChip = `<span class="badge-mini" style="background:var(--surface-alt);color:var(--text-subtle);border:1px solid var(--border);">L${slot.allowedLevels.join("/")}</span>`;
+      } else if (slot.levelMin && slot.levelMax && slot.levelMin !== slot.levelMax) {
+        lvlChip = `<span class="badge-mini" style="background:var(--surface-alt);color:var(--text-subtle);border:1px solid var(--border);">L${esc(slot.levelMin)}–${esc(slot.levelMax)}</span>`;
+      } else if (slot.levelMin) {
+        lvlChip = `<span class="badge-mini" style="background:var(--surface-alt);color:var(--text-subtle);border:1px solid var(--border);">L${esc(slot.levelMin)}+</span>`;
+      }
+
+      let metaHint = "";
+      if (Array.isArray(slot.hintCodes) && slot.hintCodes.length > 0 && slot.hintCodes.length <= 4) {
+        metaHint = `Options: ${slot.hintCodes.join(" / ")}`;
+      } else if (slot.eligibleCount !== null && slot.eligibleCount !== undefined && slot.eligibleCount > 0) {
+        metaHint = `${slot.eligibleCount} eligible unit${slot.eligibleCount === 1 ? "" : "s"}${
+          slot.bucketTitle ? ` · ${slot.bucketTitle}` : ""
+        }`;
+      } else if (slot.bucketTitle) {
+        metaHint = `Student choice · ${slot.bucketTitle}`;
+      } else if (phCat === "elective") {
+        metaHint = "Any eligible UNE elective unit";
+      } else {
+        metaHint = "Open student choice slot";
+      }
+
       return `
-        <div class="slot-placeholder" style="${
-          isSelected ? "border-color:var(--info);background:var(--info-bg);box-shadow:0 0 0 2px var(--info-border);" : ""
-        }">
-          <div class="slot-top">
-            <span style="font-weight:700;font-size:12px;color:${isSelected ? "var(--info)" : "var(--text-muted)"};">
-              🎯 ${esc(slot.label)} (${esc(slot.cp ?? 6)} CP)
-            </span>
+        <div class="slot-placeholder cat-${phCat} ${isSelected ? "selected is-selected" : ""}">
+          <div class="slot-placeholder-head">
+            <div class="slot-placeholder-badges">
+              <span class="cat-tag cat-${phCat}">${esc(roleLabel)}</span>
+              ${lvlChip}
+              <span style="font-size:10.5px;font-weight:700;color:var(--text-subtle);">${esc(slot.cp ?? 6)} CP</span>
+            </div>
             <button class="icon-action remove no-print" data-remove-slot="${yIdx}|${tNum}|${esc(slot.id)}" title="Remove slot">✕</button>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-            <span style="font-size:11px;color:var(--text-subtle);">${isSelected ? "Choosing eligible unit…" : "Tap to pick valid unit"}</span>
+          <div class="slot-placeholder-label">${esc(slot.label || "Choose Unit")}</div>
+          <div class="slot-placeholder-meta">${esc(metaHint)}</div>
+          <div class="slot-placeholder-footer">
+            <span style="font-size:10.5px;color:${isSelected ? "var(--info)" : "var(--text-subtle)"};font-weight:${isSelected ? "700" : "500"};">
+              ${isSelected ? "🎯 Choosing eligible unit…" : "Tap to pick"}
+            </span>
             <button class="btn btn-sm ${isSelected ? "btn-primary" : "btn-soft"} no-print" data-resolve-placeholder="${yIdx}|${tNum}|${esc(
         slot.id
       )}">Choose Unit →</button>
@@ -3317,11 +3559,22 @@ window.initUNEPlannerApp = function () {
     }
 
     const u = Engine.getUnit(slot.code, DATA, plan.customUnits);
-    const bId = attributedBucketByCode[slot.code];
-    const bucket = bucketMap[bId];
-    const cat = safeCat(bucket?.category);
-    const diag = report.slotDiagnostics[slot.id] || { errors: [], warnings: [], infos: [], intensiveAlerts: [], intensiveClashes: [] };
+    const bInfo = getUnitBucketInfo(slot.code, report, bucketMap);
+    const cat = bInfo.category;
+    const diag = report.slotDiagnostics[slot.id] || {
+      errors: [],
+      warnings: [],
+      infos: [],
+      intensiveAlerts: [],
+      intensiveClashes: [],
+      intensiveGuides: [],
+      historicalIntensiveClashes: [],
+      rollingStartInfos: [],
+    };
     const intClashes = diag.intensiveClashes || [];
+    const histClashes = diag.historicalIntensiveClashes || [];
+    const intGuides = diag.intensiveGuides || [];
+    const rollingInfos = diag.rollingStartInfos || [];
     const statusCls = diag.errors.length ? "has-error" : diag.warnings.length || intClashes.length ? "has-warning" : "";
     const curFlatIdx = yIdx * 3 + (tNum - 1);
     const minFlatIdx = Math.max(0, (plan.commencingTrimester || 1) - 1);
@@ -3342,7 +3595,7 @@ window.initUNEPlannerApp = function () {
         <div class="slot-title">${esc(u ? u.title : slot.code)}</div>
         <div class="slot-footer">
           <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
-            <span class="cat-tag cat-${cat}">${esc(CAT_LABELS[cat] || "Unit")}</span>
+            <span class="cat-tag cat-${cat}" title="${esc(bInfo.bucketTitle)}">${esc(bInfo.badgeRole)}</span>
             ${u?.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
           </div>
           <div class="tri-pills">${u ? renderUnitTrimesterPills(u, tNum) : ""}</div>
@@ -3350,7 +3603,10 @@ window.initUNEPlannerApp = function () {
         ${diag.errors.map((m) => `<div class="slot-msg err">⛔ ${esc(m)}</div>`).join("")}
         ${intClashes.map((m) => `<div class="slot-msg int-clash">⛔ ${esc(m)}</div>`).join("")}
         ${(diag.intensiveAlerts || []).map((m) => `<div class="slot-msg int-tba">🔴 ${esc(m)}</div>`).join("")}
+        ${histClashes.map((m) => `<div class="slot-msg int-hist">ℹ ${esc(m)}</div>`).join("")}
         ${diag.warnings.map((m) => `<div class="slot-msg warn">⚠ ${esc(m)}</div>`).join("")}
+        ${intGuides.map((m) => `<div class="slot-msg int-guide">📅 ${esc(m)}</div>`).join("")}
+        ${rollingInfos.map((m) => `<div class="slot-msg rolling">🗓 ${esc(m)}</div>`).join("")}
         ${diag.infos.map((m) => `<div class="slot-msg info">ℹ ${esc(m)}</div>`).join("")}
       </div>
     `;
@@ -3577,8 +3833,10 @@ window.initUNEPlannerApp = function () {
     document.getElementById("modal-backdrop").classList.add("hidden");
   }
 
-  function renderUnitModalIntensiveBox(u, preferredMode) {
-    const intInfo = Engine.getUnitIntensiveForTri(u, null, preferredMode);
+  function renderUnitModalIntensiveBox(u, preferredMode, contextYear) {
+    const planYear = Number.isInteger(contextYear) ? contextYear : 2027;
+    const isFutureGuide = planYear > 2027;
+    const intInfo = Engine.getUnitIntensiveForTri(u, null, preferredMode, planYear);
     if (!intInfo) return "";
 
     const rawEntries = Array.isArray(u.intensiveEntries) && u.intensiveEntries.length
@@ -3599,7 +3857,7 @@ window.initUNEPlannerApp = function () {
       if (hasDiff) {
         entries = [];
         for (const tk of triKeys) {
-          const ti = Engine.getUnitIntensiveForTri(u, Number(tk), preferredMode);
+          const ti = Engine.getUnitIntensiveForTri(u, Number(tk), preferredMode, planYear);
           if (!ti) continue;
           if (Array.isArray(ti.entries) && ti.entries.length) {
             ti.entries.forEach((e) => entries.push({ ...e, tris: [Number(tk)] }));
@@ -3620,6 +3878,9 @@ window.initUNEPlannerApp = function () {
       }
     }
 
+    const futureNoticeHtml = isFutureGuide
+      ? `<div class="slot-msg int-guide" style="font-size:11.5px;">📅 <strong>${esc(planYear)} dates TBA</strong> — dates below are from the 2027 UNE Handbook as an indicative guide only.</div>`
+      : "";
     const onlineOnlyNote =
       intInfo.onlineOnlyIntensive || u.intensiveOnlineOnly
         ? `<div style="font-size:11.5px;font-weight:600;color:var(--info);">ℹ Mandatory for Online students only (On-Campus students attend regular campus classes).</div>`
@@ -3632,7 +3893,11 @@ window.initUNEPlannerApp = function () {
     if (entries && entries.length > 1) {
       const anyTba = Boolean(intInfo.tba || intInfo.hasTba || intInfo.mixedTba || entries.some((e) => e.tba));
       const allTba = entries.every((e) => e.tba);
-      const badgeCls = anyTba ? "badge-int-tba" : "badge-intensive";
+      const useAlarm = !isFutureGuide && anyTba;
+      const badgeCls = isFutureGuide ? "badge-int-guide" : useAlarm ? "badge-int-tba" : "badge-intensive";
+      const boxBorder = isFutureGuide ? "var(--info-border)" : useAlarm ? "var(--err-border)" : "var(--warn-border)";
+      const boxBg = isFutureGuide ? "var(--info-bg)" : useAlarm ? "var(--err-bg)" : "var(--warn-bg)";
+      const locColor = isFutureGuide ? "var(--info)" : useAlarm ? "var(--err)" : "var(--warn)";
       const isMultiCohort = Boolean(intInfo.multiCohort || Object.values(u.intensiveByTri || {}).some((x) => x?.multiCohort));
       const uniqueTriKeys = new Set(entries.flatMap((e) => (Array.isArray(e.tris) ? e.tris : [])));
       const headerLabel = isMultiCohort
@@ -3641,16 +3906,17 @@ window.initUNEPlannerApp = function () {
         ? `${uniqueTriKeys.size} Trimesters`
         : `${entries.length} Blocks`;
       return `
-        <div style="border:1px solid ${anyTba ? "var(--err-border)" : "var(--warn-border)"};background:${anyTba ? "var(--err-bg)" : "var(--warn-bg)"};border-radius:8px;padding:9px 11px;margin-bottom:9px;display:flex;flex-direction:column;gap:6px;">
+        <div style="border:1px solid ${boxBorder};background:${boxBg};border-radius:8px;padding:9px 11px;margin-bottom:9px;display:flex;flex-direction:column;gap:6px;">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <span class="badge-mini ${badgeCls}">${anyTba ? "🔴" : "🏫"} ${esc(intInfo.kind)} Intensive School${
-        intInfo.mixedTba && !allTba ? " · Mixed Dated & TBA" : ""
+            <span class="badge-mini ${badgeCls}">${isFutureGuide ? "📅" : useAlarm ? "🔴" : "🏫"} ${esc(intInfo.kind)} Intensive School${
+        isFutureGuide ? ` · ${esc(planYear)} TBA` : intInfo.mixedTba && !allTba ? " · Mixed Dated & TBA" : ""
       }</span>
             <span class="badge-mini badge-int-cohort">${esc(headerLabel)}</span>
-            <span style="font-weight:700;font-size:12px;color:${anyTba ? "var(--err)" : "var(--warn)"};">${esc(intInfo.location)}${
+            <span style="font-weight:700;font-size:12px;color:${locColor};">${esc(intInfo.location)}${
         intInfo.duration ? ` · ${esc(intInfo.duration)}` : ""
       }</span>
           </div>
+          ${futureNoticeHtml}
           ${onlineOnlyNote}
           ${choiceNote}
           <div class="int-entry-list">
@@ -3660,12 +3926,18 @@ window.initUNEPlannerApp = function () {
                   Array.isArray(e.tris) && e.tris.length
                     ? `<span class="tri-pill active-tri">${e.tris.map((t) => `T${t}`).join("/")}</span>`
                     : "";
-                const entryDates = e.tba
+                const rawDatesStr = (e.dates || []).join(" · ");
+                const entryDates = isFutureGuide
+                  ? e.tba
+                    ? `${planYear} dates TBA (2027 dates also TBA)`
+                    : `${planYear} dates TBA (2027 guide: ${rawDatesStr})`
+                  : e.tba
                   ? "🔴 Dates TBA — check UNE Handbook / myLearn"
-                  : (e.dates || []).join(" · ") || "Dates published in handbook";
+                  : rawDatesStr || "Dates published in 2027 handbook";
                 const locDur = [e.location, e.duration].filter(Boolean).join(" · ");
+                const itemCls = isFutureGuide ? "is-guide" : e.tba ? "is-tba" : "";
                 return `
-                  <div class="int-entry-item ${e.tba ? "is-tba" : ""}">
+                  <div class="int-entry-item ${itemCls}">
                     <div class="int-entry-hdr">
                       ${triTag}
                       <span>${esc(e.title || e.kind || "Intensive Session")}</span>
@@ -3684,23 +3956,35 @@ window.initUNEPlannerApp = function () {
     }
 
     const isTba = Boolean(intInfo.tba || intInfo.mixedTba);
-    const badgeCls = isTba ? "badge-int-tba" : "badge-intensive";
-    const dateTxt = intInfo.tba
-      ? "Dates TBA — check dates"
+    const useAlarm = !isFutureGuide && isTba;
+    const badgeCls = isFutureGuide ? "badge-int-guide" : useAlarm ? "badge-int-tba" : "badge-intensive";
+    const boxBorder = isFutureGuide ? "var(--info-border)" : useAlarm ? "var(--err-border)" : "var(--warn-border)";
+    const boxBg = isFutureGuide ? "var(--info-bg)" : useAlarm ? "var(--err-bg)" : "var(--warn-bg)";
+    const locColor = isFutureGuide ? "var(--info)" : useAlarm ? "var(--err)" : "var(--warn)";
+    const rawDateJoin = (intInfo.dates || []).join(" / ");
+    const dateTxt = isFutureGuide
+      ? intInfo.tba || !rawDateJoin
+        ? `${planYear} dates TBA — check UNE Handbook when published`
+        : `${planYear} dates TBA (2027 guide: ${rawDateJoin})`
+      : intInfo.tba
+      ? "2027 Dates TBA — check dates"
       : intInfo.mixedTba
-      ? `${(intInfo.dates || []).join(" / ")} (other trimester(s) TBA — check dates)`
-      : (intInfo.dates || []).join(" / ");
+      ? `${rawDateJoin} (other trimester(s) TBA — check dates)`
+      : `2027 Handbook: ${rawDateJoin}`;
     return `
-      <div style="border:1px solid ${isTba ? "var(--err-border)" : "var(--warn-border)"};background:${isTba ? "var(--err-bg)" : "var(--warn-bg)"};border-radius:8px;padding:9px 11px;margin-bottom:9px;display:flex;flex-direction:column;gap:4px;">
+      <div style="border:1px solid ${boxBorder};background:${boxBg};border-radius:8px;padding:9px 11px;margin-bottom:9px;display:flex;flex-direction:column;gap:4px;">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <span class="badge-mini ${badgeCls}">${isTba ? "🔴" : "🏫"} ${esc(intInfo.kind)} Intensive School</span>
-          <span style="font-weight:700;font-size:12px;color:${isTba ? "var(--err)" : "var(--warn)"};">${esc(intInfo.location)}${
+          <span class="badge-mini ${badgeCls}">${isFutureGuide ? "📅" : useAlarm ? "🔴" : "🏫"} ${esc(intInfo.kind)} Intensive School${
+      isFutureGuide ? ` · ${esc(planYear)} TBA` : ""
+    }</span>
+          <span style="font-weight:700;font-size:12px;color:${locColor};">${esc(intInfo.location)}${
       intInfo.duration ? ` · ${esc(intInfo.duration)}` : ""
     }</span>
         </div>
+        ${futureNoticeHtml}
         ${onlineOnlyNote}
         ${choiceNote}
-        <div style="font-size:12px;font-weight:700;color:${isTba ? "var(--err)" : "var(--text)"};">${esc(dateTxt)}</div>
+        <div style="font-size:12px;font-weight:700;color:${useAlarm ? "var(--err)" : "var(--text)"};">${esc(dateTxt)}</div>
         ${intInfo.note ? `<div style="font-size:11.5px;color:var(--text-muted);line-height:1.35;">${esc(intInfo.note)}</div>` : ""}
       </div>
     `;
@@ -3731,10 +4015,21 @@ window.initUNEPlannerApp = function () {
   }
 
   function openUnitModal(code) {
+    const course = getCurrentCourse();
     const plan = getCurrentPlan();
     const u = Engine.getUnit(code, DATA, plan.customUnits);
     if (!u) return;
     const plannedLoc = isUnitPlanned(code, plan);
+    const plannedYear = getUnitPlannedYear(code, plan);
+    const targetYear = state.targetSlot
+      ? state.targetSlot.planYear || getPlanYear(plan.years[state.targetSlot.yearIdx], state.targetSlot.yearIdx)
+      : null;
+    const contextYear = plannedYear || targetYear || 2027;
+    const isRolling = u.offered2027 === false && Number.isInteger(u.rollingStartYear);
+    const isArchived = u.offered2027 === false && !isRolling;
+    const modalReport = state.view === "planner" && plannedLoc ? Engine.validatePlan(course, plan, DATA) : null;
+    const modalBucketInfo = modalReport ? getUnitBucketInfo(code, modalReport) : null;
+
     const colors = ["#1d7880", "#2774ae", "#95c236", "#b45309", "#b91c4a", "#6d28d9"];
     const assessBar = (u.assessments || [])
       .filter((a) => a.weight > 0)
@@ -3750,13 +4045,22 @@ window.initUNEPlannerApp = function () {
       );
     }
 
+    const availTris =
+      u.trimesters && u.trimesters.length > 0
+        ? u.trimesters
+        : isRolling && Array.isArray(u.indicativeTrimesters) && u.indicativeTrimesters.length > 0
+        ? u.indicativeTrimesters
+        : [1, 2, 3];
     const addButtons = (plan.years || [])
-      .map((yr, yIdx) =>
-        [1, 2, 3]
-          .filter((t) => !u.trimesters || !u.trimesters.length || u.trimesters.includes(t))
-          .map((t) => `<button class="btn btn-sm btn-soft" data-modal-place="${yIdx}|${t}">+ Y${yr.yearNum} T${t}</button>`)
-          .join(" ")
-      )
+      .map((yr, yIdx) => {
+        const pYr = getPlanYear(yr, yIdx);
+        if (isRolling && pYr < u.rollingStartYear) return "";
+        return [1, 2, 3]
+          .filter((t) => availTris.includes(t))
+          .map((t) => `<button class="btn btn-sm btn-soft" data-modal-place="${yIdx}|${t}">+ Y${yr.yearNum} (${pYr}) T${t}</button>`)
+          .join(" ");
+      })
+      .filter(Boolean)
       .join(" ");
 
     const safeUnitUrl = safeHttpUrl(
@@ -3768,8 +4072,10 @@ window.initUNEPlannerApp = function () {
       `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
          <span class="course-code-pill teal">${esc(u.code)}</span>
          <span style="font-weight:800;font-size:15.5px;">${esc(u.title)}</span>
+         ${modalBucketInfo ? `<span class="cat-tag cat-${modalBucketInfo.category}" title="${esc(modalBucketInfo.bucketTitle)}">${esc(modalBucketInfo.badgeRole)}</span>` : ""}
          ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
          ${u.repeatable ? `<span class="badge-mini badge-int-cohort">Repeatable</span>` : ""}
+         ${isRolling ? `<span class="badge-mini badge-rolling">🗓 From ${esc(u.rollingStartYear)}</span>` : ""}
        </div>
        <div style="font-size:12px;color:var(--text-subtle);margin-top:3px;">${esc(u.cp ?? 6)} Credit Points · ${esc(u.level ?? 100)}-Level · ${esc(u.school || "UNE")}</div>`,
       `
@@ -3777,8 +4083,8 @@ window.initUNEPlannerApp = function () {
           <div>
             ${
               plannedLoc && !u.repeatable
-                ? `<span style="color:var(--ok);font-weight:700;">✓ Planned in ${esc(plannedLoc)}</span>`
-                : u.offered2027 === false
+                ? `<span style="color:var(--ok);font-weight:700;">✓ Planned in ${esc(plannedLoc)}${plannedYear ? ` (${plannedYear})` : ""}</span>`
+                : isArchived
                 ? `<span style="color:var(--err);font-weight:700;">⛔ No 2027 Offering Published</span>`
                 : `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <button class="btn btn-sm btn-primary" id="btn-modal-smart-add">${
@@ -3797,6 +4103,15 @@ window.initUNEPlannerApp = function () {
             <a href="${esc(safeUnitUrl)}" target="_blank" rel="noopener" class="btn btn-sm">Official 2027 Unit Page ↗</a>
           </div>
         </div>
+        ${
+          isRolling
+            ? `<div class="slot-msg rolling" style="font-size:12px;">🗓 <strong>Rolling-Start Unit (from ${esc(u.rollingStartYear)}):</strong> Not offered in 2027 — scheduled for future cohorts from ${esc(u.rollingStartYear)}${
+                Array.isArray(u.indicativeTrimesters) && u.indicativeTrimesters.length
+                  ? ` (indicative trimester: T${u.indicativeTrimesters.join(", T")})`
+                  : " (trimester TBA)"
+              }.</div>`
+            : ""
+        }
         ${renderPlanningNotesHtml(u)}
         ${u.overview ? `<div><div class="config-label" style="margin-bottom:4px;">Unit Description</div><div style="white-space:pre-line;color:var(--text-muted);">${esc(u.overview)}</div></div>` : ""}
         <div class="info-grid">
@@ -3806,13 +4121,13 @@ window.initUNEPlannerApp = function () {
         </div>
         ${u.assumedKnowledge ? `<div class="info-stat"><div class="info-stat-label">Assumed Knowledge</div><div style="font-size:12px;margin-top:3px;">${esc(u.assumedKnowledge)}</div></div>` : ""}
         <div>
-          <div class="config-label" style="margin-bottom:6px;">2027 Offerings &amp; Intensive Schools</div>
+          <div class="config-label" style="margin-bottom:6px;">2027 Handbook Offerings &amp; Intensive Schools</div>
           ${
             u.t3RepeatOnly
               ? `<div class="slot-msg warn" style="margin-bottom:8px;">⚠ Trimester 3 is available to repeating students only (requires Head of School permission).</div>`
               : ""
           }
-          ${renderUnitModalIntensiveBox(u, plan?.preferredMode)}
+          ${renderUnitModalIntensiveBox(u, plan?.preferredMode, contextYear)}
           ${
             (u.offerings || []).length
               ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:8px;">
@@ -3825,7 +4140,11 @@ window.initUNEPlannerApp = function () {
                     )
                     .join("")}
                 </div>`
-              : `<div style="color:var(--text-subtle);font-size:12px;">No 2027 teaching periods listed.</div>`
+              : `<div style="color:var(--text-subtle);font-size:12px;">${
+                  isRolling
+                    ? `Scheduled rolling start from ${esc(u.rollingStartYear)} — future teaching periods will appear when published.`
+                    : "No 2027 teaching periods listed."
+                }</div>`
           }
         </div>
         ${
@@ -4107,8 +4426,7 @@ window.initUNEPlannerApp = function () {
               for (const s of yr.trimesters[t] || []) {
                 if (s.type === "unit") {
                   const u = Engine.getUnit(s.code, DATA, plan.customUnits);
-                  const bId = report.resolved.attributedBucketByCode[s.code];
-                  const b = report.resolved.buckets.find((x) => x.id === bId);
+                  const bInfo = getUnitBucketInfo(s.code, report);
                   rows.push([
                     course.code,
                     yr.name,
@@ -4116,7 +4434,7 @@ window.initUNEPlannerApp = function () {
                     s.code,
                     u?.title || s.code,
                     u ? (u.cp ?? 6) : (s.cp ?? 6),
-                    b?.title || "Elective",
+                    bInfo.bucketTitle || "Elective",
                   ]);
                 } else {
                   rows.push([
@@ -4126,7 +4444,7 @@ window.initUNEPlannerApp = function () {
                     "PLACEHOLDER",
                     s.label || "Placeholder",
                     s.cp ?? 6,
-                    "Placeholder",
+                    s.bucketTitle || "Placeholder",
                   ]);
                 }
               }
@@ -4249,6 +4567,7 @@ window.initUNEPlannerApp = function () {
           ...Object.values(report.slotDiagnostics || {}).flatMap((d) => [
             ...(d.errors || []),
             ...(d.intensiveClashes || []),
+            ...(d.historicalIntensiveClashes || []),
             ...(d.warnings || []),
           ]),
         ].slice(0, 6)

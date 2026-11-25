@@ -1527,6 +1527,27 @@ html.dark .badge-yearlong {
   border-color: rgba(183, 148, 244, 0.4);
 }
 
+/* Future-year (2028+) historical intensive overlap advisory (soft amber dashed — distinct from crimson 2027 clash) */
+.badge-int-hist {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px dashed var(--warn-border);
+}
+
+/* Future-year (2028+) indicative intensive guide (calm neutral slate — distinct from red 2027 TBA) */
+.badge-int-guide {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  border: 1px dashed var(--border-strong);
+}
+
+/* Phased rolling-start unit badge (2028/2029+) */
+.badge-rolling {
+  background: var(--primary-soft);
+  color: var(--cat-core);
+  border: 1px dashed var(--primary-border);
+}
+
 /* ==========================================================================
    BOARD AREA (PROGRESS CARD + YEAR x TRIMESTER GRID)
    ========================================================================== */
@@ -1829,12 +1850,79 @@ html.dark .badge-yearlong {
 
 .slot-placeholder {
   border: 1.5px dashed var(--border-strong);
+  border-left-width: 4px;
+  border-left-style: solid;
   background: var(--surface-alt);
   border-radius: var(--radius-sm);
   padding: 9px 10px;
   display: flex;
   flex-direction: column;
+  gap: 5px;
+  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.slot-placeholder:hover {
+  border-color: var(--primary-border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.slot-placeholder.cat-core { border-left-color: var(--cat-core); }
+.slot-placeholder.cat-major1 { border-left-color: var(--cat-major1); }
+.slot-placeholder.cat-major2 { border-left-color: var(--cat-major2); }
+.slot-placeholder.cat-minor { border-left-color: var(--cat-minor); }
+.slot-placeholder.cat-capstone { border-left-color: var(--cat-capstone); }
+.slot-placeholder.cat-listed { border-left-color: var(--cat-listed); }
+.slot-placeholder.cat-elective { border-left-color: var(--cat-elective); }
+
+.slot-placeholder.selected,
+.slot-placeholder.is-selected {
+  border-color: var(--info);
+  border-left-color: var(--info);
+  background: var(--info-bg);
+  box-shadow: 0 0 0 2px var(--info-border);
+}
+
+.slot-placeholder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 6px;
+}
+
+.slot-placeholder-badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.slot-placeholder-label {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.slot-placeholder.selected .slot-placeholder-label,
+.slot-placeholder.is-selected .slot-placeholder-label {
+  color: var(--info);
+}
+
+.slot-placeholder-meta {
+  font-size: 11px;
+  color: var(--text-subtle);
+  line-height: 1.3;
+}
+
+.slot-placeholder-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
 }
 
 .slot-top {
@@ -1874,6 +1962,12 @@ html.dark .badge-yearlong {
 .icon-action.remove:hover {
   background: var(--err-bg);
   color: var(--err);
+}
+
+.icon-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .slot-title {
@@ -1928,6 +2022,27 @@ html.dark .badge-yearlong {
 }
 .slot-msg.warn { background: var(--warn-bg); color: var(--warn); }
 .slot-msg.info { background: var(--info-bg); color: var(--info); }
+.slot-msg.int-hist {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px dashed var(--warn-border);
+  border-left: 3px solid var(--warn);
+  font-weight: 600;
+}
+.slot-msg.int-guide {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  border: 1px dashed var(--border-strong);
+  border-left: 3px solid var(--info);
+  font-weight: 500;
+}
+.slot-msg.rolling {
+  background: var(--primary-soft);
+  color: var(--cat-core);
+  border: 1px dashed var(--primary-border);
+  border-left: 3px solid var(--cat-core);
+  font-weight: 600;
+}
 
 .trial-banner-actions {
   display: inline-flex;
@@ -2112,6 +2227,12 @@ html.dark .badge-yearlong {
   border-left-color: var(--err);
 }
 
+.int-entry-item.is-guide {
+  border-style: dashed;
+  border-left-style: solid;
+  border-left-color: var(--info);
+}
+
 .int-entry-hdr {
   display: flex;
   align-items: center;
@@ -2131,6 +2252,10 @@ html.dark .badge-yearlong {
 
 .int-entry-item.is-tba .int-entry-dates {
   color: var(--err);
+}
+
+.int-entry-item.is-guide .int-entry-dates {
+  color: var(--text-muted);
 }
 
 .int-entry-note {
@@ -2924,11 +3049,26 @@ html.dark .badge-yearlong {
 
   .year-card,
   .progress-card,
-  .slot-card {
+  .slot-card,
+  .slot-placeholder {
     background: #ffffff !important;
     color: #00163d !important;
     box-shadow: none !important;
     break-inside: avoid;
+  }
+
+  .slot-placeholder {
+    border-top-color: #aeb8c4 !important;
+    border-right-color: #aeb8c4 !important;
+    border-bottom-color: #aeb8c4 !important;
+  }
+
+  .slot-placeholder-label {
+    color: #00163d !important;
+  }
+
+  .slot-placeholder-meta {
+    color: #475569 !important;
   }
 
   .year-card,
