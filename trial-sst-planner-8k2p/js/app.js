@@ -383,8 +383,8 @@ window.initUNEPlannerApp = function () {
     return obj === null || obj === undefined ? obj : JSON.parse(JSON.stringify(obj));
   }
 
-  function takeUndoSnapshot(course, plan) {
-    if (!hasBoardAnySlots(plan)) return null;
+  function takeUndoSnapshot(course, plan, includeEmpty = false) {
+    if (!includeEmpty && !hasBoardAnySlots(plan)) return null;
     return {
       courseCode: course.code,
       plan: deepClone(plan),
@@ -682,6 +682,7 @@ window.initUNEPlannerApp = function () {
       strictHints: Boolean(ph.strictHints),
       eligibleCount: ph.eligibleCount !== undefined && ph.eligibleCount !== null ? Number(ph.eligibleCount) : null,
       allowedLevels: Array.isArray(ph.allowedLevels) ? ph.allowedLevels : null,
+      allowedPrefixes: Array.isArray(ph.allowedPrefixes) ? ph.allowedPrefixes : null,
       levelMin: ph.levelMin !== undefined && ph.levelMin !== null ? Number(ph.levelMin) : null,
       levelMax: ph.levelMax !== undefined && ph.levelMax !== null ? Number(ph.levelMax) : null,
       strictPoolOnly: typeof ph.strictPoolOnly === "boolean" ? ph.strictPoolOnly : undefined,
@@ -748,6 +749,10 @@ window.initUNEPlannerApp = function () {
             if (Array.isArray(s.allowedLevels)) {
               const lvls = s.allowedLevels.map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 900);
               if (lvls.length) cleanPh.allowedLevels = lvls;
+            }
+            if (Array.isArray(s.allowedPrefixes)) {
+              const prefixes = s.allowedPrefixes.filter((p) => typeof p === "string" && /^[A-Z][A-Z0-9]{0,11}$/.test(p));
+              if (prefixes.length) cleanPh.allowedPrefixes = prefixes;
             }
             if (s.levelMin !== undefined && s.levelMin !== null && Number.isFinite(Number(s.levelMin))) {
               cleanPh.levelMin = Number(s.levelMin);
@@ -839,7 +844,8 @@ window.initUNEPlannerApp = function () {
       dynamicAosSelections: dynSel,
       commencingTrimester: cTri === 1 || cTri === 2 || cTri === 3 ? cTri : def.commencingTrimester,
       studyLoad: rawPlan.studyLoad === "Part-time" ? "Part-time" : "Full-time",
-      preferredMode: rawPlan.preferredMode === "On Campus" ? "On Campus" : "Online",
+      preferredMode: ["Online", "On Campus", ...(course.modes || [])].includes(rawPlan.preferredMode)
+        ? rawPlan.preferredMode : def.preferredMode,
       t3Strategy: t3Strat,
       includeT3InAuto: t3Strat !== "none",
       t3Analysis: rawPlan.t3Analysis && typeof rawPlan.t3Analysis === "object" && !Array.isArray(rawPlan.t3Analysis) ? rawPlan.t3Analysis : null,
@@ -1697,7 +1703,6 @@ window.initUNEPlannerApp = function () {
   function renderHeader(course, plan) {
     const hdr = document.getElementById("app-header");
     const isPlanner = state.view === "planner";
-    const studyPlans = isPlanner ? Engine.getAvailableStudyPlans(course, plan, DATA) : [];
     const openPhCount = isPlanner ? findOpenPlaceholders(plan).length : 0;
     const bugLogCount = loadFeedbackLog().length;
 
@@ -1741,13 +1746,9 @@ window.initUNEPlannerApp = function () {
               <button class="btn btn-hdr tablet-drawer-trigger" id="btn-tablet-drawer">
                 <span>📚 Units${openPhCount ? ` (${openPhCount})` : ""}</span>
               </button>
-              ${
-                studyPlans.length > 0
-                  ? `<button class="btn btn-hdr hdr-hide-mobile" id="btn-open-studyplans" title="Load an official UNE Trimester Progression Map">
-                      <span>📋 Plans (${studyPlans.length})</span>
-                    </button>`
-                  : ""
-              }
+              <button class="btn btn-hdr hdr-hide-mobile" id="btn-open-studyplans" title="Handbook progression maps and coordinator pathways">
+                <span>Plans &amp; pathways</span>
+              </button>
               <button class="btn btn-hdr-lime" id="btn-auto-plan" title="Automatically schedule mandatory units and open student-choice slots">
                 <span>✨ <span class="auto-plan-full">Auto-Plan</span><span class="auto-plan-short">Auto</span></span>
               </button>
@@ -2746,6 +2747,7 @@ window.initUNEPlannerApp = function () {
           <select class="select-input" id="sel-mode">
             <option value="Online" ${plan.preferredMode === "Online" ? "selected" : ""}>Online</option>
             <option value="On Campus" ${plan.preferredMode === "On Campus" ? "selected" : ""}>On Campus</option>
+            ${(course.modes || []).includes("Offshore") ? `<option value="Offshore" ${plan.preferredMode === "Offshore" ? "selected" : ""}>Offshore</option>` : ""}
           </select>
         </div>
 
@@ -2946,10 +2948,10 @@ window.initUNEPlannerApp = function () {
     if (u.offered2027 === false) {
       if (isRolling) {
         if (targetYear && targetYear < u.rollingStartYear) {
-          reasons.push(`Rolling-start unit — scheduled from ${u.rollingStartYear}`);
+          reasons.push(`Rolling-start unit — indicative from ${u.rollingStartYear}`);
         }
       } else {
-        reasons.push("Not offered in 2027 (archived unit)");
+        reasons.push(Engine.getNoOfferingLabel(u));
       }
     }
     const pm = u.prereqMeta;
@@ -2985,11 +2987,7 @@ window.initUNEPlannerApp = function () {
       const reasons = getFallbackBaseIneligibility(u, course, targetYr);
       const triNum = state.targetSlot.triNum;
       if (u.offered2027 !== false && u.trimesters && u.trimesters.length > 0 && !u.trimesters.includes(triNum)) {
-        reasons.push(
-          targetYr > 2027
-            ? `Not offered in Trimester ${triNum} (based on 2027 Handbook: T${u.trimesters.join(", T")})`
-            : `Not offered in Trimester ${triNum} (offered in T${u.trimesters.join(", T")})`
-        );
+        reasons.push(Engine.getSlotPeriodMismatch(u, triNum, targetYr));
       }
       if (u.t3RepeatOnly && triNum === 3) {
         reasons.push("Trimester 3 is for repeating students only");
@@ -3066,7 +3064,9 @@ window.initUNEPlannerApp = function () {
         ...Object.values(plan.customUnits || {}).filter((cu) => !DATA.units[cu.code]),
       ].filter((u) => {
         if (state.catalogLevel !== "all" && String(u.level) !== state.catalogLevel) return false;
-        if (state.catalogTri !== "all" && !(u.trimesters || []).includes(parseInt(state.catalogTri, 10))) return false;
+        if (state.catalogTri !== "all" && !Engine.getUnitOfferingPeriods(u).some(p =>
+          p.trimester === (state.catalogTri === "other" ? null : Number(state.catalogTri))
+        )) return false;
         if (state.catalogPrefix !== "all" && u.prefix !== state.catalogPrefix) return false;
         if (q2 && !`${u.code} ${u.title} ${u.school}`.toLowerCase().includes(q2)) return false;
         return true;
@@ -3283,11 +3283,12 @@ window.initUNEPlannerApp = function () {
                   }</option>`
               ).join("")}
             </select>
-            <select class="select-input" id="sel-cat-tri">
-              <option value="all">Any Tri</option>
+            <select class="select-input" id="sel-cat-tri" aria-label="Teaching period">
+              <option value="all">Any period</option>
               <option value="1" ${state.catalogTri === "1" ? "selected" : ""}>T1</option>
               <option value="2" ${state.catalogTri === "2" ? "selected" : ""}>T2</option>
               <option value="3" ${state.catalogTri === "3" ? "selected" : ""}>T3</option>
+              <option value="other" ${state.catalogTri === "other" ? "selected" : ""}>Other periods</option>
             </select>
             <select class="select-input" id="sel-cat-prefix">
               <option value="all">All Prefixes</option>
@@ -3632,7 +3633,7 @@ window.initUNEPlannerApp = function () {
         const grpTotal = totalByTri.get(sibTri) || grpItems.length;
         parts.push(`
           <div class="swap-category-hdr">
-            <span>↔ Available in Trimester ${sibTri} — Auto-Swaps Slot</span>
+            <span>↔ Fits the T${sibTri} board slot</span>
             <span>${grpTotal} unit${grpTotal === 1 ? "" : "s"}</span>
           </div>
           <div class="swap-category-sub">
@@ -3712,7 +3713,6 @@ window.initUNEPlannerApp = function () {
     const targetYr = state.targetSlot
       ? state.targetSlot.planYear || getPlanYear(plan?.years?.[state.targetSlot.yearIdx], state.targetSlot.yearIdx)
       : 2027;
-    const isRolling = u.offered2027 === false && Number.isInteger(u.rollingStartYear);
     const swapShort = item.swapPlaceholderShort || item.swapPlaceholderLabel || "Elective";
     const swapTip = `Places ${item.code} in Year ${slotEval.yearNum} T${item.siblingTri} and moves your T${item.siblingTri} ${swapShort} slot to T${slotEval.triNum}`;
     return `
@@ -3733,7 +3733,6 @@ window.initUNEPlannerApp = function () {
             ${item.helpsLevelMin ? `<span class="badge-mini" style="background:var(--cat-major1-bg);color:var(--cat-major1);border:1px solid var(--cat-major1);">L${esc(u.level)} Target</span>` : ""}
             ${renderIntensiveBadgeMini(u, item.siblingTri, plan?.preferredMode, targetYr)}
             ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
-            ${isRolling ? `<span class="badge-mini badge-rolling">🗓 From ${esc(u.rollingStartYear)}</span>` : ""}
             ${item.modeWarning ? `<span class="badge-mini badge-intensive">${esc(item.modeWarning)}</span>` : ""}
           </div>
           <div class="tri-pills">${renderUnitTrimesterPills(u, item.siblingTri)}</div>
@@ -3831,30 +3830,20 @@ window.initUNEPlannerApp = function () {
   }
 
   function renderUnitTrimesterPills(u, activeTriNum) {
-    if (u && u.trimesters && u.trimesters.length > 0) {
-      if (activeTriNum !== undefined && activeTriNum !== null) {
-        return u.trimesters
-          .map((t) => `<span class="tri-pill ${t === activeTriNum ? "active-tri" : ""}">T${t}</span>`)
-          .join("");
-      }
-      return [1, 2, 3]
-        .map((t) =>
-          u.trimesters.includes(t)
-            ? `<span class="tri-pill active-tri">T${t}</span>`
-            : `<span class="tri-pill" style="opacity:0.35;">T${t}</span>`
-        )
-        .join("");
+    const periods = Engine.getUnitOfferingPeriods(u);
+    if (periods.length) {
+      return periods.map(({ label, period, trimester }) => {
+        const active = activeTriNum == null || trimester === activeTriNum;
+        return `<span class="tri-pill ${active ? "active-tri" : ""}" title="${esc(period)}">${esc(label)}</span>`;
+      }).join("");
     }
     if (u && u.offered2027 === false && Number.isInteger(u.rollingStartYear)) {
       const ind = Array.isArray(u.indicativeTrimesters) && u.indicativeTrimesters.length
         ? u.indicativeTrimesters.map((t) => `<span class="tri-pill ${t === activeTriNum ? "active-tri" : ""}" title="Indicative trimester from study plan">~T${t}</span>`).join("")
         : "";
-      return `${ind}<span class="badge-mini badge-rolling" title="Rolling-start unit scheduled from ${esc(u.rollingStartYear)}">From ${esc(u.rollingStartYear)}</span>`;
+      return `${ind}<span class="badge-mini badge-rolling">Indicative from ${esc(u.rollingStartYear)}</span>`;
     }
-    if (u && u.offered2027 !== false && u.nonStandardPeriods && u.nonStandardPeriods.length > 0) {
-      return `<span class="tri-pill active-tri" title="Non-standard teaching period: ${esc(u.nonStandardPeriods.join(", "))}">${esc(u.nonStandardPeriods[0])}</span>`;
-    }
-    return [1, 2, 3].map((t) => `<span class="tri-pill" style="opacity:0.35;">T${t}</span>`).join("");
+    return "";
   }
 
   function renderSlotEligibleCard(item, plan) {
@@ -3863,7 +3852,6 @@ window.initUNEPlannerApp = function () {
     const targetYr = state.targetSlot
       ? state.targetSlot.planYear || getPlanYear(plan?.years?.[state.targetSlot.yearIdx], state.targetSlot.yearIdx)
       : 2027;
-    const isRolling = u.offered2027 === false && Number.isInteger(u.rollingStartYear);
     return `
       <div class="pool-unit ${item.majorRequiredBy ? "major-req" : ""}" draggable="true" data-drag-pool-code="${esc(item.code)}">
         <div class="pool-unit-top">
@@ -3881,10 +3869,9 @@ window.initUNEPlannerApp = function () {
             ${item.helpsLevelMin ? `<span class="badge-mini" style="background:var(--cat-major1-bg);color:var(--cat-major1);border:1px solid var(--cat-major1);">L${esc(u.level)} Target</span>` : ""}
             ${renderIntensiveBadgeMini(u, targetTri, plan?.preferredMode, targetYr)}
             ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
-            ${isRolling ? `<span class="badge-mini badge-rolling">🗓 From ${esc(u.rollingStartYear)}</span>` : ""}
             ${item.modeWarning ? `<span class="badge-mini badge-intensive">${esc(item.modeWarning)}</span>` : ""}
           </div>
-          <div class="tri-pills">${(u.trimesters || []).length ? u.trimesters.map((t) => `<span class="tri-pill active-tri">T${t}</span>`).join("") : renderUnitTrimesterPills(u)}</div>
+          <div class="tri-pills">${renderUnitTrimesterPills(u, targetTri)}</div>
         </div>
       </div>
     `;
@@ -3946,7 +3933,7 @@ window.initUNEPlannerApp = function () {
             plannedLoc && !u.repeatable
               ? `<span class="badge-mini" style="background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-border);">✓ ${esc(plannedLoc)}</span>`
               : isArchived
-              ? `<span class="badge-mini badge-archived">Not offered 2027</span>`
+              ? `<span class="badge-mini badge-archived">${esc(Engine.getNoOfferingLabel(u))}</span>`
               : `<button class="btn btn-sm btn-soft" data-add-unit="${esc(code)}">${plannedLoc && u.repeatable ? "+ Repeat" : "+ Add"}</button>`
           }
         </div>
@@ -4771,8 +4758,6 @@ window.initUNEPlannerApp = function () {
 
   function openMobileToolsSheet() {
     const course = getCurrentCourse();
-    const plan = getCurrentPlan();
-    const spCount = Engine.getAvailableStudyPlans(course, plan, DATA).length;
     openModal(
       `<div style="font-weight:800;font-size:15px;">⚙️ ${esc(course.code)} Tools &amp; Actions</div>`,
       `
@@ -4781,14 +4766,14 @@ window.initUNEPlannerApp = function () {
             <div style="font-weight:700;">✨ Smart Auto-Plan</div>
             <div style="font-size:11px;color:var(--text-subtle);">Build a valid schedule</div>
           </button>
-          ${
-            spCount
-              ? `<button class="course-card-option" id="mtool-plans">
-                  <div style="font-weight:700;">📋 Official Plans (${spCount})</div>
-                  <div style="font-size:11px;color:var(--text-subtle);">UNE progression maps</div>
-                </button>`
-              : ""
-          }
+          <button class="course-card-option" id="mtool-plans">
+            <div style="font-weight:700;">Plans &amp; pathways</div>
+            <div style="font-size:11px;color:var(--text-subtle);">Handbook maps and coordinator suggestions</div>
+          </button>
+          <button class="course-card-option" id="mtool-offerings">
+            <div style="font-weight:700;">Unit offerings</div>
+            <div style="font-size:11px;color:var(--text-subtle);">Find teaching periods by unit</div>
+          </button>
           <button class="course-card-option" id="mtool-info">
             <div style="font-weight:700;">📖 Rules &amp; Info</div>
             <div style="font-size:11px;color:var(--text-subtle);">Outcomes, ATAR, handbook</div>
@@ -4818,8 +4803,8 @@ window.initUNEPlannerApp = function () {
           state.mobilePane = "plan";
           runSmartAutoPlan();
         };
-        const pBtn = modal.querySelector("#mtool-plans");
-        if (pBtn) pBtn.onclick = () => { closeModal(); openStudyPlansModal(); };
+        modal.querySelector("#mtool-plans").onclick = () => { closeModal(); openStudyPlansModal(); };
+        modal.querySelector("#mtool-offerings").onclick = openUnitOfferings;
         modal.querySelector("#mtool-info").onclick = () => { closeModal(); openCourseInfoModal(); };
         modal.querySelector("#mtool-export").onclick = () => { closeModal(); openExportModal(); };
         modal.querySelector("#mtool-custom").onclick = () => { closeModal(); openCustomUnitModal(); };
@@ -5031,12 +5016,19 @@ window.initUNEPlannerApp = function () {
     });
   }
 
+  let modalTrigger = null;
   function openModal(titleHtml, bodyHtml, onMount) {
     const backdrop = document.getElementById("modal-backdrop");
+    if (backdrop.classList.contains("hidden")) {
+      modalTrigger = document.activeElement;
+      for (const id of ["trial-banner", "app-header", "finder-view", "planner-shell", "mobile-bottom-nav"]) {
+        document.getElementById(id).inert = true;
+      }
+    }
     backdrop.innerHTML = `
-      <div class="modal-panel" role="dialog" aria-modal="true">
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="planner-modal-title">
         <div class="modal-header">
-          <div style="min-width:0;flex:1;">${titleHtml}</div>
+          <div id="planner-modal-title" style="min-width:0;flex:1;">${titleHtml}</div>
           <button class="btn btn-sm" id="btn-modal-close">✕ Close</button>
         </div>
         <div class="modal-body" id="modal-body-content">${bodyHtml}</div>
@@ -5047,11 +5039,20 @@ window.initUNEPlannerApp = function () {
     backdrop.onclick = (e) => {
       if (e.target === backdrop) closeModal();
     };
+    document.getElementById("btn-modal-close").focus({ preventScroll: true });
     if (onMount) onMount(backdrop);
   }
 
   function closeModal() {
-    document.getElementById("modal-backdrop").classList.add("hidden");
+    const backdrop = document.getElementById("modal-backdrop");
+    if (backdrop.classList.contains("hidden")) return;
+    backdrop.classList.add("hidden");
+    for (const id of ["trial-banner", "app-header", "finder-view", "planner-shell", "mobile-bottom-nav"]) {
+      document.getElementById(id).inert = false;
+    }
+    const target = modalTrigger?.isConnected ? modalTrigger : document.getElementById(modalTrigger?.id);
+    target?.focus({ preventScroll: true });
+    modalTrigger = null;
   }
 
   function renderUnitModalIntensiveBox(u, preferredMode, contextYear) {
@@ -5306,7 +5307,7 @@ window.initUNEPlannerApp = function () {
          ${modalBucketInfo ? `<span class="cat-tag cat-${modalBucketInfo.category}" title="${esc(modalBucketInfo.bucketTitle)}">${esc(modalBucketInfo.badgeRole)}</span>` : ""}
          ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
          ${u.repeatable ? `<span class="badge-mini badge-int-cohort">Repeatable</span>` : ""}
-         ${isRolling ? `<span class="badge-mini badge-rolling">🗓 From ${esc(u.rollingStartYear)}</span>` : ""}
+         ${isRolling ? `<span class="badge-mini badge-rolling">🗓 Indicative from ${esc(u.rollingStartYear)}</span>` : ""}
        </div>
        <div style="font-size:12px;color:var(--text-subtle);margin-top:3px;">${esc(u.cp ?? 6)} Credit Points · ${esc(u.level ?? 100)}-Level · ${esc(u.school || "UNE")}</div>`,
       `
@@ -5316,7 +5317,7 @@ window.initUNEPlannerApp = function () {
               plannedLoc && !u.repeatable
                 ? `<span style="color:var(--ok);font-weight:700;">✓ Planned in ${esc(plannedLoc)}${plannedYear ? ` (${plannedYear})` : ""}</span>`
                 : isArchived
-                ? `<span style="color:var(--err);font-weight:700;">⛔ No 2027 Offering Published</span>`
+                ? `<span style="color:var(--text-muted);font-weight:700;">${esc(Engine.getNoOfferingLabel(u))}</span>`
                 : `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <button class="btn btn-sm btn-primary" id="btn-modal-smart-add">${
                       state.targetSlot &&
@@ -5333,12 +5334,12 @@ window.initUNEPlannerApp = function () {
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <button class="btn btn-sm" id="btn-unit-report-bug" type="button" title="Report a prerequisite, offering or intensive issue on this unit">🐞 Flag Issue</button>
-            <a href="${esc(safeUnitUrl)}" target="_blank" rel="noopener" class="btn btn-sm">Official 2027 Unit Page ↗</a>
+            <a href="${esc(safeUnitUrl)}" target="_blank" rel="noopener" class="btn btn-sm">Unit Handbook entry ↗</a>
           </div>
         </div>
         ${
           isRolling
-            ? `<div class="slot-msg rolling" style="font-size:12px;">🗓 <strong>Rolling-Start Unit (from ${esc(u.rollingStartYear)}):</strong> Not offered in 2027 — scheduled for future cohorts from ${esc(u.rollingStartYear)}${
+            ? `<div class="slot-msg rolling" style="font-size:12px;">🗓 <strong>${esc(Engine.getNoOfferingLabel(u))}.</strong> Indicative from ${esc(u.rollingStartYear)}${
                 Array.isArray(u.indicativeTrimesters) && u.indicativeTrimesters.length
                   ? ` (indicative trimester: T${u.indicativeTrimesters.join(", T")})`
                   : " (trimester TBA)"
@@ -5375,8 +5376,8 @@ window.initUNEPlannerApp = function () {
                 </div>`
               : `<div style="color:var(--text-subtle);font-size:12px;">${
                   isRolling
-                    ? `Scheduled rolling start from ${esc(u.rollingStartYear)} — future teaching periods will appear when published.`
-                    : "No 2027 teaching periods listed."
+                    ? "Confirm the teaching period in the Handbook for your enrolment year."
+                    : esc(Engine.getNoOfferingLabel(u)) + "."
                 }</div>`
           }
         </div>
@@ -5433,6 +5434,37 @@ window.initUNEPlannerApp = function () {
     );
   }
 
+  function openUnitOfferings() {
+    openModal('<h2 class="planner-dialog-heading">Unit offerings</h2>', '<div id="offerings-lookup"></div>', (modal) => {
+      window.UNEOfferings.mount(modal.querySelector("#offerings-lookup"), DATA);
+    });
+  }
+
+  function openCoordinatorPathways() {
+    const course = getCurrentCourse();
+    window.UNECoordinatorPathways.open({
+      data: DATA, course, plan: getCurrentPlan(),
+      sanitize: validateAndSanitizePlan, openModal, closeModal,
+      confirm: openConfirmModal, download: downloadBlob,
+      apply(nextPlan) {
+        if (nextPlan.courseCode !== state.currentCourseCode) return;
+        const snapshot = takeUndoSnapshot(course, getCurrentPlan(), true);
+        nextPlan.hasUserEdits = true;
+        state.savedPlansByCourse[course.code] = nextPlan;
+        exitSlotPicker();
+        state.t3BannerDismissedFor = null;
+        state.view = "planner";
+        state.mobilePane = "plan";
+        state.tabletDrawerOpen = false;
+        saveState();
+        closeModal();
+        renderAll({ resetSidebarScroll: true });
+        state.undoSnapshot = snapshot;
+        showToast("Applied the suggested pathway.", { tone: "success", onUndo: restoreUndoSnapshot });
+      },
+    });
+  }
+
   function openStudyPlansModal() {
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
@@ -5443,8 +5475,13 @@ window.initUNEPlannerApp = function () {
       groups[sp.group].push(sp);
     }
     openModal(
-      `<div style="font-weight:800;font-size:15.5px;">Official UNE 2027 Progression Maps (${plans.length})</div>
-       <div style="font-size:12px;color:var(--text-subtle);">Load an official UNE trimester template, then tap "Choose Unit →" on any placeholder slot.</div>`,
+      `<h2 class="planner-dialog-heading">Plans &amp; pathways for ${esc(course.code)}</h2>`,
+      `<div class="pathway-entry">
+        <div><strong>Coordinator pathways</strong><p>Browse suggestions for this course, open a pathway file, or share a plan.</p></div>
+        <button class="btn btn-soft" type="button" id="btn-coordinator-pathways">Open pathways</button>
+       </div>
+       <h3 class="planner-dialog-heading">Handbook progression maps (${plans.length})</h3>
+       ${plans.length ? "" : "<p>No Handbook maps are listed for this course configuration.</p>"}` +
       Object.entries(groups)
         .map(
           ([grp, list]) => `
@@ -5467,19 +5504,28 @@ window.initUNEPlannerApp = function () {
         )
         .join(""),
       (modal) => {
+        modal.querySelector("#btn-coordinator-pathways").onclick = openCoordinatorPathways;
         modal.querySelectorAll("[data-load-sp]").forEach((btn) => {
-          btn.onclick = () => {
+          btn.onclick = async () => {
+            if (hasBoardAnySlots(plan) && !await openConfirmModal({
+              title: "Replace your plan with this Handbook map?",
+              sub: "This replaces the units and choices on your board.",
+              confirmLabel: "Load map",
+            })) return;
+            const snapshot = takeUndoSnapshot(course, plan, true);
             const loaded = Engine.applyOfficialStudyPlan(btn.dataset.loadSp, course, plan, DATA);
             loaded.hasUserEdits = true;
             state.savedPlansByCourse[course.code] = loaded;
             const openPh = findOpenPlaceholders(loaded);
             if (openPh.length > 0 && !isMobileViewport()) activateSlotPicker(openPh[0], !isTabletViewport());
             else exitSlotPicker();
+            state.view = "planner";
             state.mobilePane = "plan";
             saveState();
             closeModal();
             renderAll({ resetSidebarScroll: true });
-            showToast("Loaded official UNE Study Plan!");
+            state.undoSnapshot = snapshot;
+            showToast("Loaded the Handbook progression map.", { tone: "success", onUndo: restoreUndoSnapshot });
           };
         });
       }
@@ -6169,6 +6215,9 @@ window.initUNEPlannerApp = function () {
   function renderAll(opts) {
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
+    const handbookUrl = state.view === "planner" ? safeHttpUrl(course.url, "https://handbook.une.edu.au") : "https://handbook.une.edu.au";
+    document.getElementById("banner-handbook").href = handbookUrl;
+    document.getElementById("notice-handbook-link").href = handbookUrl;
     const finderEl = document.getElementById("finder-view");
     const plannerEl = document.getElementById("planner-shell");
 
@@ -6202,27 +6251,63 @@ window.initUNEPlannerApp = function () {
     };
   }
 
-  // Trial banner bug button & dismiss (safe sessionStorage access for sandboxed myLearn / Moodle iframes)
+  // Keep the Handbook link available after acknowledgement, including on printed plans.
   const bannerBugBtn = document.getElementById("btn-banner-bug");
   if (bannerBugBtn) {
     bannerBugBtn.onclick = () => openBugReportModal();
   }
-  const dismissTrialBtn = document.getElementById("btn-dismiss-trial");
-  const trialBannerEl = document.getElementById("trial-banner");
-  if (trialBannerEl && safeSessionGet("une_trial_banner_dismissed") === "1") {
-    trialBannerEl.style.display = "none";
+  document.getElementById("btn-unit-offerings").onclick = openUnitOfferings;
+  const notice = document.getElementById("handbook-notice");
+  const noticeButton = document.getElementById("btn-handbook-notice");
+  const checkbox = document.getElementById("notice-check");
+  const continueButton = document.getElementById("notice-continue");
+  const snapshot = window.UNE_HANDBOOK_SNAPSHOT || {};
+  const acknowledgementKey = "une_handbook_ack_v1_" + (snapshot.datasetSha256 || DATA.meta.year);
+  let acknowledged = safeSessionGet(acknowledgementKey) === "1";
+
+  function openHandbookNotice() {
+    document.getElementById("notice-heading").textContent = acknowledged ? "Handbook data & amendments" : "Before you plan";
+    const date = new Date(snapshot.assembledAt || "");
+    const dateText = Number.isFinite(date.getTime()) ? date.toLocaleDateString("en-AU", {
+      day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
+    }) : "";
+    document.getElementById("notice-snapshot").textContent = [
+      dateText ? `Snapshot assembled on ${dateText}.` : "The assembly date for this snapshot is unavailable.",
+      snapshot.acquisition === "mixed-cache" ? "Some records were retrieved earlier." : "",
+      "Handbook amendments appear here after the planner data is refreshed and reviewed.",
+    ].filter(Boolean).join(" ");
+    document.getElementById("notice-choice").hidden = acknowledged;
+    checkbox.required = !acknowledged;
+    checkbox.checked = acknowledged;
+    continueButton.disabled = !acknowledged;
+    continueButton.textContent = acknowledged ? "Return to planner" : "Continue to planner";
+    notice.showModal();
+    document.getElementById("notice-heading").focus();
   }
-  if (dismissTrialBtn && trialBannerEl) {
-    dismissTrialBtn.onclick = () => {
-      trialBannerEl.style.display = "none";
-      safeSessionSet("une_trial_banner_dismissed", "1");
-    };
-  }
+  noticeButton.onclick = openHandbookNotice;
+  checkbox.onchange = () => { continueButton.disabled = !checkbox.checked; };
+  notice.addEventListener("cancel", (event) => {
+    if (!acknowledged) event.preventDefault();
+  });
+  document.getElementById("handbook-notice-form").onsubmit = (event) => {
+    event.preventDefault();
+    if (!acknowledged && !checkbox.checked) return;
+    const firstVisit = !acknowledged;
+    acknowledged = true;
+    safeSessionSet(acknowledgementKey, "1");
+    notice.close();
+    if (firstVisit) {
+      const target = document.getElementById(state.view === "finder" ? "inp-finder-search" : "btn-open-finder");
+      (target || noticeButton).focus({ preventScroll: true });
+    }
+  };
 
   window.addEventListener("resize", syncResponsiveClasses);
 
   // Global keyboard shortcuts: '/' focuses Course Finder search, 'Escape' closes modals or tablet drawer
   document.addEventListener("keydown", (e) => {
+    if (notice.open) return;
+    if (e.key !== "Escape" && (activeConfirm || !document.getElementById("modal-backdrop").classList.contains("hidden"))) return;
     if (e.key === "Escape") {
       // Priority: confirm modal -> standard modal -> tablet drawer -> active slot picker
       if (activeConfirm) {
@@ -6256,4 +6341,5 @@ window.initUNEPlannerApp = function () {
 
   loadState();
   renderAll({ resetSidebarScroll: true });
+  if (!acknowledged) openHandbookNotice();
 };

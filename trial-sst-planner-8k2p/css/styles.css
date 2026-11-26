@@ -2167,6 +2167,70 @@ html.dark .badge-yearlong {
   flex-shrink: 0;
 }
 
+.trial-banner-actions button {
+  min-height: 30px;
+}
+
+#handbook-notice {
+  box-sizing: border-box;
+  width: min(30rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  padding: clamp(20px, 5vw, 32px);
+  border: 1px solid var(--border);
+  border-top: 5px solid var(--une-lime);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  margin: auto;
+  overflow: auto;
+}
+
+#handbook-notice::backdrop {
+  background: rgba(10, 20, 32, .68);
+}
+
+#handbook-notice form {
+  display: grid;
+  gap: 14px;
+  font-size: 15px;
+  line-height: 1.48;
+}
+
+#handbook-notice h2, #handbook-notice p, .planner-dialog-heading {
+  margin: 0;
+}
+
+#notice-snapshot {
+  color: var(--text-muted);
+  border-left: 3px solid var(--primary);
+  padding-left: 12px;
+  font-size: 13px;
+}
+
+#notice-handbook-link {
+  color: var(--accent);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+#notice-choice:not([hidden]) {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+#notice-check { accent-color: var(--primary); }
+#notice-continue { min-height: 42px; justify-self: start; padding-inline: 18px; }
+#notice-continue:disabled { opacity: .5; cursor: default; }
+.planner-dialog-heading { color: var(--text); font-size: 1rem; }
+.pathway-entry { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 12px; border: 1px solid var(--primary-border); border-radius: var(--radius-md); background: var(--primary-soft); }
+.pathway-entry p { margin: 4px 0 0; font-size: 13px; color: var(--text-muted); }
+
 .trial-bug-btn {
   background: rgba(149, 194, 54, 0.18);
   color: var(--une-lime);

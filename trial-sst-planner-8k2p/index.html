@@ -6,17 +6,20 @@
   <meta name="robots" content="noindex, nofollow, noarchive" />
   <meta name="theme-color" content="#272525" />
   <title>UNE 2027 Interactive Course & Unit Planner — University of New England</title>
-  <link rel="stylesheet" href="css/styles.css?v=2027.8" />
+  <link rel="stylesheet" href="css/styles.css?v=2027.9" />
+  <link rel="stylesheet" href="css/offerings.css?v=2027.9" />
+  <link rel="stylesheet" href="css/pathways.css?v=2027.9" />
 </head>
 <body class="mobile-pane-plan">
   <div id="trial-banner" class="trial-banner">
     <span>
-      <strong>🧪 Unofficial Trial Prototype</strong> — 2027 University of New England Course &amp; Unit Planner (all 11 Schools, 233 courses). Always verify official rules at
-      <a href="https://handbook.une.edu.au" target="_blank" rel="noopener">handbook.une.edu.au</a>.
+      <strong>Unofficial planner.</strong> Before enrolling, check your course rules and unit offerings in the
+      <a id="banner-handbook" href="https://handbook.une.edu.au" target="_blank" rel="noopener">UNE Handbook</a>.
     </span>
     <div class="trial-banner-actions">
-      <button id="btn-banner-bug" class="trial-bug-btn" type="button" title="Log a bug or rule issue for Course Coordinators &amp; Discipline Convenors">🐞 Report Bug</button>
-      <button id="btn-dismiss-trial" class="trial-dismiss-btn" title="Dismiss banner for this session">Dismiss ✕</button>
+      <button id="btn-unit-offerings" class="trial-bug-btn" type="button">Unit offerings</button>
+      <button id="btn-handbook-notice" class="trial-dismiss-btn" type="button">Data &amp; amendments</button>
+      <button id="btn-banner-bug" class="trial-dismiss-btn" type="button">Report an issue</button>
     </div>
   </div>
 
@@ -49,11 +52,26 @@
 
   <!-- Modals & Bottom Sheets -->
   <div id="modal-backdrop" class="modal-backdrop hidden"></div>
+  <dialog id="handbook-notice" aria-labelledby="notice-heading" aria-describedby="notice-description">
+    <form id="handbook-notice-form">
+      <h2 id="notice-heading" tabindex="-1">Before you plan</h2>
+      <p id="notice-description">This unofficial planner uses a snapshot of the 2027 UNE Handbook. Course rules and unit offerings can change after a snapshot is taken.</p>
+      <p id="notice-snapshot"></p>
+      <p>Check the Handbook rules for your commencing cohort and the unit offerings for the year you intend to enrol. If an amendment affects your plan, confirm how it applies with your course coordinator.</p>
+      <a id="notice-handbook-link" href="https://handbook.une.edu.au" target="_blank" rel="noopener">Open the UNE Handbook ↗</a>
+      <label id="notice-choice" for="notice-check"><input id="notice-check" type="checkbox" required /> I understand and will check my plan against the Handbook.</label>
+      <button type="submit" class="btn btn-primary" id="notice-continue" disabled>Continue to planner</button>
+    </form>
+  </dialog>
 
   <!-- Compact Gzipped Whole-University 2027 Dataset + Engine + App -->
-  <script src="data/une_all_2027.gz.js?v=2027.8"></script>
-  <script src="js/engine.js?v=2027.8"></script>
-  <script src="js/app.js?v=2027.8"></script>
+  <script src="data/une_all_2027.gz.js?v=2027.9"></script>
+  <script src="data/handbook_snapshot.js?v=2027.9"></script>
+  <script src="data/coordinator-pathways.js?v=2027.9"></script>
+  <script src="js/engine.js?v=2027.9"></script>
+  <script src="js/offerings.js?v=2027.9"></script>
+  <script src="js/pathways.js?v=2027.9"></script>
+  <script src="js/app.js?v=2027.9"></script>
   <script>
     (async function bootUNEPlanner() {
       try {

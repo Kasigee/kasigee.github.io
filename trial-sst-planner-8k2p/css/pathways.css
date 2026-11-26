@@ -1,0 +1,49 @@
+.pathway-dialog {
+  display: grid;
+  gap: 1rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.pathway-dialog h3, .pathway-dialog h4, .pathway-dialog p, .pathway-dialog ul {
+  margin: 0;
+}
+.pathway-dialog section, .pathway-dialog form, .pathway-dialog label {
+  display: grid;
+  gap: .45rem;
+}
+.pathway-dialog label { font-weight: 600; }
+.pathway-dialog input, .pathway-dialog textarea {
+  width: 100%;
+  min-width: 0;
+  padding: .55rem;
+  font: inherit;
+  color: var(--text);
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+.pathway-dialog textarea { resize: vertical; min-height: 4rem; }
+.pathway-dialog .pathway-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+.pathway-dialog .pathway-source, .pathway-dialog .pathway-year {
+  padding: .7rem .85rem;
+  border-left: 3px solid var(--une-teal);
+  background: var(--surface-alt);
+}
+.pathway-dialog .pathway-year p { margin-top: .35rem; }
+.pathway-dialog .pathway-note { white-space: pre-line; }
+.pathway-dialog .pathway-error { color: var(--danger, var(--text)); font-weight: 650; }
+.pathway-dialog .pathway-error:empty { display: none; }
+.pathway-dialog details > summary { cursor: pointer; font-weight: 650; }
+.pathway-dialog details ul { margin-top: .5rem; padding-left: 1.4rem; }
+.pathway-dialog .pathway-card {
+  display: grid;
+  gap: .2rem;
+  text-align: left;
+  white-space: normal;
+  justify-items: start;
+}

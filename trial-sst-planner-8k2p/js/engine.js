@@ -31,6 +31,41 @@
     return u.modes || [];
   }
 
+  // Published teaching periods retain their Handbook names. Board scheduling uses
+  // the separate u.trimesters mapping so blocks and semesters can occupy a slot.
+  function getUnitOfferingPeriods(unit) {
+    if (!unit || unit.offered2027 === false || unit.offeringStatus === "not-offered") return [];
+    let listed = (unit.offerings || []).filter(offering => offering.period);
+    if (!listed.length) {
+      listed = unit.nonStandardPeriods?.length
+        ? unit.nonStandardPeriods.map(period => ({ period }))
+        : (unit.trimesters || []).map(t => ({ period: `Trimester ${t}`, modes: unit.modesByTri?.[t] }));
+    }
+    return listed.map(({ period, modes }) => {
+      const match = period.match(/^(OUA )?Trimester ([1-3])$/i);
+      const trimester = match ? Number(match[2]) : null;
+      let label = match ? `${match[1] || ""}T${trimester}` : period;
+      if (trimester === 3 && unit.t3RepeatOnly) label += " · repeat only";
+      return { period, modes, label, trimester };
+    });
+  }
+
+  function getNoOfferingLabel(unit, year = 2027) {
+    if (unit.offeringStatus === "not-offered") return `Not offered in ${year}`;
+    if (unit.school === "Archived / Prior Year Unit") return `Prior Handbook reference. No ${year} schedule on file`;
+    return `No ${year} offering listed`;
+  }
+
+  function getSlotPeriodMismatch(unit, tri, planYear) {
+    const entries = getUnitOfferingPeriods(unit);
+    const periods = entries.map(p => p.label).join(", ");
+    const source = unit.school === "Cross-Faculty Elective" ? "The custom unit" : "The 2027 Handbook";
+    const slots = entries.some(p => !p.trimester)
+      ? ` (board slots ${unit.trimesters.map(t => `T${t}`).join(", ")})` : "";
+    return `No offering mapped to board slot T${tri}. ${source} lists ${periods}${slots}.` +
+      (planYear > 2027 ? ` Verify ${planYear} offerings when published.` : "");
+  }
+
   function isPostgradLevel(studyLevel) {
     return studyLevel === "Postgraduate" || studyLevel === "Postgraduate Research";
   }
@@ -2213,7 +2248,6 @@
       const rollingStartInfos = [];
       const u = p.unit;
       const planYear = p.planYear || 2027;
-      const isFutureYear = planYear > 2027;
 
       if (codeCounts[p.code] > 1) {
         if (u && u.repeatable) {
@@ -2256,14 +2290,14 @@
           if (u.offeringCycle === "even") {
             rollingStartInfos.push(`Even-year offering — ${planYear} trimester TBA${indSuffix}`);
           } else {
-            rollingStartInfos.push(`Rolling-start unit (from ${u.rollingStartYear}) — ${planYear} trimester TBA${indSuffix}`);
+            rollingStartInfos.push(`Indicative start in ${u.rollingStartYear} — ${planYear} trimester TBA${indSuffix}`);
           }
         } else if (u.rollingStartYear && planYear < u.rollingStartYear) {
           errors.push(
-            `${p.code} is a rolling-start unit not offered until ${u.rollingStartYear} (cannot schedule in ${planYear}).`
+            `${p.code} has an indicative start in ${u.rollingStartYear} and cannot be scheduled in ${planYear}.`
           );
         } else {
-          errors.push(`${p.code} has no published 2027 UNE unit offering (archived unit).`);
+          errors.push(`${p.code} · ${getNoOfferingLabel(u)}.`);
         }
       } else {
         if (u.offeringCycle === "odd" && planYear % 2 === 0) {
@@ -2280,11 +2314,7 @@
           );
         }
         if (u.trimesters && u.trimesters.length > 0 && !u.trimesters.includes(p.triNum)) {
-          errors.push(
-            isFutureYear
-              ? `${p.code} is not offered in Trimester ${p.triNum} (based on 2027 Handbook; offered in T${u.trimesters.join(", T")}).`
-              : `${p.code} is not offered in Trimester ${p.triNum} in 2027 (offered in T${u.trimesters.join(", T")}).`
-          );
+          errors.push(`${p.code} · ${getSlotPeriodMismatch(u, p.triNum, planYear)}`);
         }
       }
 
@@ -5698,16 +5728,16 @@
     if (u.offered2027 === false) {
       if (u.rollingStartYear) {
         if (Number.isFinite(planYear) && planYear < u.rollingStartYear) {
-          reasons.push(`Rolling-start unit — offered from ${u.rollingStartYear} (not ${planYear})`);
+          reasons.push(`Rolling-start unit — indicative from ${u.rollingStartYear} (slot is ${planYear})`);
         } else if (!Number.isFinite(planYear)) {
           // Catalog browse without a specific year: allow rolling-start units for multi-year plans!
           const maxYr = plan?.years?.length ? getPlanYear(plan.years[plan.years.length - 1], plan.years.length - 1) : 2029;
           if (maxYr < u.rollingStartYear) {
-            reasons.push(`Rolling-start unit — offered from ${u.rollingStartYear}`);
+            reasons.push(`Rolling-start unit — indicative from ${u.rollingStartYear}`);
           }
         }
       } else {
-        reasons.push("Not offered in 2027 (archived unit)");
+        reasons.push(getNoOfferingLabel(u));
       }
     }
     if (isUnitExcludedForCourse(u, course)) {
@@ -6008,16 +6038,12 @@
             );
           }
         } else if (u.rollingStartYear && targetPlanYear < u.rollingStartYear) {
-          reasons.push(`Rolling-start unit — not offered until ${u.rollingStartYear} (slot is ${targetPlanYear})`);
+          reasons.push(`Rolling-start unit — indicative from ${u.rollingStartYear} (slot is ${targetPlanYear})`);
         } else {
-          reasons.push("Not offered in 2027 (archived unit)");
+          reasons.push(getNoOfferingLabel(u));
         }
       } else if (u.trimesters && u.trimesters.length > 0 && !u.trimesters.includes(triNum)) {
-        reasons.push(
-          isFutureSlotYear
-            ? `Not offered in Trimester ${triNum} (based on 2027 Handbook; offered in T${u.trimesters.join(", T")})`
-            : `Not offered in Trimester ${triNum} (offered in T${u.trimesters.join(", T")})`
-        );
+        reasons.push(getSlotPeriodMismatch(u, triNum, targetPlanYear));
       }
       if (triNum === 3 && u.t3RepeatOnly) {
         reasons.push("Trimester 3 is for repeating students only (requires Head of School permission)");
@@ -6366,7 +6392,7 @@
                 swapPlaceholderLabel: bestSwapPh.label || swapShort,
                 swapPlaceholderShort: swapShort,
                 swapPlaceholderCategory: swapCat,
-                swapReason: `Offered in T${sibTri} — swaps with ${swapShort} slot`,
+                swapReason: `Fits T${sibTri} on the board — swaps with ${swapShort} slot`,
               });
             }
 
@@ -7359,6 +7385,9 @@
     getUnit,
     getPlanYear,
     getUnitModesForTri,
+    getUnitOfferingPeriods,
+    getNoOfferingLabel,
+    getSlotPeriodMismatch,
     getUnitLoadSpec,
     getUnitIntensiveForTri,
     doCampusesClash,
