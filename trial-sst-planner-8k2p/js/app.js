@@ -16,7 +16,7 @@ window.initUNEPlannerApp = function () {
 
   // Staff Testing Feedback Tracker Config (optional: paste a UNE Microsoft Forms / SharePoint tracker URL here!)
   const FEEDBACK_CONFIG = {
-    emailUser: "kasimirgregory",
+    emailUser: "kasimir.gregory",
     emailDomain: "une.edu.au",
     // After clicking FormSubmit's first activation email, Kasimir can paste the alias token here.
     formSubmitAlias: "",
@@ -1719,7 +1719,7 @@ window.initUNEPlannerApp = function () {
     hdr.innerHTML = `
       <div class="brand-group">
         <button class="une-brand-btn" id="btn-brand-home" title="Browse all ${DATA.meta.counts.courses} UNE 2027 Courses">
-          <img class="une-logo-img" src="assets/une-logo.png?v=2027.10" alt="University of New England" width="46" height="46" />
+          <img class="une-logo-img" src="assets/une-logo.png?v=2027.11" alt="University of New England" width="46" height="46" />
           <div class="une-brand-text">
             <span class="une-brand-name">University of New England</span>
             <span class="une-brand-sub">2027 Course &amp; Unit Planner</span>
@@ -6209,7 +6209,7 @@ window.initUNEPlannerApp = function () {
             id: d.id || feedbackId(),
             email: d.email,
             sent: false,
-            appVersion: "v2027.10",
+            appVersion: "v2027.11",
             reviewer: reviewer || "Staff Tester",
             category,
             units,
