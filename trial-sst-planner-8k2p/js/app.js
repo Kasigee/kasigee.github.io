@@ -189,6 +189,7 @@ window.initUNEPlannerApp = function () {
     slotShowIneligible: null, // null = auto, true = force open, false = force collapsed
     slotForceElectives: false,
     slotEligLimit: 100,
+    slotSwapLimit: 60,
     slotIneligLimit: 80,
 
     // Responsive UI state
@@ -228,9 +229,47 @@ window.initUNEPlannerApp = function () {
   function getCurrentPlan() {
     const c = getCurrentCourse();
     if (!state.savedPlansByCourse[c.code]) {
-      state.savedPlansByCourse[c.code] = Engine.createDefaultPlan(c, DATA);
+      const fresh = Engine.createDefaultPlan(c, DATA);
+      fresh.hasUserEdits = false;
+      state.savedPlansByCourse[c.code] = fresh;
     }
     return state.savedPlansByCourse[c.code];
+  }
+
+  function hasBoardConcreteUnits(plan) {
+    for (const yr of plan?.years || []) {
+      for (const t of [1, 2, 3]) {
+        for (const s of yr?.trimesters?.[t] || []) {
+          if (s.type === "unit") return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function hasBoardAnySlots(plan) {
+    for (const yr of plan?.years || []) {
+      for (const t of [1, 2, 3]) {
+        if ((yr?.trimesters?.[t] || []).length > 0) return true;
+      }
+    }
+    return false;
+  }
+
+  const AUTO_PLAN_OVERWRITE_MSG =
+    "Re-running Auto-Plan will overwrite the unit selections and changes you've made. Continue?";
+
+  function shouldConfirmAutoPlanOverwrite(plan) {
+    if (!plan) return false;
+    if (plan.hasUserEdits === false) return false;
+    if (plan.hasUserEdits === true) return true;
+    // Legacy saved plans (without hasUserEdits flag): protect concrete unit selections / custom units
+    return hasBoardConcreteUnits(plan) || Object.keys(plan.customUnits || {}).length > 0;
+  }
+
+  function confirmAutoPlanOverwrite(plan) {
+    if (!shouldConfirmAutoPlanOverwrite(plan)) return true;
+    return typeof window.confirm === "function" ? window.confirm(AUTO_PLAN_OVERWRITE_MSG) : true;
   }
 
   function getPlanYear(yr, yIdx) {
@@ -435,6 +474,13 @@ window.initUNEPlannerApp = function () {
 
     const cTri = Number(rawPlan.commencingTrimester);
     const t3Strat = ["none", "spread", "accelerate"].includes(rawPlan.t3Strategy) ? rawPlan.t3Strategy : def.t3Strategy;
+    const hasConcreteInSanitized = sanitizedYears.some((yr) =>
+      [1, 2, 3].some((t) => (yr.trimesters[t] || []).some((s) => s.type === "unit"))
+    );
+    const hasUserEdits =
+      typeof rawPlan.hasUserEdits === "boolean"
+        ? rawPlan.hasUserEdits
+        : hasConcreteInSanitized || Object.keys(sanitizedCustomUnits).length > 0;
 
     return {
       ...def,
@@ -452,6 +498,7 @@ window.initUNEPlannerApp = function () {
       t3Strategy: t3Strat,
       includeT3InAuto: t3Strat !== "none",
       t3Analysis: rawPlan.t3Analysis && typeof rawPlan.t3Analysis === "object" && !Array.isArray(rawPlan.t3Analysis) ? rawPlan.t3Analysis : null,
+      hasUserEdits,
       customUnits: sanitizedCustomUnits,
       years: sanitizedYears,
     };
@@ -585,11 +632,56 @@ window.initUNEPlannerApp = function () {
     state.slotShowIneligible = null;
     state.slotForceElectives = false;
     state.slotEligLimit = 100;
+    state.slotSwapLimit = 60;
     state.slotIneligLimit = 80;
     if (openUiPane !== false) {
       if (isMobileViewport()) state.mobilePane = "units";
       else if (isTabletViewport()) state.tabletDrawerOpen = true;
     }
+  }
+
+  function applySiblingSwapFromPicker(unitCode, toTri, swapPlaceholderId) {
+    if (!state.targetSlot || !state.targetSlot.replaceSlotId) return;
+    const course = getCurrentCourse();
+    const plan = getCurrentPlan();
+    const { yearIdx, triNum: fromTri, replaceSlotId } = state.targetSlot;
+    if (typeof Engine.applySiblingSwapUnit !== "function") {
+      showToast("Sibling-trimester swap unavailable.");
+      return;
+    }
+    const res = Engine.applySiblingSwapUnit(
+      course,
+      plan,
+      yearIdx,
+      fromTri,
+      replaceSlotId,
+      Number(toTri),
+      swapPlaceholderId,
+      unitCode,
+      DATA
+    );
+    if (!res || !res.ok || !res.plan) {
+      showToast(res?.error || "Could not swap slots for that unit.");
+      return;
+    }
+    res.plan.hasUserEdits = true;
+    state.savedPlansByCourse[course.code] = res.plan;
+    const remaining = findOpenPlaceholders(res.plan);
+    if (state.sidebarTab === "slot" && remaining.length > 0) {
+      activateSlotPicker(remaining[0], false);
+    } else {
+      exitSlotPicker();
+      if (isMobileViewport()) state.mobilePane = "plan";
+      if (isTabletViewport()) state.tabletDrawerOpen = false;
+    }
+    saveState();
+    renderAll({ resetSidebarScroll: true });
+    showToast(
+      res.message ||
+        `Added ${unitCode} to Year ${res.plan.years[yearIdx]?.yearNum || yearIdx + 1}, Trimester ${toTri} (moved ${
+          res.swappedLabel || "Elective"
+        } slot to Trimester ${fromTri}).`
+    );
   }
 
   function exitSlotPicker() {
@@ -613,7 +705,75 @@ window.initUNEPlannerApp = function () {
     return uObj && uObj.yearLong ? Math.ceil(rawCp / 2) : rawCp;
   }
 
-  function addUnitToPlan(code) {
+  function scorePlaceholderMatchForUnit(slot, code, u, bucketById, unitBucketCats) {
+    if (!slot || slot.type !== "placeholder") return -1;
+    const uLvl = u?.level ?? 100;
+    const uEffCp = getUnitEffectiveCp(u, 6);
+    const levelMismatch =
+      (Array.isArray(slot.allowedLevels) && slot.allowedLevels.length > 0 && !slot.allowedLevels.includes(uLvl)) ||
+      (slot.levelMin !== undefined && slot.levelMin !== null && uLvl < slot.levelMin) ||
+      (slot.levelMax !== undefined && slot.levelMax !== null && uLvl > slot.levelMax);
+
+    const hintMatch = Array.isArray(slot.hintCodes) && slot.hintCodes.includes(code);
+    const phBucket = slot.bucketId ? bucketById[slot.bucketId] : null;
+    const bucketPoolMatch = Boolean(phBucket && Array.isArray(phBucket.units) && phBucket.units.includes(code));
+    const phCat = inferPlaceholderCategory(slot);
+    const cpBonus = (slot.cp ?? 6) === uEffCp ? 2 : 0;
+
+    if (hintMatch) {
+      return 100 - (levelMismatch ? 40 : 0) + cpBonus;
+    }
+    if (bucketPoolMatch) {
+      const catBase =
+        phCat === "core"
+          ? 95
+          : phCat === "major1" || phCat === "major2"
+          ? 90
+          : phCat === "minor" || phCat === "capstone"
+          ? 85
+          : phCat === "listed"
+          ? 80
+          : 75;
+      return catBase - (levelMismatch ? 40 : 0) + cpBonus;
+    }
+    if (phCat === "core" && unitBucketCats.has("core")) {
+      return 70 - (levelMismatch ? 35 : 0) + cpBonus;
+    }
+    if ((phCat === "major1" || phCat === "major2") && (unitBucketCats.has("major1") || unitBucketCats.has("major2"))) {
+      return 65 - (levelMismatch ? 35 : 0) + cpBonus;
+    }
+    if (phCat === "listed" && unitBucketCats.has("listed")) {
+      return 55 - (levelMismatch ? 30 : 0) + cpBonus;
+    }
+    if (phCat === "elective" && !slot.strictHints && !slot.strictPoolOnly) {
+      return 40 - (levelMismatch ? 25 : 0) + cpBonus;
+    }
+    if (phCat === "listed" && !slot.strictHints && !slot.strictPoolOnly) {
+      return 30 - (levelMismatch ? 20 : 0) + cpBonus;
+    }
+    if (!slot.strictHints && !slot.strictPoolOnly) {
+      return 15 - (levelMismatch ? 10 : 0) + cpBonus;
+    }
+    return 5 + cpBonus;
+  }
+
+  function findBestMatchingPlaceholderIndex(slots, code, u, bucketById, unitBucketCats, exactMatchOnly) {
+    let bestIdx = -1;
+    let bestScore = -1;
+    for (let i = 0; i < (slots || []).length; i++) {
+      const s = slots[i];
+      if (!s || s.type !== "placeholder") continue;
+      const sc = scorePlaceholderMatchForUnit(s, code, u, bucketById, unitBucketCats);
+      if (exactMatchOnly && sc < 55) continue;
+      if (sc > bestScore) {
+        bestScore = sc;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
+  function addUnitToPlan(code, opts) {
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
     const u = Engine.getUnit(code, DATA, plan.customUnits);
@@ -626,65 +786,6 @@ window.initUNEPlannerApp = function () {
     }
 
     const maxPerTri = plan.studyLoad === "Part-time" ? 12 : 24;
-
-    if (state.targetSlot) {
-      const { yearIdx, triNum, replaceSlotId } = state.targetSlot;
-      const yr = plan.years[yearIdx];
-      if (yr && yr.trimesters[triNum]) {
-        const newSlot = { id: Engine.uid("u"), type: "unit", code };
-        if (replaceSlotId) {
-          const idx = yr.trimesters[triNum].findIndex((s) => s.id === replaceSlotId);
-          if (idx !== -1) yr.trimesters[triNum][idx] = newSlot;
-          else yr.trimesters[triNum].push(newSlot);
-
-          const remaining = findOpenPlaceholders(plan);
-          if (state.sidebarTab === "slot" && remaining.length > 0) {
-            activateSlotPicker(remaining[0], false);
-            saveState();
-            renderAll({ resetSidebarScroll: true });
-            showToast(`Placed ${code} in Y${yr.yearNum} T${triNum}! Next open slot: Y${remaining[0].yearNum} T${remaining[0].triNum} (${remaining.length} left).`);
-            return;
-          } else {
-            exitSlotPicker();
-            if (isMobileViewport()) state.mobilePane = "plan";
-            if (isTabletViewport()) state.tabletDrawerOpen = false;
-            saveState();
-            renderAll({ resetSidebarScroll: false });
-            showToast(
-              remaining.length === 0
-                ? `Placed ${code} in Y${yr.yearNum} T${triNum} — all open placeholder slots filled!`
-                : `Placed ${code} in Y${yr.yearNum} T${triNum}.`
-            );
-            return;
-          }
-        } else {
-          yr.trimesters[triNum].push(newSlot);
-          const newLoadCp = yr.trimesters[triNum].reduce((s, x) => {
-            const xu = x.type === "unit" ? Engine.getUnit(x.code, DATA, plan.customUnits) : null;
-            return s + getUnitEffectiveCp(xu, x.cp);
-          }, 0);
-          if (newLoadCp >= maxPerTri) {
-            exitSlotPicker();
-            if (isMobileViewport()) state.mobilePane = "plan";
-            if (isTabletViewport()) state.tabletDrawerOpen = false;
-          }
-          saveState();
-          renderAll({ resetSidebarScroll: false });
-          showToast(`Added ${code} to Y${yr.yearNum} · T${triNum}.`);
-          return;
-        }
-      }
-    }
-
-    // Smart earliest valid placement preserving left sidebar scroll
-    const placements = Engine.getPlannedPlacements(plan, DATA);
-    const advCp = Engine.getAdvancedStandingCp(course, plan.admissionRule);
-    const uEffCp = getUnitEffectiveCp(u, 6);
-    const startTri = plan.commencingTrimester || 1;
-    const isPgCourse = course.studyLevel === "Postgraduate" || course.studyLevel === "Postgraduate Research";
-    const allPlannedCodes = new Set(placements.filter((p) => p.type === "unit").map((p) => p.code));
-
-    let best = null;
     const isRolling = u.offered2027 === false && Number.isInteger(u.rollingStartYear);
     const effectiveTris =
       u.trimesters && u.trimesters.length > 0
@@ -692,6 +793,184 @@ window.initUNEPlannerApp = function () {
         : isRolling && Array.isArray(u.indicativeTrimesters) && u.indicativeTrimesters.length > 0
         ? u.indicativeTrimesters
         : [];
+    const allowOverride = Boolean(opts && opts.allowOverride);
+    const forceSmart = Boolean(opts && opts.forceSmart);
+
+    // Only apply direct state.targetSlot replacement when explicitly in Slot Picker mode (not Requirements/Catalog or board diagnostics)
+    if (state.targetSlot && state.sidebarTab === "slot" && !forceSmart) {
+      const { yearIdx, triNum, replaceSlotId } = state.targetSlot;
+      const yr = plan.years[yearIdx];
+      if (yr && yr.trimesters[triNum]) {
+        const targetYear = state.targetSlot.planYear || getPlanYear(yr, yearIdx);
+        const offeredInTarget =
+          (effectiveTris.length === 0 || effectiveTris.includes(triNum)) &&
+          (!isRolling || targetYear >= u.rollingStartYear);
+
+        if (!offeredInTarget && !allowOverride) {
+          // Never silently shove an unoffered unit (e.g. T2-only CHEM120) into a T1 slot:
+          // first attempt a clean Sibling-Trimester Auto-Swap if available, otherwise fall through to smart placement!
+          if (replaceSlotId && typeof Engine.resolveSlotCandidates === "function") {
+            const se = Engine.resolveSlotCandidates(state.targetSlot, course, plan, DATA, {
+              forceIncludeElectives: state.slotForceElectives,
+            });
+            const swapMatch = (se?.siblingSwapEligible || []).find((it) => it.code === code);
+            if (swapMatch) {
+              applySiblingSwapFromPicker(code, swapMatch.siblingTri, swapMatch.swapPlaceholderId);
+              return;
+            }
+          }
+          // No sibling swap available for this slot — fall through to smart placement instead of creating an offering error
+        } else {
+          const newSlot = { id: Engine.uid("u"), type: "unit", code };
+          plan.hasUserEdits = true;
+          if (replaceSlotId) {
+            const idx = yr.trimesters[triNum].findIndex((s) => s.id === replaceSlotId);
+            if (idx !== -1) yr.trimesters[triNum][idx] = newSlot;
+            else yr.trimesters[triNum].push(newSlot);
+
+            const remaining = findOpenPlaceholders(plan);
+            if (state.sidebarTab === "slot" && remaining.length > 0) {
+              activateSlotPicker(remaining[0], false);
+              saveState();
+              renderAll({ resetSidebarScroll: true });
+              showToast(`Placed ${code} in Y${yr.yearNum} T${triNum}! Next open slot: Y${remaining[0].yearNum} T${remaining[0].triNum} (${remaining.length} left).`);
+              return;
+            } else {
+              exitSlotPicker();
+              if (isMobileViewport()) state.mobilePane = "plan";
+              if (isTabletViewport()) state.tabletDrawerOpen = false;
+              saveState();
+              renderAll({ resetSidebarScroll: false });
+              showToast(
+                remaining.length === 0
+                  ? `Placed ${code} in Y${yr.yearNum} T${triNum} — all open placeholder slots filled!`
+                  : `Placed ${code} in Y${yr.yearNum} T${triNum}.`
+              );
+              return;
+            }
+          } else {
+            yr.trimesters[triNum].push(newSlot);
+            const newLoadCp = yr.trimesters[triNum].reduce((s, x) => {
+              const xu = x.type === "unit" ? Engine.getUnit(x.code, DATA, plan.customUnits) : null;
+              return s + getUnitEffectiveCp(xu, x.cp);
+            }, 0);
+            if (newLoadCp >= maxPerTri) {
+              exitSlotPicker();
+              if (isMobileViewport()) state.mobilePane = "plan";
+              if (isTabletViewport()) state.tabletDrawerOpen = false;
+            }
+            saveState();
+            renderAll({ resetSidebarScroll: false });
+            showToast(`Added ${code} to Y${yr.yearNum} · T${triNum}.`);
+            return;
+          }
+        }
+      }
+    }
+
+    // Adding from Requirements / Catalog clears stale state.targetSlot so it doesn't confuse later actions
+    if (state.targetSlot && state.sidebarTab !== "slot") {
+      state.targetSlot = null;
+    }
+
+    // Smart earliest valid placement preserving left sidebar scroll — delegates to Engine.findBestSmartPlacement!
+    const uEffCp = getUnitEffectiveCp(u, 6);
+    let placedLabel = "";
+    let replacedPhNote = "";
+
+    if (typeof Engine.findBestSmartPlacement === "function") {
+      const sp = Engine.findBestSmartPlacement(course, plan, code, DATA);
+      const newSlot = { id: Engine.uid("u"), type: "unit", code };
+      if (sp && !sp.needsNewYear && plan.years[sp.yearIdx]?.trimesters?.[sp.triNum]) {
+        const targetYr = plan.years[sp.yearIdx];
+        const slots = targetYr.trimesters[sp.triNum];
+        if (sp.replacePlaceholderId) {
+          const phIdx = slots.findIndex((s) => s.id === sp.replacePlaceholderId);
+          if (phIdx !== -1) {
+            const ph = slots[phIdx];
+            replacedPhNote = sp.replacePlaceholderLabel || ph.label || "open slot";
+            if (state.targetSlot && state.targetSlot.replaceSlotId === ph.id) {
+              exitSlotPicker();
+            }
+            slots[phIdx] = newSlot;
+          } else {
+            slots.push(newSlot);
+          }
+        } else {
+          slots.push(newSlot);
+        }
+        // For multi-slot (>6 CP) units replacing a single 6-CP placeholder, trim extra open placeholder(s) if load now exceeds maxPerTri
+        let postTotal = slots.reduce((sum, s) => {
+          const su = s.type === "unit" ? Engine.getUnit(s.code, DATA, plan.customUnits) : null;
+          return sum + getUnitEffectiveCp(su, s.cp);
+        }, 0);
+        if (postTotal > maxPerTri && uEffCp > 6) {
+          const curReport = Engine.validatePlan(course, plan, DATA);
+          const curBuckets = curReport?.resolved?.buckets || [];
+          const bucketById = Object.fromEntries(curBuckets.map((b) => [b.id, b]));
+          const unitBucketCats = new Set(
+            curBuckets.filter((b) => Array.isArray(b.units) && b.units.includes(code)).map((b) => b.category)
+          );
+          while (postTotal > maxPerTri) {
+            const extraPhIdx = findBestMatchingPlaceholderIndex(slots, code, u, bucketById, unitBucketCats, false);
+            if (extraPhIdx === -1) break;
+            const extraPh = slots[extraPhIdx];
+            if (state.targetSlot && state.targetSlot.replaceSlotId === extraPh.id) exitSlotPicker();
+            slots.splice(extraPhIdx, 1);
+            postTotal -= extraPh.cp ?? 6;
+          }
+        }
+        placedLabel = `Y${targetYr.yearNum} · T${sp.triNum}`;
+      } else {
+        const fallbackTri = sp?.triNum || (effectiveTris[0] || plan.commencingTrimester || 1);
+        while (isRolling && 2026 + plan.years.length + 1 < u.rollingStartYear) {
+          const padNum = plan.years.length + 1;
+          plan.years.push({
+            id: Engine.uid("yr"),
+            yearNum: padNum,
+            year: 2026 + padNum,
+            name: `Year ${padNum} (${2026 + padNum})`,
+            trimesters: { 1: [], 2: [], 3: [] },
+          });
+        }
+        const newYNum = plan.years.length + 1;
+        const newYr = {
+          id: Engine.uid("yr"),
+          yearNum: newYNum,
+          year: 2026 + newYNum,
+          name: `Year ${newYNum} (${2026 + newYNum})`,
+          trimesters: { 1: [], 2: [], 3: [] },
+        };
+        newYr.trimesters[fallbackTri].push(newSlot);
+        plan.years.push(newYr);
+        placedLabel = `Y${newYNum} · T${fallbackTri}`;
+      }
+      plan.hasUserEdits = true;
+      saveState();
+      renderAll({ resetSidebarScroll: false });
+      showToast(
+        replacedPhNote
+          ? `Added ${code} → ${placedLabel} (filled ${replacedPhNote})`
+          : `Added ${code} → ${placedLabel}`
+      );
+      return;
+    }
+
+    // Defensive fallback if Engine.findBestSmartPlacement is unavailable
+    const curReport = Engine.validatePlan(course, plan, DATA);
+    const curBuckets = curReport?.resolved?.buckets || [];
+    const bucketById = Object.fromEntries(curBuckets.map((b) => [b.id, b]));
+    const unitBucketCats = new Set(
+      curBuckets.filter((b) => Array.isArray(b.units) && b.units.includes(code)).map((b) => b.category)
+    );
+
+    const placements = Engine.getPlannedPlacements(plan, DATA);
+    const advCp = Engine.getAdvancedStandingCp(course, plan.admissionRule);
+    const startTri = plan.commencingTrimester || 1;
+    const isPgCourse = course.studyLevel === "Postgraduate" || course.studyLevel === "Postgraduate Research";
+    const allPlannedCodes = new Set(placements.filter((p) => p.type === "unit").map((p) => p.code));
+
+    let best = null;
 
     plan.years.forEach((yr, yIdx) => {
       const planYear = getPlanYear(yr, yIdx);
@@ -711,13 +990,22 @@ window.initUNEPlannerApp = function () {
           continue;
         }
         const slots = yr.trimesters[tNum] || [];
-        const curEffCp = slots.reduce((sum, s) => {
-          const su = s.type === "unit" ? Engine.getUnit(s.code, DATA, plan.customUnits) : null;
-          return sum + getUnitEffectiveCp(su, s.cp);
-        }, 0);
-        // Allow giant units (e.g., 42/48/72 CP honours/research units) in an empty trimester
-        const fitsLoad = curEffCp + uEffCp <= maxPerTri || (curEffCp === 0 && uEffCp > maxPerTri);
-        if (!fitsLoad) continue;
+        let concreteEffCp = 0;
+        let totalEffCp = 0;
+        for (const s of slots) {
+          if (s.type === "unit") {
+            const su = Engine.getUnit(s.code, DATA, plan.customUnits);
+            const eCp = getUnitEffectiveCp(su, s.cp);
+            concreteEffCp += eCp;
+            totalEffCp += eCp;
+          } else {
+            totalEffCp += s.cp ?? 6;
+          }
+        }
+        // Check concrete load so trimesters filled with open placeholders (e.g. Y1 T2 at 24 CP) remain eligible!
+        const fitsConcreteLoad =
+          concreteEffCp + uEffCp <= maxPerTri || (concreteEffCp === 0 && uEffCp > maxPerTri);
+        if (!fitsConcreteLoad) continue;
 
         const chrono = yIdx * 3 + (tNum - 1);
         const priorSet = new Set();
@@ -747,7 +1035,6 @@ window.initUNEPlannerApp = function () {
         if (pm && !(pm.pgWaiver && isPgCourse)) {
           let prereqOk = true;
           if (pm.combineOp === "OR" || (Array.isArray(pm.alternatives) && pm.alternatives.length > 0)) {
-            // Soft check: satisfied if any listed condition passes
             let anyPass = false;
             if (pm.minCp > 0 && priorCp >= pm.minCp) anyPass = true;
             if (pm.prefixCp) {
@@ -791,16 +1078,107 @@ window.initUNEPlannerApp = function () {
           }
         }
 
-        const score = penalty + chrono;
+        // Penalize overlapping 2027 intensive dates with already-placed concrete units in this trimester
+        if (planYear <= 2027 && typeof Engine.getUnitIntensiveForTri === "function") {
+          const uInt = Engine.getUnitIntensiveForTri(u, tNum, plan.preferredMode, planYear);
+          if (
+            uInt &&
+            uInt.kind === "Mandatory" &&
+            uInt.applicableForMode &&
+            !uInt.tba &&
+            Array.isArray(uInt.dateRanges) &&
+            uInt.dateRanges.length > 0
+          ) {
+            const hasClash = slots.some((s) => {
+              if (s.type !== "unit") return false;
+              const su = Engine.getUnit(s.code, DATA, plan.customUnits);
+              const sInt = su ? Engine.getUnitIntensiveForTri(su, tNum, plan.preferredMode, planYear) : null;
+              if (!sInt || sInt.kind !== "Mandatory" || !sInt.applicableForMode || sInt.tba || !Array.isArray(sInt.dateRanges)) {
+                return false;
+              }
+              for (const ra of uInt.dateRanges) {
+                for (const rb of sInt.dateRanges) {
+                  if (ra.start && ra.end && rb.start && rb.end && ra.start <= rb.end && rb.start <= ra.end) return true;
+                }
+              }
+              return false;
+            });
+            if (hasClash) penalty += 40;
+          }
+        }
+
+        // Prefer trimesters containing a matching open placeholder (capped at -1.5 so earlier valid years still win!)
+        const bestPhIdx = findBestMatchingPlaceholderIndex(slots, code, u, bucketById, unitBucketCats, false);
+        let phBonus = 0;
+        if (bestPhIdx !== -1) {
+          const phScore = scorePlaceholderMatchForUnit(slots[bestPhIdx], code, u, bucketById, unitBucketCats);
+          if (phScore >= 80) phBonus = 1.5;
+          else if (phScore >= 55) phBonus = 1.0;
+          else if (phScore >= 30) phBonus = 0.4;
+        } else if (totalEffCp + uEffCp <= maxPerTri) {
+          phBonus = 0.2;
+        }
+
+        const score = penalty + chrono - phBonus;
         if (!best || score < best.score) best = { yIdx, tNum, score };
       }
     });
 
-    let placedLabel = "";
+    function insertUnitIntoTrimester(targetYr, targetTri) {
+      const slots = targetYr.trimesters[targetTri];
+      const newSlot = { id: Engine.uid("u"), type: "unit", code };
+      let totalBefore = slots.reduce((sum, s) => {
+        const su = s.type === "unit" ? Engine.getUnit(s.code, DATA, plan.customUnits) : null;
+        return sum + getUnitEffectiveCp(su, s.cp);
+      }, 0);
+
+      let replacedLabel = "";
+      if (totalBefore + uEffCp > maxPerTri) {
+        let firstReplacedIdx = -1;
+        while (totalBefore + uEffCp > maxPerTri) {
+          const phIdx = findBestMatchingPlaceholderIndex(slots, code, u, bucketById, unitBucketCats, false);
+          if (phIdx === -1) break;
+          const ph = slots[phIdx];
+          const phCp = ph.cp ?? 6;
+          if (!replacedLabel) replacedLabel = ph.label || "open slot";
+          if (state.targetSlot && state.targetSlot.replaceSlotId === ph.id) {
+            exitSlotPicker();
+          }
+          if (firstReplacedIdx === -1) {
+            slots[phIdx] = newSlot;
+            firstReplacedIdx = phIdx;
+          } else {
+            slots.splice(phIdx, 1);
+          }
+          totalBefore -= phCp;
+        }
+        if (firstReplacedIdx === -1) {
+          slots.push(newSlot);
+        }
+      } else {
+        // Under load cap: still replace an exact matching bucket/core/major placeholder if present to avoid duplicating requirement slots
+        const exactPhIdx = findBestMatchingPlaceholderIndex(slots, code, u, bucketById, unitBucketCats, true);
+        if (exactPhIdx !== -1) {
+          const ph = slots[exactPhIdx];
+          replacedLabel = ph.label || "open slot";
+          if (state.targetSlot && state.targetSlot.replaceSlotId === ph.id) {
+            exitSlotPicker();
+          }
+          slots[exactPhIdx] = newSlot;
+        } else {
+          slots.push(newSlot);
+        }
+      }
+      return replacedLabel;
+    }
+
+    placedLabel = "";
+    replacedPhNote = "";
     if (!best) {
-      const offeredTris = effectiveTris.length > 0
-        ? effectiveTris.filter((t) => !(t === 3 && u.t3RepeatOnly && effectiveTris.length > 1))
-        : [startTri];
+      const offeredTris =
+        effectiveTris.length > 0
+          ? effectiveTris.filter((t) => !(t === 3 && u.t3RepeatOnly && effectiveTris.length > 1))
+          : [startTri];
       const fallbackTris = offeredTris.length ? offeredTris : [1];
       let placed = false;
       for (let yIdx = 0; yIdx < plan.years.length && !placed; yIdx++) {
@@ -808,12 +1186,13 @@ window.initUNEPlannerApp = function () {
         for (const fTri of fallbackTris) {
           if (yIdx === 0 && fTri < startTri) continue;
           const slots = plan.years[yIdx].trimesters[fTri] || [];
-          const curEffCp = slots.reduce((sum, s) => {
-            const su = s.type === "unit" ? Engine.getUnit(s.code, DATA, plan.customUnits) : null;
+          const concreteEffCp = slots.reduce((sum, s) => {
+            if (s.type !== "unit") return sum;
+            const su = Engine.getUnit(s.code, DATA, plan.customUnits);
             return sum + getUnitEffectiveCp(su, s.cp);
           }, 0);
-          if (curEffCp + uEffCp <= maxPerTri || (curEffCp === 0 && uEffCp > maxPerTri)) {
-            slots.push({ id: Engine.uid("u"), type: "unit", code });
+          if (concreteEffCp + uEffCp <= maxPerTri || (concreteEffCp === 0 && uEffCp > maxPerTri)) {
+            replacedPhNote = insertUnitIntoTrimester(plan.years[yIdx], fTri);
             placedLabel = `Y${plan.years[yIdx].yearNum} · T${fTri}`;
             placed = true;
             break;
@@ -845,13 +1224,18 @@ window.initUNEPlannerApp = function () {
         placedLabel = `Y${newYNum} · T${fallbackTri}`;
       }
     } else {
-      plan.years[best.yIdx].trimesters[best.tNum].push({ id: Engine.uid("u"), type: "unit", code });
+      replacedPhNote = insertUnitIntoTrimester(plan.years[best.yIdx], best.tNum);
       placedLabel = `Y${plan.years[best.yIdx].yearNum} · T${best.tNum}`;
     }
 
+    plan.hasUserEdits = true;
     saveState();
     renderAll({ resetSidebarScroll: false });
-    showToast(`Added ${code} → ${placedLabel}`);
+    showToast(
+      replacedPhNote
+        ? `Added ${code} → ${placedLabel} (filled ${replacedPhNote})`
+        : `Added ${code} → ${placedLabel}`
+    );
   }
 
   function removeSlot(yearIdx, triNum, slotId) {
@@ -860,6 +1244,7 @@ window.initUNEPlannerApp = function () {
     if (!yr) return;
     yr.trimesters[triNum] = (yr.trimesters[triNum] || []).filter((s) => s.id !== slotId);
     if (state.targetSlot && state.targetSlot.replaceSlotId === slotId) exitSlotPicker();
+    plan.hasUserEdits = hasBoardAnySlots(plan) || Object.keys(plan.customUnits || {}).length > 0;
     saveState();
     renderAll({ resetSidebarScroll: false });
   }
@@ -895,6 +1280,10 @@ window.initUNEPlannerApp = function () {
       });
     }
     plan.years[newY].trimesters[newT].push(slot);
+    if (state.targetSlot && state.targetSlot.replaceSlotId === slotId) {
+      state.targetSlot = buildPlaceholderTarget(slot, plan.years[newY], newY, newT);
+    }
+    plan.hasUserEdits = true;
     saveState();
     renderAll({ resetSidebarScroll: false });
   }
@@ -1061,7 +1450,9 @@ window.initUNEPlannerApp = function () {
   function runSmartAutoPlan() {
     const course = getCurrentCourse();
     const plan = getCurrentPlan();
+    if (!confirmAutoPlanOverwrite(plan)) return false;
     const generated = Engine.autoSchedulePlan(course, plan, DATA);
+    generated.hasUserEdits = false;
     state.savedPlansByCourse[course.code] = generated;
     const openPh = findOpenPlaceholders(generated);
     if (openPh.length > 0 && !isMobileViewport()) {
@@ -1076,6 +1467,7 @@ window.initUNEPlannerApp = function () {
         ? `Generated ${course.code} schedule! ${openPh.length} student-choice slot${openPh.length === 1 ? "" : "s"} ready to pick.`
         : `Generated complete schedule for ${course.code}!`
     );
+    return true;
   }
 
   /* ==========================================================================
@@ -2062,69 +2454,28 @@ window.initUNEPlannerApp = function () {
         return;
       }
 
-      // Confirm before wiping manually placed or existing units on the board!
-      openModal(
-        `<div style="font-weight:800;font-size:15.5px;">Change Trimester 3 Strategy?</div>`,
-        `
-          <div style="font-size:13px;color:var(--text-muted);line-height:1.45;">
-            Switching T3 strategy to <strong>${esc(stratNames[nextVal] || nextVal)}</strong> can re-run <strong>Auto-Plan</strong>, which will replace the <strong>${existingCount}</strong> slot${existingCount === 1 ? "" : "s"} currently on your board (including any manually placed units or electives).
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:8px;">
-            <button class="btn" id="btn-t3-cancel" type="button">Cancel</button>
-            <button class="btn btn-soft" id="btn-t3-keep" type="button">Keep Current Units (Update Preference Only)</button>
-            <button class="btn btn-primary" id="btn-t3-resched" type="button">✨ Re-schedule Board</button>
-          </div>
-        `,
-        (modal) => {
-          const revertSel = () => {
-            const sEl = document.getElementById("sel-t3-strategy");
-            if (sEl) sEl.value = prevVal;
-          };
-          const closeBtn = modal.querySelector("#btn-modal-close");
-          if (closeBtn) {
-            closeBtn.onclick = () => {
-              revertSel();
-              closeModal();
-            };
-          }
-          modal.onclick = (ev) => {
-            if (ev.target === modal) {
-              revertSel();
-              closeModal();
-            }
-          };
-          modal.querySelector("#btn-t3-cancel").onclick = () => {
-            revertSel();
-            closeModal();
-          };
-          modal.querySelector("#btn-t3-keep").onclick = () => {
-            plan.t3Strategy = nextVal;
-            plan.includeT3InAuto = nextVal !== "none";
-            plan.t3Analysis = null;
-            exitSlotPicker();
-            saveState();
-            closeModal();
-            renderAll({ resetSidebarScroll: false });
-            showToast(`Updated T3 preference to ${stratNames[nextVal] || nextVal} (existing units kept).`);
-          };
-          modal.querySelector("#btn-t3-resched").onclick = () => {
-            plan.t3Strategy = nextVal;
-            plan.includeT3InAuto = nextVal !== "none";
-            const updated = Engine.autoSchedulePlan(course, plan, DATA);
-            state.savedPlansByCourse[course.code] = updated;
-            const openPh = findOpenPlaceholders(updated);
-            if (openPh.length > 0 && state.sidebarTab === "slot" && !isMobileViewport()) {
-              activateSlotPicker(openPh[0], false);
-            } else {
-              exitSlotPicker();
-            }
-            saveState();
-            closeModal();
-            renderAll({ resetSidebarScroll: false });
-            showToast(`Re-scheduled ${course.code} with T3 strategy: ${stratNames[nextVal] || nextVal}.`);
-          };
-        }
-      );
+      // If the user has made edits (or legacy concrete units), confirm before overwriting and revert on cancel!
+      if (!confirmAutoPlanOverwrite(plan)) {
+        const sEl = document.getElementById("sel-t3-strategy");
+        if (sEl) sEl.value = prevVal;
+        if (e && e.target) e.target.value = prevVal;
+        return;
+      }
+
+      plan.t3Strategy = nextVal;
+      plan.includeT3InAuto = nextVal !== "none";
+      const updated = Engine.autoSchedulePlan(course, plan, DATA);
+      updated.hasUserEdits = false;
+      state.savedPlansByCourse[course.code] = updated;
+      const openPh = findOpenPlaceholders(updated);
+      if (openPh.length > 0 && state.sidebarTab === "slot" && !isMobileViewport()) {
+        activateSlotPicker(openPh[0], false);
+      } else {
+        exitSlotPicker();
+      }
+      saveState();
+      renderAll({ resetSidebarScroll: false });
+      showToast(`Re-scheduled ${course.code} with T3 strategy: ${stratNames[nextVal] || nextVal}.`);
     };
 
     const presetBar = document.getElementById("preset-bar");
@@ -2136,11 +2487,13 @@ window.initUNEPlannerApp = function () {
       `;
       presetBar.querySelectorAll("[data-preset]").forEach((btn) => {
         btn.onclick = () => {
+          if (!confirmAutoPlanOverwrite(plan)) return;
           const pr = BSC_PRESETS[parseInt(btn.dataset.preset, 10)];
           plan.aosStructure = pr.structure;
           plan.selectedMajors = [...pr.majors];
           plan.selectedMinor = pr.minor;
           const generated = Engine.autoSchedulePlan(course, plan, DATA);
+          generated.hasUserEdits = false;
           state.savedPlansByCourse[course.code] = generated;
           const openPh = findOpenPlaceholders(generated);
           if (openPh.length > 0 && !isMobileViewport()) activateSlotPicker(openPh[0], !isTabletViewport());
@@ -2326,9 +2679,12 @@ window.initUNEPlannerApp = function () {
       };
 
       const filteredEligible = slotEval.eligible.filter(filterFn);
+      const filteredSwap = (slotEval.siblingSwapEligible || []).filter(filterFn);
       const filteredIneligible = slotEval.ineligible.filter(filterFn);
       const autoExpandInelig =
-        state.slotShowIneligible !== null ? state.slotShowIneligible : filteredEligible.length === 0 || q.length > 0;
+        state.slotShowIneligible !== null
+          ? state.slotShowIneligible
+          : (filteredEligible.length === 0 && filteredSwap.length === 0) || q.length > 0;
       const courseEligCount = slotEval.eligible.filter((x) => x.inCoursePool).length;
       const elecEligCount = slotEval.eligible.filter((x) => !x.inCoursePool).length;
 
@@ -2346,7 +2702,9 @@ window.initUNEPlannerApp = function () {
           </div>
 
           ${
-            slotEval.eligible.length + slotEval.ineligible.length > 4 || q || state.slotLevelFilter !== "all"
+            slotEval.eligible.length + (slotEval.siblingSwapEligible?.length || 0) + slotEval.ineligible.length > 4 ||
+            q ||
+            state.slotLevelFilter !== "all"
               ? `<div style="display:flex;gap:6px;margin-top:2px;">
                   <input type="search" class="text-input" id="inp-slot-search" placeholder="Filter units or check why ineligible…" value="${esc(
                     state.slotQuery
@@ -2388,7 +2746,7 @@ window.initUNEPlannerApp = function () {
         </div>
 
         <div id="slot-results-wrap" style="display:flex;flex-direction:column;gap:8px;">
-          ${renderSlotListInner(slotEval, filteredEligible, filteredIneligible, autoExpandInelig, plan)}
+          ${renderSlotListInner(slotEval, filteredEligible, filteredSwap, filteredIneligible, autoExpandInelig, plan)}
         </div>
       `;
     } else if (state.sidebarTab === "requirements") {
@@ -2604,9 +2962,13 @@ window.initUNEPlannerApp = function () {
         return true;
       };
       const fe = slotEval.eligible.filter(filter2);
+      const fs = (slotEval.siblingSwapEligible || []).filter(filter2);
       const fi = slotEval.ineligible.filter(filter2);
-      const autoExp = state.slotShowIneligible !== null ? state.slotShowIneligible : fe.length === 0 || q2.length > 0;
-      wrap.innerHTML = renderSlotListInner(slotEval, fe, fi, autoExp, plan);
+      const autoExp =
+        state.slotShowIneligible !== null
+          ? state.slotShowIneligible
+          : (fe.length === 0 && fs.length === 0) || q2.length > 0;
+      wrap.innerHTML = renderSlotListInner(slotEval, fe, fs, fi, autoExp, plan);
       bindSlotListControls(wrap, autoExp);
       bindUnitTriggers(wrap, plan);
     }
@@ -2626,6 +2988,13 @@ window.initUNEPlannerApp = function () {
           refreshSlotResultsInPlace();
         };
       }
+      const moreSwap = wrap.querySelector("#btn-slot-more-swap");
+      if (moreSwap) {
+        moreSwap.onclick = () => {
+          state.slotSwapLimit += 60;
+          refreshSlotResultsInPlace();
+        };
+      }
       const moreInelig = wrap.querySelector("#btn-slot-more-inelig");
       if (moreInelig) {
         moreInelig.onclick = () => {
@@ -2639,7 +3008,7 @@ window.initUNEPlannerApp = function () {
     if (slotWrapEl && slotEval) {
       const qInit = state.slotQuery.trim().toLowerCase();
       const hasBothInit = slotEval.spec.allowsElectives && slotEval.spec.coursePoolMap && slotEval.spec.coursePoolMap.size > 0;
-      const feCount = slotEval.eligible.filter((item) => {
+      const filterInit = (item) => {
         if (state.slotLevelFilter !== "all" && String(item.unit.level) !== state.slotLevelFilter) return false;
         if (hasBothInit) {
           if (state.slotPoolFilter === "course" && !item.inCoursePool) return false;
@@ -2647,8 +3016,13 @@ window.initUNEPlannerApp = function () {
         }
         if (qInit && !`${item.code} ${item.unit.title} ${item.poolLabel} ${item.unit.school}`.toLowerCase().includes(qInit)) return false;
         return true;
-      }).length;
-      const initExpanded = state.slotShowIneligible !== null ? state.slotShowIneligible : feCount === 0 || qInit.length > 0;
+      };
+      const feCount = slotEval.eligible.filter(filterInit).length;
+      const fsCount = (slotEval.siblingSwapEligible || []).filter(filterInit).length;
+      const initExpanded =
+        state.slotShowIneligible !== null
+          ? state.slotShowIneligible
+          : (feCount === 0 && fsCount === 0) || qInit.length > 0;
       bindSlotListControls(slotWrapEl, initExpanded);
     }
 
@@ -2658,6 +3032,7 @@ window.initUNEPlannerApp = function () {
         state.slotQuery = slotSearchInp.value;
         state.slotShowIneligible = null;
         state.slotEligLimit = 100;
+        state.slotSwapLimit = 60;
         state.slotIneligLimit = 80;
         refreshSlotResultsInPlace();
       };
@@ -2671,6 +3046,7 @@ window.initUNEPlannerApp = function () {
         state.slotLevelFilter = e.target.value;
         state.slotShowIneligible = null;
         state.slotEligLimit = 100;
+        state.slotSwapLimit = 60;
         state.slotIneligLimit = 80;
         renderSidebar(course, plan, report, { resetScroll: true });
       };
@@ -2679,6 +3055,7 @@ window.initUNEPlannerApp = function () {
       btn.onclick = () => {
         state.slotPoolFilter = btn.dataset.spool;
         state.slotEligLimit = 100;
+        state.slotSwapLimit = 60;
         state.slotIneligLimit = 80;
         renderSidebar(course, plan, report, { resetScroll: true });
       };
@@ -2689,6 +3066,7 @@ window.initUNEPlannerApp = function () {
         state.slotForceElectives = e.target.checked;
         state.slotShowIneligible = null;
         state.slotEligLimit = 100;
+        state.slotSwapLimit = 60;
         state.slotIneligLimit = 80;
         renderSidebar(course, plan, report, { resetScroll: true });
       };
@@ -2803,9 +3181,52 @@ window.initUNEPlannerApp = function () {
     bindUnitTriggers(sb, plan);
   }
 
-  function renderSlotListInner(slotEval, filteredEligible, filteredIneligible, autoExpandInelig, plan) {
+  function renderSlotListInner(slotEval, filteredEligible, filteredSwap, filteredIneligible, autoExpandInelig, plan) {
     const eligShown = filteredEligible.slice(0, state.slotEligLimit);
+    const swapList = Array.isArray(filteredSwap) ? filteredSwap : [];
+    const swapShown = swapList.slice(0, state.slotSwapLimit);
     const ineligShown = filteredIneligible.slice(0, state.slotIneligLimit);
+
+    // Group sibling-swap candidates by target sibling trimester (e.g. T2 first when viewing T1)
+    let swapSectionHtml = "";
+    if (swapShown.length > 0) {
+      const grouped = new Map();
+      for (const item of swapShown) {
+        const k = item.siblingTri;
+        if (!grouped.has(k)) grouped.set(k, []);
+        grouped.get(k).push(item);
+      }
+      const totalByTri = new Map();
+      for (const item of swapList) {
+        totalByTri.set(item.siblingTri, (totalByTri.get(item.siblingTri) || 0) + 1);
+      }
+      const parts = [];
+      for (const [sibTri, grpItems] of grouped.entries()) {
+        const sumMeta = slotEval.swapSummary?.[sibTri] || slotEval.swapSummary?.[String(sibTri)] || grpItems[0];
+        const swapShort = sumMeta?.swapPlaceholderShort || sumMeta?.swapPlaceholderLabel || "Elective";
+        const grpTotal = totalByTri.get(sibTri) || grpItems.length;
+        parts.push(`
+          <div class="swap-category-hdr">
+            <span>↔ Available in Trimester ${sibTri} — Auto-Swaps Slot</span>
+            <span>${grpTotal} unit${grpTotal === 1 ? "" : "s"}</span>
+          </div>
+          <div class="swap-category-sub">
+            Places unit in Trimester ${sibTri} and moves your T${sibTri} ${esc(swapShort)} slot to Trimester ${slotEval.triNum}.
+          </div>
+          ${grpItems.map((item) => renderSlotSwapCard(item, plan, slotEval)).join("")}
+        `);
+      }
+      if (swapList.length > swapShown.length) {
+        parts.push(`
+          <div class="catalog-trunc-bar">
+            <span>Showing ${swapShown.length} of ${swapList.length} auto-swap units</span>
+            <button class="btn btn-sm btn-soft" id="btn-slot-more-swap" type="button">Show more (+${Math.min(60, swapList.length - swapShown.length)})</button>
+          </div>
+        `);
+      }
+      swapSectionHtml = parts.join("");
+    }
+
     return `
       <div class="elig-category-hdr">
         <span>✅ Eligible for Y${slotEval.yearNum} · T${slotEval.triNum}</span>
@@ -2815,7 +3236,11 @@ window.initUNEPlannerApp = function () {
       ${
         filteredEligible.length === 0
           ? `<div style="padding:12px;border:1px dashed var(--border-strong);border-radius:8px;font-size:12px;color:var(--text-subtle);text-align:center;">
-              No eligible units match for Y${slotEval.yearNum} · T${slotEval.triNum}. See reasons in the Ineligible section below.
+              ${
+                swapList.length > 0
+                  ? `No units offered directly in Y${slotEval.yearNum} · T${slotEval.triNum} — use <strong>1-click Auto-Swap</strong> below to pick from Trimester ${swapList[0].siblingTri}!`
+                  : `No eligible units match for Y${slotEval.yearNum} · T${slotEval.triNum}. See reasons in the Ineligible section below.`
+              }
             </div>`
           : eligShown.map((item) => renderSlotEligibleCard(item, plan)).join("")
       }
@@ -2828,6 +3253,8 @@ window.initUNEPlannerApp = function () {
             </div>`
           : ""
       }
+
+      ${swapSectionHtml}
 
       ${
         filteredIneligible.length > 0
@@ -2852,6 +3279,41 @@ window.initUNEPlannerApp = function () {
           `
           : ""
       }
+    `;
+  }
+
+  function renderSlotSwapCard(item, plan, slotEval) {
+    const u = item.unit;
+    const targetYr = state.targetSlot
+      ? state.targetSlot.planYear || getPlanYear(plan?.years?.[state.targetSlot.yearIdx], state.targetSlot.yearIdx)
+      : 2027;
+    const isRolling = u.offered2027 === false && Number.isInteger(u.rollingStartYear);
+    const swapShort = item.swapPlaceholderShort || item.swapPlaceholderLabel || "Elective";
+    const swapTip = `Places ${item.code} in Year ${slotEval.yearNum} T${item.siblingTri} and moves your T${item.siblingTri} ${swapShort} slot to T${slotEval.triNum}`;
+    return `
+      <div class="pool-unit swap-unit-card ${item.majorRequiredBy ? "major-req" : ""}" draggable="true" data-drag-pool-code="${esc(item.code)}">
+        <div class="pool-unit-top">
+          <button class="unit-code-link" data-inspect-unit="${esc(item.code)}">${esc(item.code)} · ${esc(u.cp ?? 6)} CP</button>
+          <button class="btn btn-sm btn-swap-add" data-swap-add="${esc(item.code)}|${item.siblingTri}|${esc(item.swapPlaceholderId)}" title="${esc(swapTip)}">Swap &amp; Add →</button>
+        </div>
+        <div class="pool-unit-title">${esc(u.title)}</div>
+        <div class="pool-unit-meta">
+          <div class="tri-pills">
+            <span class="badge-mini badge-swap-tri" title="${esc(swapTip)}">↔ T${item.siblingTri} · Swaps with ${esc(swapShort)}</span>
+            <span class="badge-mini" style="${
+              item.inCoursePool
+                ? "background:var(--primary-soft);color:var(--primary);border:1px solid var(--primary-border);"
+                : "background:var(--surface-alt);color:var(--text-subtle);border:1px solid var(--border);"
+            }">${esc(item.poolLabel)}</span>
+            ${item.helpsLevelMin ? `<span class="badge-mini" style="background:var(--cat-major1-bg);color:var(--cat-major1);border:1px solid var(--cat-major1);">L${esc(u.level)} Target</span>` : ""}
+            ${renderIntensiveBadgeMini(u, item.siblingTri, plan?.preferredMode, targetYr)}
+            ${u.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
+            ${isRolling ? `<span class="badge-mini badge-rolling">🗓 From ${esc(u.rollingStartYear)}</span>` : ""}
+            ${item.modeWarning ? `<span class="badge-mini badge-intensive">${esc(item.modeWarning)}</span>` : ""}
+          </div>
+          <div class="tri-pills">${renderUnitTrimesterPills(u, item.siblingTri)}</div>
+        </div>
+      </div>
     `;
   }
 
@@ -2925,22 +3387,22 @@ window.initUNEPlannerApp = function () {
     const isFutureGuide = Boolean(info.isHistoricalGuide || (Number.isInteger(planYear) && planYear > 2027));
     if (isFutureGuide) {
       const guideTip = dateSummary
-        ? `Mandatory Intensive School (${info.location}) — ${planYear} dates TBA (2027 guide: ${dateSummary})`
+        ? `Mandatory Intensive School (${info.location}) — ${planYear} dates TBA (2027 draft guide: ${dateSummary})`
         : `Mandatory Intensive School (${info.location}) — ${planYear} dates TBA (check UNE Handbook when published)`;
       return `<span class="badge-mini badge-int-guide" title="${esc(guideTip)}">📅 Intensive${esc(shortLoc)} · ${esc(planYear)} TBA</span>`;
     }
 
     if (info.tba) {
-      return `<span class="badge-mini badge-int-tba" title="Mandatory Intensive School (${esc(info.location)}) — Dates TBA (check dates)">🔴 Intensive${esc(shortLoc)} · TBA</span>`;
+      return `<span class="badge-mini badge-int-tba" title="Mandatory Intensive School (${esc(info.location)}) — 2027 Dates TBA (check dates)">🔴 Intensive${esc(shortLoc)} · TBA</span>`;
     }
     if (hasMixedTba) {
-      return `<span class="badge-mini badge-int-tba" title="Mandatory Intensive School (${esc(info.location)}): ${esc(dateSummary)} — Some trimesters TBA">🔴 Intensive${esc(shortLoc)} · Some TBA</span>`;
+      return `<span class="badge-mini badge-int-tba" title="Mandatory Intensive School (${esc(info.location)}): ${esc(dateSummary)} (2027 provisional draft — subject to confirmation; some trimesters TBA)">🔴 Intensive${esc(shortLoc)} · Some TBA</span>`;
     }
     const cohortTag =
       sameTriMulti && entries.length > 1
-        ? `<span class="badge-mini badge-int-cohort" title="${esc(dateSummary)}">${isMultiCohort ? `${entries.length} Cohorts` : `${entries.length} Blocks`}</span>`
+        ? `<span class="badge-mini badge-int-cohort" title="${esc(dateSummary)} (2027 draft — subject to confirmation)">${isMultiCohort ? `${entries.length} Cohorts` : `${entries.length} Blocks`}</span>`
         : "";
-    return `<span class="badge-mini badge-intensive" title="Mandatory Intensive School (${esc(info.location)}): ${esc(dateSummary)}">🏫 Intensive${esc(shortLoc)}</span>${cohortTag}`;
+    return `<span class="badge-mini badge-intensive" title="Mandatory Intensive School (${esc(info.location)}): ${esc(dateSummary)} (2027 provisional draft dates — subject to confirmation)">🏫 Intensive${esc(shortLoc)}</span>${cohortTag}`;
   }
 
   function renderUnitTrimesterPills(u, activeTriNum) {
@@ -3014,7 +3476,7 @@ window.initUNEPlannerApp = function () {
             ${poolLabel ? `<span style="font-size:10px;color:var(--text-subtle);">${esc(poolLabel)}</span>` : ""}
             ${
               canOverride
-                ? `<button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px;min-height:24px;color:var(--text-subtle);" data-add-unit="${esc(code)}" title="Add with manual override">Override</button>`
+                ? `<button class="btn btn-sm" style="padding:1px 6px;font-size:10.5px;min-height:24px;color:var(--text-subtle);" data-add-unit="${esc(code)}" data-add-override="1" title="Add with manual override">Override</button>`
                 : ""
             }
           </div>
@@ -3158,7 +3620,7 @@ window.initUNEPlannerApp = function () {
                     <span>${iss.severity === "error" ? "⛔" : iss.severity === "warning" ? "⚠️" : "ℹ️"} ${esc(iss.text)}</span>
                     ${
                       iss.actionUnit && !isUnitPlanned(iss.actionUnit, plan)
-                        ? `<button class="btn btn-sm" data-add-unit="${esc(iss.actionUnit)}">+ Add ${esc(iss.actionUnit)}</button>`
+                        ? `<button class="btn btn-sm" data-add-unit="${esc(iss.actionUnit)}" data-add-smart="1">+ Add ${esc(iss.actionUnit)}</button>`
                         : iss.actionT3Spread
                         ? `<button class="btn btn-sm btn-soft" id="btn-switch-t3-spread">🌿 Use Spread Load (3+3+2)</button>`
                         : ""
@@ -3265,13 +3727,13 @@ window.initUNEPlannerApp = function () {
                   if (tLoad.intensives > 0) {
                     if (isFutureYear) {
                       const guideTip = tLoad.futureGuideIntensives > 0
-                        ? `${tLoad.intensives} mandatory intensive(s) — ${planYear} dates TBA (2027 Handbook dates shown as indicative guide only)`
+                        ? `${tLoad.intensives} mandatory intensive(s) — ${planYear} dates TBA (2027 Handbook draft dates shown as indicative guide only)`
                         : `${tLoad.intensives} mandatory intensive(s) — ${planYear} dates TBA (check UNE Handbook when published)`;
                       intensivePillHtml = `<span class="badge-mini badge-int-guide" title="${esc(guideTip)}">📅 ${tLoad.intensives} Int · ${planYear} TBA</span>`;
                     } else if (tLoad.tbaIntensives > 0) {
-                      intensivePillHtml = `<span class="badge-mini badge-int-tba" title="${tLoad.tbaIntensives} mandatory intensive(s) have dates TBA — check UNE Handbook / myLearn">🔴 ${tLoad.intensives} Int · Dates TBA</span>`;
+                      intensivePillHtml = `<span class="badge-mini badge-int-tba" title="${tLoad.tbaIntensives} mandatory intensive(s) have 2027 dates TBA — check UNE Handbook / myLearn">🔴 ${tLoad.intensives} Int · Dates TBA</span>`;
                     } else {
-                      intensivePillHtml = `<span class="badge-mini badge-intensive">${tLoad.intensives} Intensive${tLoad.intensives > 1 ? "s" : ""}</span>`;
+                      intensivePillHtml = `<span class="badge-mini badge-intensive" title="2027 intensive dates shown are provisional Handbook draft dates — subject to official confirmation">${tLoad.intensives} Intensive${tLoad.intensives > 1 ? "s" : ""}</span>`;
                     }
                   }
 
@@ -3285,14 +3747,14 @@ window.initUNEPlannerApp = function () {
                           ${intensivePillHtml}
                           ${
                             hasConfirmedDateClash
-                              ? `<span class="badge-mini badge-int-clash" title="Confirmed 2027 overlapping Mandatory Intensive dates: ${esc(
+                              ? `<span class="badge-mini badge-int-clash" title="2027 Draft Date Clash: ${esc(
                                   dateClashTip || "Check intensive school dates"
-                                )}">⛔ Date Clash${dateClashes.length > 1 ? ` (${dateClashes.length})` : ""}</span>`
+                                )} (provisional Handbook draft dates — subject to confirmation)">⛔ Draft Date Clash${dateClashes.length > 1 ? ` (${dateClashes.length})` : ""}</span>`
                               : ""
                           }
                           ${
                             hasHistClash
-                              ? `<span class="badge-mini badge-int-hist" title="Possible overlap based on 2027 timetable (${esc(
+                              ? `<span class="badge-mini badge-int-hist" title="Possible overlap based on 2027 draft guide (${esc(
                                   histClashTip || "Check dates when published"
                                 )}) — verify ${planYear} dates when released">ℹ Possible Overlap (2027 Guide)</span>`
                               : ""
@@ -3343,9 +3805,11 @@ window.initUNEPlannerApp = function () {
     const switchSpreadBtn = document.getElementById("btn-switch-t3-spread");
     if (switchSpreadBtn) {
       switchSpreadBtn.onclick = () => {
+        if (!confirmAutoPlanOverwrite(plan)) return;
         plan.t3Strategy = "spread";
         plan.includeT3InAuto = true;
         const updated = Engine.autoSchedulePlan(course, plan, DATA);
+        updated.hasUserEdits = false;
         state.savedPlansByCourse[course.code] = updated;
         const openPh = findOpenPlaceholders(updated);
         if (openPh.length > 0 && state.sidebarTab === "slot" && !isMobileViewport()) {
@@ -3380,6 +3844,7 @@ window.initUNEPlannerApp = function () {
         name: `Year ${n} (${2026 + n})`,
         trimesters: { 1: [], 2: [], 3: [] },
       });
+      plan.hasUserEdits = true;
       saveState();
       renderAll({ resetSidebarScroll: false });
     };
@@ -3388,6 +3853,7 @@ window.initUNEPlannerApp = function () {
       plan.years.forEach((yr) => {
         yr.trimesters = { 1: [], 2: [], 3: [] };
       });
+      plan.hasUserEdits = false;
       exitSlotPicker();
       saveState();
       renderAll({ resetSidebarScroll: false });
@@ -3402,6 +3868,7 @@ window.initUNEPlannerApp = function () {
           y.year = 2027 + i;
           y.name = `Year ${i + 1} (${2027 + i})`;
         });
+        plan.hasUserEdits = hasBoardAnySlots(plan) || Object.keys(plan.customUnits || {}).length > 0;
         exitSlotPicker();
         saveState();
         renderAll({ resetSidebarScroll: false });
@@ -3534,21 +4001,32 @@ window.initUNEPlannerApp = function () {
         metaHint = "Open student choice slot";
       }
 
+      const curFlatIdxPh = yIdx * 3 + (tNum - 1);
+      const minFlatIdxPh = Math.max(0, (plan.commencingTrimester || 1) - 1);
+      const disableMoveBackPh = curFlatIdxPh === 0 || curFlatIdxPh === minFlatIdxPh;
+
       return `
-        <div class="slot-placeholder cat-${phCat} ${isSelected ? "selected is-selected" : ""}">
+        <div class="slot-placeholder cat-${phCat} ${isSelected ? "selected is-selected" : ""}"
+             draggable="true"
+             data-drag-placeholder="${yIdx}|${tNum}|${esc(slot.id)}"
+             data-drop-placeholder="${yIdx}|${tNum}|${esc(slot.id)}">
           <div class="slot-placeholder-head">
             <div class="slot-placeholder-badges">
               <span class="cat-tag cat-${phCat}">${esc(roleLabel)}</span>
               ${lvlChip}
               <span style="font-size:10.5px;font-weight:700;color:var(--text-subtle);">${esc(slot.cp ?? 6)} CP</span>
             </div>
-            <button class="icon-action remove no-print" data-remove-slot="${yIdx}|${tNum}|${esc(slot.id)}" title="Remove slot">✕</button>
+            <div class="slot-actions no-print">
+              <button class="icon-action" data-move-slot="${yIdx}|${tNum}|${esc(slot.id)}|-1" title="${disableMoveBackPh ? "At earliest trimester" : "Move slot earlier"}" ${disableMoveBackPh ? "disabled" : ""}>◀</button>
+              <button class="icon-action" data-move-slot="${yIdx}|${tNum}|${esc(slot.id)}|1" title="Move slot later">▶</button>
+              <button class="icon-action remove" data-remove-slot="${yIdx}|${tNum}|${esc(slot.id)}" title="Remove slot">✕</button>
+            </div>
           </div>
           <div class="slot-placeholder-label">${esc(slot.label || "Choose Unit")}</div>
           <div class="slot-placeholder-meta">${esc(metaHint)}</div>
           <div class="slot-placeholder-footer">
             <span style="font-size:10.5px;color:${isSelected ? "var(--info)" : "var(--text-subtle)"};font-weight:${isSelected ? "700" : "500"};">
-              ${isSelected ? "🎯 Choosing eligible unit…" : "Tap to pick"}
+              ${isSelected ? "🎯 Choosing eligible unit…" : "Tap to pick or drag to swap"}
             </span>
             <button class="btn btn-sm ${isSelected ? "btn-primary" : "btn-soft"} no-print" data-resolve-placeholder="${yIdx}|${tNum}|${esc(
         slot.id
@@ -3729,7 +4207,19 @@ window.initUNEPlannerApp = function () {
     root.querySelectorAll("[data-add-unit]").forEach((btn) => {
       btn.onclick = (e) => {
         e.stopPropagation();
-        addUnitToPlan(btn.dataset.addUnit);
+        addUnitToPlan(btn.dataset.addUnit, {
+          allowOverride: btn.dataset.addOverride === "1",
+          forceSmart: btn.dataset.addSmart === "1",
+        });
+      };
+    });
+    root.querySelectorAll("[data-swap-add]").forEach((btn) => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const [uCode, toTriStr, swapPhId] = (btn.dataset.swapAdd || "").split("|");
+        if (uCode && toTriStr && swapPhId) {
+          applySiblingSwapFromPicker(uCode, Number(toTriStr), swapPhId);
+        }
       };
     });
     root.querySelectorAll("[data-inspect-unit]").forEach((btn) => {
@@ -3742,7 +4232,7 @@ window.initUNEPlannerApp = function () {
       el.ondragstart = (e) => {
         const code = el.dataset.dragPoolCode;
         state.dragging = { source: "pool", code };
-        e.dataTransfer.setData("text/plain", code);
+        if (e.dataTransfer) e.dataTransfer.setData("text/plain", code);
         highlightOfferingColumns(code, plan, true);
       };
       el.ondragend = () => {
@@ -3754,12 +4244,32 @@ window.initUNEPlannerApp = function () {
       el.ondragstart = (e) => {
         const [yIdx, tNum, slotId, code] = el.dataset.dragBoard.split("|");
         state.dragging = { source: "board", fromYearIdx: Number(yIdx), fromTriNum: Number(tNum), slotId, code };
-        e.dataTransfer.setData("text/plain", code);
+        el.classList.add("is-dragging");
+        if (e.dataTransfer) e.dataTransfer.setData("text/plain", code);
         highlightOfferingColumns(code, plan, true);
       };
       el.ondragend = () => {
         state.dragging = null;
+        el.classList.remove("is-dragging");
         highlightOfferingColumns(null, plan, false);
+      };
+    });
+    root.querySelectorAll("[data-drag-placeholder]").forEach((el) => {
+      el.ondragstart = (e) => {
+        const [yIdx, tNum, slotId] = el.dataset.dragPlaceholder.split("|");
+        state.dragging = { source: "placeholder", fromYearIdx: Number(yIdx), fromTriNum: Number(tNum), slotId };
+        el.classList.add("is-dragging");
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", slotId);
+        }
+        document.querySelectorAll(".tri-col").forEach((c) => c.classList.add("drag-valid"));
+      };
+      el.ondragend = () => {
+        state.dragging = null;
+        el.classList.remove("is-dragging");
+        highlightOfferingColumns(null, plan, false);
+        document.querySelectorAll(".drop-swap-over").forEach((p) => p.classList.remove("drop-swap-over"));
       };
     });
   }
@@ -3779,6 +4289,61 @@ window.initUNEPlannerApp = function () {
   }
 
   function bindDropZones(board, plan) {
+    // Allow dropping a dragged placeholder directly onto another placeholder to swap their trimesters cleanly!
+    board.querySelectorAll("[data-drop-placeholder]").forEach((el) => {
+      el.ondragover = (e) => {
+        const drag = state.dragging;
+        if (!drag || drag.source !== "placeholder") return;
+        const [, , targetSlotId] = el.dataset.dropPlaceholder.split("|");
+        if (drag.slotId === targetSlotId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.add("drop-swap-over");
+      };
+      el.ondragleave = () => {
+        el.classList.remove("drop-swap-over");
+      };
+      el.ondrop = (e) => {
+        const drag = state.dragging;
+        el.classList.remove("drop-swap-over");
+        if (!drag || drag.source !== "placeholder") return;
+        const [toYStr, toTStr, targetSlotId] = el.dataset.dropPlaceholder.split("|");
+        if (drag.slotId === targetSlotId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const toY = Number(toYStr);
+        const toT = Number(toTStr);
+        const fromList = plan.years[drag.fromYearIdx]?.trimesters[drag.fromTriNum];
+        const toList = plan.years[toY]?.trimesters[toT];
+        if (!fromList || !toList) return;
+        const fromIdx = fromList.findIndex((s) => s.id === drag.slotId);
+        const toIdx = toList.findIndex((s) => s.id === targetSlotId);
+        if (fromIdx === -1 || toIdx === -1) return;
+
+        const movedPh = fromList[fromIdx];
+        const targetPh = toList[toIdx];
+        fromList[fromIdx] = targetPh;
+        toList[toIdx] = movedPh;
+
+        if (state.targetSlot?.replaceSlotId === movedPh.id) {
+          state.targetSlot = buildPlaceholderTarget(movedPh, plan.years[toY], toY, toT);
+        } else if (state.targetSlot?.replaceSlotId === targetPh.id) {
+          state.targetSlot = buildPlaceholderTarget(targetPh, plan.years[drag.fromYearIdx], drag.fromYearIdx, drag.fromTriNum);
+        }
+
+        state.dragging = null;
+        highlightOfferingColumns(null, plan, false);
+        plan.hasUserEdits = true;
+        saveState();
+        renderAll({ resetSidebarScroll: false });
+        showToast(
+          `Swapped ${movedPh.label || "Choice"} (Y${plan.years[toY]?.yearNum || toY + 1} T${toT}) ↔ ${
+            targetPh.label || "Choice"
+          } (Y${plan.years[drag.fromYearIdx]?.yearNum || drag.fromYearIdx + 1} T${drag.fromTriNum}).`
+        );
+      };
+    });
+
     board.querySelectorAll("[data-drop-year]").forEach((col) => {
       col.ondragover = (e) => e.preventDefault();
       col.ondrop = (e) => {
@@ -3787,6 +4352,7 @@ window.initUNEPlannerApp = function () {
         const toT = Number(col.dataset.dropTri);
         const drag = state.dragging;
         highlightOfferingColumns(null, plan, false);
+        document.querySelectorAll(".drop-swap-over").forEach((p) => p.classList.remove("drop-swap-over"));
         if (!drag) return;
         if (drag.source === "pool") {
           const dragU = Engine.getUnit(drag.code, DATA, plan.customUnits);
@@ -3802,8 +4368,29 @@ window.initUNEPlannerApp = function () {
           if (idx === -1) return;
           const [moved] = fromList.splice(idx, 1);
           plan.years[toY].trimesters[toT].push(moved);
+        } else if (drag.source === "placeholder") {
+          if (drag.fromYearIdx === toY && drag.fromTriNum === toT) {
+            state.dragging = null;
+            return;
+          }
+          const fromList = plan.years[drag.fromYearIdx]?.trimesters[drag.fromTriNum];
+          if (!fromList) return;
+          const idx = fromList.findIndex((s) => s.id === drag.slotId);
+          if (idx === -1) return;
+          const [moved] = fromList.splice(idx, 1);
+          plan.years[toY].trimesters[toT].push(moved);
+          if (state.targetSlot?.replaceSlotId === moved.id) {
+            state.targetSlot = buildPlaceholderTarget(moved, plan.years[toY], toY, toT);
+          }
+          state.dragging = null;
+          plan.hasUserEdits = true;
+          saveState();
+          renderAll({ resetSidebarScroll: false });
+          showToast(`Moved ${moved.label || "Choice slot"} → Y${plan.years[toY]?.yearNum || toY + 1} · T${toT}.`);
+          return;
         }
         state.dragging = null;
+        plan.hasUserEdits = true;
         saveState();
         renderAll({ resetSidebarScroll: false });
       };
@@ -3879,7 +4466,13 @@ window.initUNEPlannerApp = function () {
     }
 
     const futureNoticeHtml = isFutureGuide
-      ? `<div class="slot-msg int-guide" style="font-size:11.5px;">📅 <strong>${esc(planYear)} dates TBA</strong> — dates below are from the 2027 UNE Handbook as an indicative guide only.</div>`
+      ? `<div class="slot-msg int-guide" style="font-size:11.5px;">📅 <strong>${esc(planYear)} dates TBA</strong> — dates below are from the 2027 UNE Handbook (provisional draft) as an indicative guide only.</div>`
+      : "";
+    const hasAny2027Dated =
+      !isFutureGuide &&
+      (!intInfo.tba || (Array.isArray(entries) && entries.some((e) => !e.tba && Array.isArray(e.dates) && e.dates.length > 0)));
+    const draftDisclaimerHtml = hasAny2027Dated
+      ? `<div style="font-size:11px;color:var(--text-muted);line-height:1.35;">ℹ 2027 intensive dates shown are provisional Handbook draft dates and remain subject to official confirmation.</div>`
       : "";
     const onlineOnlyNote =
       intInfo.onlineOnlyIntensive || u.intensiveOnlineOnly
@@ -3930,10 +4523,12 @@ window.initUNEPlannerApp = function () {
                 const entryDates = isFutureGuide
                   ? e.tba
                     ? `${planYear} dates TBA (2027 dates also TBA)`
-                    : `${planYear} dates TBA (2027 guide: ${rawDatesStr})`
+                    : `${planYear} dates TBA (2027 draft guide: ${rawDatesStr})`
                   : e.tba
                   ? "🔴 Dates TBA — check UNE Handbook / myLearn"
-                  : rawDatesStr || "Dates published in 2027 handbook";
+                  : rawDatesStr
+                  ? `${rawDatesStr} (2027 draft)`
+                  : "Provisional draft dates in 2027 handbook";
                 const locDur = [e.location, e.duration].filter(Boolean).join(" · ");
                 const itemCls = isFutureGuide ? "is-guide" : e.tba ? "is-tba" : "";
                 return `
@@ -3951,6 +4546,7 @@ window.initUNEPlannerApp = function () {
               })
               .join("")}
           </div>
+          ${draftDisclaimerHtml}
         </div>
       `;
     }
@@ -3965,12 +4561,12 @@ window.initUNEPlannerApp = function () {
     const dateTxt = isFutureGuide
       ? intInfo.tba || !rawDateJoin
         ? `${planYear} dates TBA — check UNE Handbook when published`
-        : `${planYear} dates TBA (2027 guide: ${rawDateJoin})`
+        : `${planYear} dates TBA (2027 draft guide: ${rawDateJoin})`
       : intInfo.tba
       ? "2027 Dates TBA — check dates"
       : intInfo.mixedTba
-      ? `${rawDateJoin} (other trimester(s) TBA — check dates)`
-      : `2027 Handbook: ${rawDateJoin}`;
+      ? `2027 Handbook (draft): ${rawDateJoin} (other trimester(s) TBA — check dates)`
+      : `2027 Handbook (draft): ${rawDateJoin}`;
     return `
       <div style="border:1px solid ${boxBorder};background:${boxBg};border-radius:8px;padding:9px 11px;margin-bottom:9px;display:flex;flex-direction:column;gap:4px;">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -3986,6 +4582,7 @@ window.initUNEPlannerApp = function () {
         ${choiceNote}
         <div style="font-size:12px;font-weight:700;color:${useAlarm ? "var(--err)" : "var(--text)"};">${esc(dateTxt)}</div>
         ${intInfo.note ? `<div style="font-size:11.5px;color:var(--text-muted);line-height:1.35;">${esc(intInfo.note)}</div>` : ""}
+        ${draftDisclaimerHtml}
       </div>
     `;
   }
@@ -4088,7 +4685,9 @@ window.initUNEPlannerApp = function () {
                 ? `<span style="color:var(--err);font-weight:700;">⛔ No 2027 Offering Published</span>`
                 : `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <button class="btn btn-sm btn-primary" id="btn-modal-smart-add">${
-                      state.targetSlot
+                      state.targetSlot &&
+                      state.sidebarTab === "slot" &&
+                      availTris.includes(state.targetSlot.triNum)
                         ? `Select for Y${plan.years[state.targetSlot.yearIdx]?.yearNum || 1} T${state.targetSlot.triNum} →`
                         : plannedLoc && u.repeatable
                         ? `+ Add Repeat (Already in ${esc(plannedLoc)})`
@@ -4187,6 +4786,7 @@ window.initUNEPlannerApp = function () {
           b.onclick = () => {
             const [yIdx, tNum] = b.dataset.modalPlace.split("|").map(Number);
             plan.years[yIdx].trimesters[tNum].push({ id: Engine.uid("u"), type: "unit", code: u.code });
+            plan.hasUserEdits = true;
             saveState();
             closeModal();
             renderAll({ resetSidebarScroll: false });
@@ -4236,6 +4836,7 @@ window.initUNEPlannerApp = function () {
         modal.querySelectorAll("[data-load-sp]").forEach((btn) => {
           btn.onclick = () => {
             const loaded = Engine.applyOfficialStudyPlan(btn.dataset.loadSp, course, plan, DATA);
+            loaded.hasUserEdits = true;
             state.savedPlansByCourse[course.code] = loaded;
             const openPh = findOpenPlaceholders(loaded);
             if (openPh.length > 0 && !isMobileViewport()) activateSlotPicker(openPh[0], !isTabletViewport());
@@ -4380,6 +4981,7 @@ window.initUNEPlannerApp = function () {
             return;
           }
           plan.customUnits = plan.customUnits || {};
+          plan.hasUserEdits = true;
           plan.customUnits[code] = {
             code, title, cp, level,
             prefix: (code.match(/^[A-Z]+/) || ["ELEC"])[0],
@@ -4489,7 +5091,9 @@ window.initUNEPlannerApp = function () {
           reader.readAsText(file);
         };
         modal.querySelector("#exp-reset").onclick = () => {
-          state.savedPlansByCourse[course.code] = Engine.createDefaultPlan(course, DATA);
+          const blank = Engine.createDefaultPlan(course, DATA);
+          blank.hasUserEdits = false;
+          state.savedPlansByCourse[course.code] = blank;
           exitSlotPicker();
           saveState();
           closeModal();

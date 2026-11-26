@@ -434,6 +434,30 @@ button, select, input {
   color: var(--primary-fg);
 }
 
+.btn-swap-add {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.btn-swap-add:hover {
+  background: #1d5d8f;
+  border-color: #1d5d8f;
+  color: #ffffff;
+}
+
+html.dark .btn-swap-add {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+html.dark .btn-swap-add:hover {
+  background: #3b82f6;
+  border-color: #60a5fa;
+  color: #ffffff;
+}
+
 .btn-sm {
   padding: 4px 9px;
   font-size: 12px;
@@ -1216,6 +1240,62 @@ html.dark .finder-card.pg-card {
   flex-shrink: 0;
 }
 
+/* Sibling-Trimester Auto-Swap Section in Slot Picker */
+.swap-category-hdr {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cat-core);
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-border);
+  border-left: 3px solid var(--cat-core);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+.swap-category-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.swap-category-sub {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.swap-category-hdr + .swap-category-sub {
+  margin-top: -4px;
+  padding: 0 2px;
+}
+
+.pool-unit.swap-unit-card {
+  border-color: var(--primary-border);
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  cursor: default;
+}
+
+.pool-unit.swap-unit-card[draggable="true"] {
+  cursor: grab;
+}
+
+.pool-unit.swap-unit-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
 .inelig-category-toggle {
   width: 100%;
   font-size: 11.5px;
@@ -1548,6 +1628,13 @@ html.dark .badge-yearlong {
   border: 1px dashed var(--primary-border);
 }
 
+/* Sibling-trimester auto-swap indicator pill */
+.badge-swap-tri {
+  background: var(--accent-soft);
+  color: var(--info);
+  border: 1px solid var(--info-border);
+}
+
 /* ==========================================================================
    BOARD AREA (PROGRESS CARD + YEAR x TRIMESTER GRID)
    ========================================================================== */
@@ -1858,7 +1945,23 @@ html.dark .badge-yearlong {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease, opacity 0.14s ease;
+}
+
+.slot-placeholder[draggable="true"] {
+  cursor: grab;
+}
+
+.slot-placeholder[draggable="true"]:active,
+.slot-placeholder.is-dragging,
+.slot-card.is-dragging {
+  cursor: grabbing;
+}
+
+.slot-placeholder.is-dragging,
+.slot-card.is-dragging {
+  opacity: 0.55;
+  box-shadow: var(--shadow-md);
 }
 
 .slot-placeholder:hover {
@@ -1883,11 +1986,24 @@ html.dark .badge-yearlong {
   box-shadow: 0 0 0 2px var(--info-border);
 }
 
+.slot-placeholder.drop-swap-over {
+  border-style: solid;
+  border-color: var(--primary);
+  border-left-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 2px var(--primary-border), var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
 .slot-placeholder-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 6px;
+}
+
+.slot-placeholder-head .slot-actions {
+  flex-shrink: 0;
 }
 
 .slot-placeholder-badges {
