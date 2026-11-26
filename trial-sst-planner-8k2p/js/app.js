@@ -14,16 +14,21 @@ window.initUNEPlannerApp = function () {
   const FEEDBACK_REVIEWER_KEY = "une_planner_reviewer_v1";
   const FEEDBACK_EMAIL_KEY = "une_planner_reviewer_email_v1";
 
-  // Staff Testing Feedback Tracker Config (optional: paste a UNE Microsoft Forms / SharePoint tracker URL here!)
-  const FEEDBACK_CONFIG = {
-    emailUser: "kasimir.gregory",
-    emailDomain: "une.edu.au",
-    // After clicking FormSubmit's first activation email, Kasimir can paste the alias token here.
-    formSubmitAlias: "",
-    subjectPrefix: "[UNE Planner Bug]",
-    formUrl: "",
-    sharedDocLabel: "Shared Feedback Tracker",
-  };
+  // Staff Testing & UNE Handover Feedback Config (edit data/feedback-config.js to change destination or mode)
+  const FEEDBACK_CONFIG = Object.assign(
+    {
+      mode: "formsubmit",
+      recipientLabel: "the trial inbox",
+      emailUser: "kasimirpgregory",
+      emailDomain: "gmail.com",
+      formSubmitAlias: "",
+      webhookUrl: "",
+      subjectPrefix: "[UNE Planner Bug]",
+      formUrl: "",
+      sharedDocLabel: "Shared Feedback Tracker",
+    },
+    window.UNE_FEEDBACK_CONFIG && typeof window.UNE_FEEDBACK_CONFIG === "object" ? window.UNE_FEEDBACK_CONFIG : {}
+  );
 
   // Safe storage helpers so sandboxed myLearn / Moodle iframes & strict privacy modes never throw SecurityError
   function safeLocalGet(key) {
@@ -1719,7 +1724,7 @@ window.initUNEPlannerApp = function () {
     hdr.innerHTML = `
       <div class="brand-group">
         <button class="une-brand-btn" id="btn-brand-home" title="Browse all ${DATA.meta.counts.courses} UNE 2027 Courses">
-          <img class="une-logo-img" src="assets/une-logo.png?v=2027.11" alt="University of New England" width="46" height="46" />
+          <img class="une-logo-img" src="assets/une-logo.png?v=2027.12" alt="University of New England" width="46" height="46" />
           <div class="une-brand-text">
             <span class="une-brand-name">University of New England</span>
             <span class="une-brand-sub">2027 Course &amp; Unit Planner</span>
@@ -5960,27 +5965,58 @@ window.initUNEPlannerApp = function () {
     return prefix + encodeWithin(body, 1800 - prefix.length);
   }
 
-  async function postFeedback(subject, fields, replyTo) {
-    if (window.location.protocol === "file:") return "offline";
+  async function postFeedback(subject, fields, replyTo, rawItems) {
+    const mode = String(FEEDBACK_CONFIG.mode || "formsubmit").toLowerCase();
+    if (mode === "mailto") return { status: "mailto", detail: "" };
+    const safeWebhook = mode === "webhook" ? safeHttpUrl(FEEDBACK_CONFIG.webhookUrl) : "";
+    if (mode === "webhook" && !safeWebhook) return { status: "offline", detail: "No webhookUrl configured in data/feedback-config.js." };
+    if (window.location.protocol === "file:" && mode === "formsubmit") {
+      return { status: "offline", detail: "Direct FormSubmit send requires an http(s) URL (opened as local file)." };
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
-      const response = await fetch(`https://formsubmit.co/ajax/${FEEDBACK_CONFIG.formSubmitAlias || feedbackRecipient}`, {
+      const validReply = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo || "");
+      const endpoint =
+        mode === "webhook"
+          ? safeWebhook
+          : `https://formsubmit.co/ajax/${FEEDBACK_CONFIG.formSubmitAlias || feedbackRecipient}`;
+      const bodyPayload =
+        mode === "webhook"
+          ? { subject, ...(validReply ? { replyTo } : {}), ...fields, items: rawItems || [] }
+          : {
+              _subject: subject,
+              _template: "table",
+              _captcha: "false",
+              _honey: "",
+              ...(validReply ? { _replyto: replyTo } : {}),
+              ...fields,
+            };
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({
-          _subject: subject, _template: "table", _captcha: "false", _honey: "",
-          ...(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo) ? { _replyto: replyTo } : {}),
-          ...fields,
-        }),
+        body: JSON.stringify(bodyPayload),
       });
-      const data = await response.json();
-      if (/activat|confirm|verif/i.test(data?.message || "")) return "activation";
-      return response.ok && data && typeof data === "object" && data.success !== false && data.success !== "false"
-        ? "sent" : "offline";
-    } catch (_) {
-      return "offline";
+      if (mode === "webhook") {
+        return response.ok
+          ? { status: "sent", detail: "" }
+          : { status: "offline", detail: `Webhook returned HTTP ${response.status}.` };
+      }
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (_) {
+        data = null;
+      }
+      const msg = typeof data?.message === "string" ? data.message.trim() : "";
+      if (/activat|confirm|verif/i.test(msg)) return { status: "activation", detail: msg };
+      if (response.ok && data && typeof data === "object" && data.success !== false && data.success !== "false") {
+        return { status: "sent", detail: msg };
+      }
+      return { status: "offline", detail: msg || `FormSubmit returned HTTP ${response.status}.` };
+    } catch (err) {
+      return { status: "offline", detail: err?.name === "AbortError" ? "Request timed out after 15 seconds." : "" };
     } finally {
       clearTimeout(timeout);
     }
@@ -6121,10 +6157,16 @@ window.initUNEPlannerApp = function () {
         : "";
 
     const safeFormUrl = safeHttpUrl(FEEDBACK_CONFIG.formUrl);
+    const feedbackMode = String(FEEDBACK_CONFIG.mode || "formsubmit").toLowerCase();
+    const recipientText = FEEDBACK_CONFIG.recipientLabel || "the trial inbox";
 
     openModal(
       `<div style="font-weight:800;font-size:15.5px;">🐞 Report a Bug or Rule Issue (DC / CC Testing)</div>
-       <div style="font-size:12px;color:var(--text-subtle);">Sent reports go straight to Kasimir’s UNE inbox with ${esc(FEEDBACK_CONFIG.subjectPrefix)} in the subject line.</div>`,
+       <div style="font-size:12px;color:var(--text-subtle);">${
+         feedbackMode === "mailto"
+           ? `Opens an email draft addressed to ${esc(recipientText)} with ${esc(FEEDBACK_CONFIG.subjectPrefix)} in the subject line.`
+           : `Sent reports go straight to ${esc(recipientText)} with ${esc(FEEDBACK_CONFIG.subjectPrefix)} in the subject line.`
+       }</div>`,
       `
         <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:11.5px;color:var(--text-muted);">
           <div><strong>Auto-captured context:</strong> <span class="course-code-pill teal" style="font-size:10.5px;padding:1px 6px;">${esc(ctx.courseCode)}</span> ${esc(ctx.courseTitle)} · ${esc(ctx.viewport)}</div>
@@ -6159,7 +6201,7 @@ window.initUNEPlannerApp = function () {
 
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
           <div style="display:flex;gap:7px;flex-wrap:wrap;">
-            <button class="btn btn-primary" id="btn-bug-send-now" type="button">Send Report Now</button>
+            <button class="btn btn-primary" id="btn-bug-send-now" type="button">${feedbackMode === "mailto" ? "Open Email Draft" : "Send Report Now"}</button>
             <button class="btn btn-soft" id="btn-bug-save-log" type="button">+ Add to Session Log</button>
             <button class="btn btn-soft" id="btn-bug-copy-one" type="button">📋 Copy Single Report</button>
           </div>
@@ -6209,7 +6251,7 @@ window.initUNEPlannerApp = function () {
             id: d.id || feedbackId(),
             email: d.email,
             sent: false,
-            appVersion: "v2027.11",
+            appVersion: "v2027.12",
             reviewer: reviewer || "Staff Tester",
             category,
             units,
@@ -6277,18 +6319,26 @@ window.initUNEPlannerApp = function () {
           button.textContent = "Sending…";
           controls.forEach(control => { control.disabled = true; });
           feedbackSending = true;
-          let result;
+          let outcome;
           try {
-            result = await postFeedback(subject, fields, draft.email);
+            outcome = await postFeedback(subject, fields, draft.email, items);
           } catch (_) {
-            result = "offline";
+            outcome = { status: "offline", detail: "" };
           } finally {
             feedbackSending = false;
             controls.forEach(control => { control.disabled = false; });
             button.textContent = originalLabel;
           }
+          const result = outcome?.status || "offline";
+          const detailSuffix = outcome?.detail ? ` (${outcome.detail})` : "";
+          const fullBody = items.map(buildSingleText).join("\n\n");
           let message;
-          if (result === "sent") {
+          if (result === "mailto") {
+            message = "Saved to your session log. Opening your email client—or copy the full report below.";
+            try {
+              window.location.href = feedbackMailto(subject, fullBody);
+            } catch (_) {}
+          } else if (result === "sent") {
             const ids = new Set(items.map(item => item.id));
             const sentAt = new Date().toISOString();
             saveFeedbackLog(loadFeedbackLog().map(entry => ids.has(entry.id) ? { ...entry, sent: true, sentAt } : entry));
@@ -6296,15 +6346,15 @@ window.initUNEPlannerApp = function () {
             if (!batch) Object.assign(draft, { id: undefined, units: "", description: "" });
           } else {
             message = result === "activation"
-              ? "FormSubmit sent a one-time activation email to Kasimir’s inbox. Once Kasimir clicks Activate, direct sends will work. Your report is saved in the session log."
-              : "Direct send couldn't connect. A local file, network restriction or timeout can cause this. Your report is in the session log. Open an email draft or copy the full report.";
+              ? `FormSubmit sent a one-time activation email to ${recipientText}. Once activated, direct sends will work automatically. Your report is saved in the session log.`
+              : `Direct send couldn't connect${detailSuffix}. Your report is saved in the session log—use Open in Email or Copy Report below.`;
           }
           renderHeader(getCurrentCourse(), getCurrentPlan());
           showToast(message);
           // Never reopen a dialog the reviewer has closed, or replace another dialog.
           if (button.isConnected && !modal.classList.contains("hidden")) {
             openBugReportModal("", draft, {
-              result, message, subject, body: items.map(buildSingleText).join("\n\n"), item: batch ? null : items[0],
+              result, message, subject, body: fullBody, item: batch ? null : items[0],
             });
           }
         }
