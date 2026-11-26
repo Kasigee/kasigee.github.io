@@ -73,10 +73,11 @@ window.initUNEPlannerApp = function () {
   function formatValidAtar(atar) {
     if (atar === null || atar === undefined) return null;
     const s = String(atar).trim();
-    if (!s || /^(not applicable|n\/a|none|na|-|tba)$/i.test(s)) return null;
+    // Only a bare score like "65" or "77.10" counts; "Not Applicable", "N/A" and prose are dropped.
+    if (!/^\d{2}(\.\d{1,2})?$/.test(s)) return null;
     const num = parseFloat(s);
-    if (!Number.isFinite(num) || num <= 0) return null;
-    return s;
+    if (!Number.isFinite(num) || num < 30 || num > 99.95) return null;
+    return s.replace(/\.0+$/, "");
   }
 
   function getCourseNotOfferedLabel(c) {
@@ -199,6 +200,11 @@ window.initUNEPlannerApp = function () {
     tabletDrawerOpen: false,
 
     dragging: null,
+
+    // Undo snapshot for the last Auto-Plan / T3 / preset / reset overwrite (lives only while its toast is visible)
+    undoSnapshot: null,
+    // Course code whose current T3 banner the user dismissed (cleared on every new T3 run)
+    t3BannerDismissedFor: null,
   };
 
   function esc(str) {
@@ -267,9 +273,348 @@ window.initUNEPlannerApp = function () {
     return hasBoardConcreteUnits(plan) || Object.keys(plan.customUnits || {}).length > 0;
   }
 
-  function confirmAutoPlanOverwrite(plan) {
-    if (!shouldConfirmAutoPlanOverwrite(plan)) return true;
-    return typeof window.confirm === "function" ? window.confirm(AUTO_PLAN_OVERWRITE_MSG) : true;
+  /* ---------- In-app confirmation modal (native confirm dialogs silently return false in sandboxed myLearn iframes) ---------- */
+  let activeConfirm = null;
+  let confirmSeq = 0;
+  const CONFIRM_TONES = ["warning", "danger", "spread", "fasttrack"];
+
+  function openConfirmModal(opts) {
+    const o = opts || {};
+    const skipStoreKey = o.skipKey ? `une_confirm_skip_${o.skipKey}` : "";
+    if (skipStoreKey && safeSessionGet(skipStoreKey) === "1") return Promise.resolve(true);
+    if (activeConfirm) activeConfirm.finish(false);
+
+    return new Promise((resolve) => {
+      const tone = CONFIRM_TONES.includes(o.tone) ? o.tone : "warning";
+      const prevFocus = document.activeElement;
+      const prevId = prevFocus && prevFocus.id ? prevFocus.id : "";
+      const sfx = ++confirmSeq;
+      const titleId = `confirm-title-${sfx}`;
+      const descId = o.sub ? `confirm-sub-${sfx}` : `confirm-body-${sfx}`;
+      const overlay = document.createElement("div");
+      overlay.className = "confirm-overlay";
+      overlay.innerHTML = `
+        <div class="confirm-modal is-${tone}" role="alertdialog" aria-modal="true" aria-labelledby="${titleId}" aria-describedby="${descId}">
+          <div class="confirm-modal-header">
+            <span class="confirm-modal-icon" aria-hidden="true">${esc(o.icon || "⚠")}</span>
+            <div style="min-width:0;">
+              <h2 class="confirm-modal-title" id="${titleId}">${esc(o.title || "Are you sure?")}</h2>
+              ${o.sub ? `<p class="confirm-modal-sub" id="confirm-sub-${sfx}">${esc(o.sub)}</p>` : ""}
+            </div>
+          </div>
+          ${o.bodyHtml ? `<div class="confirm-modal-body" id="confirm-body-${sfx}">${o.bodyHtml}</div>` : ""}
+          ${o.skipKey ? `<label class="confirm-modal-check"><input type="checkbox" /> Don't ask again this session</label>` : ""}
+          <div class="confirm-modal-actions">
+            <button type="button" class="btn-cancel">${esc(o.cancelLabel || "Cancel")}</button>
+            <button type="button" class="btn-confirm">${esc(o.confirmLabel || "Continue")}</button>
+          </div>
+        </div>
+      `;
+
+      let done = false;
+      function finish(result) {
+        if (done) return;
+        done = true;
+        const chk = overlay.querySelector(".confirm-modal-check input");
+        if (result && skipStoreKey && chk && chk.checked) safeSessionSet(skipStoreKey, "1");
+        overlay.remove();
+        if (activeConfirm && activeConfirm.finish === finish) activeConfirm = null;
+        resolve(Boolean(result));
+        // After the caller's re-render: prefer the re-rendered element with the same id (e.g. #sel-t3-strategy)
+        setTimeout(() => {
+          const target = (prevId && document.getElementById(prevId)) || prevFocus;
+          if (target && target.isConnected && typeof target.focus === "function") {
+            try {
+              target.focus({ preventScroll: true });
+            } catch (_) {
+              /* ignore */
+            }
+          }
+        }, 0);
+      }
+
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) finish(false);
+      });
+      overlay.addEventListener("keydown", (e) => {
+        if (e.key !== "Tab") return;
+        const focusables = Array.from(overlay.querySelectorAll("button, input, select, textarea, a[href], [tabindex]:not([tabindex='-1'])")).filter(
+          (el) => !el.disabled
+        );
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (!overlay.contains(document.activeElement)) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      });
+      overlay.querySelector(".btn-cancel").onclick = () => finish(false);
+      overlay.querySelector(".btn-confirm").onclick = () => finish(true);
+
+      document.body.appendChild(overlay);
+      activeConfirm = { finish };
+      overlay.querySelector(".btn-confirm").focus();
+    });
+  }
+
+  function confirmAutoPlanOverwrite(plan, opts) {
+    if (!shouldConfirmAutoPlanOverwrite(plan)) return Promise.resolve(true);
+    const o = opts || {};
+    return openConfirmModal({
+      tone: o.tone || "warning",
+      icon: o.icon || "↻",
+      title: o.title || "Replace your current plan?",
+      sub: AUTO_PLAN_OVERWRITE_MSG.replace(/ Continue\?$/, ""),
+      bodyHtml: `${o.bodyHtml || ""}<p>You can restore it with <strong>↶ Undo</strong> straight after.</p>`,
+      confirmLabel: o.confirmLabel || "Replace plan",
+      skipKey: "autoplan-overwrite",
+    });
+  }
+
+  /* ---------- Undo snapshot ---------- */
+  function deepClone(obj) {
+    return obj === null || obj === undefined ? obj : JSON.parse(JSON.stringify(obj));
+  }
+
+  function takeUndoSnapshot(course, plan) {
+    if (!hasBoardAnySlots(plan)) return null;
+    return {
+      courseCode: course.code,
+      plan: deepClone(plan),
+      targetSlot: deepClone(state.targetSlot),
+      sidebarTab: state.sidebarTab,
+    };
+  }
+
+  function restoreUndoSnapshot() {
+    const snap = state.undoSnapshot;
+    state.undoSnapshot = null;
+    if (!snap || snap.courseCode !== state.currentCourseCode) return;
+    state.savedPlansByCourse[snap.courseCode] = snap.plan;
+    if (snap.targetSlot && snap.sidebarTab === "slot") {
+      state.targetSlot = snap.targetSlot;
+      state.sidebarTab = "slot";
+    } else {
+      exitSlotPicker();
+      if (snap.sidebarTab && snap.sidebarTab !== "slot") state.sidebarTab = snap.sidebarTab;
+    }
+    state.t3BannerDismissedFor = null;
+    saveState();
+    renderAll({ resetSidebarScroll: false });
+    showToast("Restored your previous plan.", { tone: "info" });
+  }
+
+  /* ---------- T3 strategy status helpers ---------- */
+  const T3_STRATEGY_NAMES = {
+    none: "Off (T1 & T2)",
+    spread: "Spread Load (3+3+2)",
+    accelerate: "Fast-Track (If Possible)",
+  };
+
+  let t3PreviewCache = { key: "", result: null };
+  // Engine.previewT3Options only depends on course config, not slot positions, so cache on config.
+  function getT3Preview(course, plan) {
+    if (!course || !plan || typeof Engine.previewT3Options !== "function") return null;
+    const { years, t3Analysis, hasUserEdits, t3Strategy, includeT3InAuto, ...cfg } = plan;
+    const key = `${course.code}|${JSON.stringify(cfg)}`;
+    if (t3PreviewCache.key === key) return t3PreviewCache.result;
+    let result = null;
+    try {
+      result = Engine.previewT3Options(course, { ...cfg, t3Strategy: "none", includeT3InAuto: false, years: [], t3Analysis: null }, DATA) || null;
+    } catch (_) {
+      result = null;
+    }
+    t3PreviewCache = { key, result };
+    return result;
+  }
+
+  // Current T3 analysis only if it belongs to the selected strategy.
+  function getActiveT3Analysis(plan) {
+    const strat = plan?.t3Strategy || "none";
+    const ta = plan?.t3Analysis;
+    if (strat === "none" || !ta || ta.strategy !== strat) return null;
+    return ta;
+  }
+
+  // 'off' | 'fasttrack' | 'bottleneck' | 'spread' | 'spread-fallback'
+  function getT3StatusKey(plan, preview) {
+    const strat = plan?.t3Strategy || "none";
+    if (strat === "none") return "off";
+    const ta = getActiveT3Analysis(plan);
+    const status = ta ? ta.status : strat === "spread" ? preview?.spread?.status : preview?.accelerate?.status;
+    if (status === "accelerated") return "fasttrack";
+    if (status === "bottlenecked") return "bottleneck";
+    if (status === "spread_fallback") return "spread-fallback";
+    if (status === "spread") return "spread";
+    return strat === "spread" ? "spread" : "fasttrack";
+  }
+
+  const T3_PILL_LABELS = {
+    off: "T3 Off",
+    fasttrack: "Fast-Track",
+    bottleneck: "Bottlenecked",
+    spread: "3+3+2",
+    "spread-fallback": "No 3+3+2 fit",
+  };
+
+  function chainCodesText(ta) {
+    const chain = Array.isArray(ta?.bottleneckChain) ? ta.bottleneckChain : [];
+    if (chain.length) return chain.map((st) => st.code).join(" → ");
+    return (ta?.bottleneckUnits || []).join(", ");
+  }
+
+  function trisText(tris) {
+    return Array.isArray(tris) && tris.length ? tris.map((t) => `T${t}`).join("/") : "";
+  }
+
+  // Bottleneck chain <ol>; interactive=false renders plain steps (used inside the confirm modal)
+  function renderChainTrailHtml(chain, interactive) {
+    if (!Array.isArray(chain) || !chain.length) return "";
+    const last = chain.length - 1;
+    const steps = chain.map((st, i) => {
+      const tris = Array.isArray(st.offeredTris) ? st.offeredTris : [];
+      const cls = i === last ? "is-target" : tris.length <= 1 ? "is-blocker" : "is-done";
+      const small = tris.length === 1 ? ` T${tris[0]} only` : tris.length ? ` ${trisText(tris)}` : "";
+      const tip = [st.title, st.note, st.prereqText ? `Prereq: ${st.prereqText}` : ""].filter(Boolean).join(" — ");
+      const inner = `${esc(st.code)}<small>${esc(small)}</small>`;
+      return `<li class="t3-chain-step ${cls}" title="${esc(tip)}">${
+        interactive ? `<button type="button" data-chain-unit="${esc(st.code)}" aria-label="Show ${esc(st.code)} on the board">${inner}</button>` : inner
+      }</li>`;
+    });
+    return `
+      <ol class="t3-chain-trail" aria-label="Bottleneck prerequisite chain">
+        <li class="t3-chain-label">Bottleneck</li>
+        ${steps.join(`<li class="t3-chain-arrow" aria-hidden="true">→</li>`)}
+        <li class="t3-chain-note">Each unit needs the one before it. Single-trimester units (red) can't be brought forward, so this chain sets your earliest finish.</li>
+      </ol>
+    `;
+  }
+
+  // Honest one-line result for toasts. Never claims Fast-Track when bottlenecked / spread fell back.
+  function describeScheduleResult(course, generated, lead) {
+    const ta = getActiveT3Analysis(generated);
+    const openPh = findOpenPlaceholders(generated).length;
+    const slotsTxt = openPh ? ` ${openPh} student-choice slot${openPh === 1 ? "" : "s"} ready to pick.` : "";
+    const head = lead ? `${lead} ` : "";
+    if (!ta) {
+      return {
+        tone: "success",
+        msg: `${head}Generated ${course.code} schedule on standard T1/T2 pacing.${slotsTxt}`,
+      };
+    }
+    if (ta.status === "accelerated") {
+      const n = ta.trimestersSaved || 0;
+      return {
+        tone: "success",
+        msg: `${head}⚡ Fast-Track: finishes ${ta.accFinishLabel} instead of ${ta.stdFinishLabel} (${n} trimester${n === 1 ? "" : "s"} earlier).${slotsTxt}`,
+      };
+    }
+    if (ta.status === "bottlenecked") {
+      const chain = chainCodesText(ta);
+      const spreadOk = Boolean(getT3Preview(course, generated)?.spread?.feasible);
+      return {
+        tone: "warning",
+        msg: `${head}Fast-Track found no earlier finish, so the plan stays on standard pacing (${ta.stdFinishLabel})${
+          chain ? ` because of the ${chain} bottleneck chain` : ""
+        }.${spreadOk ? " Switch to 3+3+2 is still available." : ""}`,
+      };
+    }
+    if (ta.status === "spread") {
+      const n = ta.t3PlacedCount || 0;
+      return {
+        tone: "success",
+        msg: `${head}⇄ 3+3+2: ${n} unit${n === 1 ? "" : "s"} moved into T3, finishing ${ta.accFinishLabel}.${slotsTxt}`,
+      };
+    }
+    return {
+      tone: "info",
+      msg: `${head}No 3+3+2 spread fits before ${ta.stdFinishLabel}, so the plan stays on standard T1/T2 pacing.${slotsTxt}`,
+    };
+  }
+
+  // Re-run Auto-Plan on a draft copy, commit it, render, and offer 1-click Undo.
+  // pickerMode: 'auto' (open first slot like Auto-Plan) | 'keep' (only if the slot picker is already open)
+  function rescheduleWithUndo(course, plan, mutate, opts) {
+    const o = opts || {};
+    const snap = takeUndoSnapshot(course, plan);
+    const draft = deepClone(plan);
+    if (mutate) mutate(draft);
+    const generated = Engine.autoSchedulePlan(course, draft, DATA);
+    generated.hasUserEdits = false;
+    state.savedPlansByCourse[course.code] = generated;
+    state.t3BannerDismissedFor = null;
+    const openPh = findOpenPlaceholders(generated);
+    if (o.pickerMode === "keep") {
+      if (openPh.length > 0 && state.sidebarTab === "slot" && !isMobileViewport()) activateSlotPicker(openPh[0], false);
+      else exitSlotPicker();
+    } else if (openPh.length > 0 && !isMobileViewport()) {
+      activateSlotPicker(openPh[0], !isTabletViewport());
+    } else {
+      exitSlotPicker();
+    }
+    saveState();
+    renderAll({ resetSidebarScroll: o.pickerMode !== "keep" });
+    const res = describeScheduleResult(course, generated, o.lead);
+    state.undoSnapshot = snap;
+    showToast(res.msg, { tone: res.tone, onUndo: snap ? restoreUndoSnapshot : null });
+    return generated;
+  }
+
+  function buildT3ConfirmOpts(nextVal, preview) {
+    if (nextVal === "accelerate") {
+      const a = preview?.accelerate;
+      let body = "";
+      if (a && a.feasible) {
+        body = `<p>Fast-Track should finish <strong>${esc(a.finishLabel)}</strong> (${a.trimestersSaved} trimester${
+          a.trimestersSaved === 1 ? "" : "s"
+        } earlier than ${esc(preview.stdFinishLabel)}).</p>`;
+      } else if (a) {
+        body = `<p>Fast-Track can't finish earlier than <strong>${esc(preview.stdFinishLabel)}</strong> for this course, so the plan will stay on standard pacing.</p>${renderChainTrailHtml(
+          a.bottleneckChain,
+          false
+        )}`;
+      }
+      return { tone: "fasttrack", icon: "⚡", title: "Re-plan with T3 Fast-Track?", bodyHtml: body, confirmLabel: "Re-plan with Fast-Track" };
+    }
+    if (nextVal === "spread") {
+      const s = preview?.spread;
+      let body = "";
+      if (s && s.feasible) {
+        body = `<p>3+3+2 should finish <strong>${esc(s.finishLabel)}</strong> with a peak of ${esc(s.peakTriCp)} CP per trimester.</p>`;
+      } else if (s) {
+        body = `<p>No 3+3+2 spread fits before <strong>${esc(preview.stdFinishLabel)}</strong>, so the plan will stay on standard T1/T2 pacing.</p>`;
+      }
+      return { tone: "spread", icon: "⇄", title: "Re-plan with 3+3+2 Load-Spread?", bodyHtml: body, confirmLabel: "Re-plan with 3+3+2" };
+    }
+    return { tone: "warning", icon: "↻", title: "Turn T3 off and re-plan?", bodyHtml: "<p>Units will be re-scheduled into Trimesters 1 and 2 only.</p>", confirmLabel: "Turn T3 off" };
+  }
+
+  function applyT3Strategy(course, plan, nextVal) {
+    return rescheduleWithUndo(
+      course,
+      plan,
+      (d) => {
+        d.t3Strategy = nextVal;
+        d.includeT3InAuto = nextVal !== "none";
+      },
+      { pickerMode: "keep", lead: nextVal === "none" ? "T3 turned off." : "" }
+    );
+  }
+
+  async function confirmAndApplyT3Strategy(nextVal) {
+    const course = getCurrentCourse();
+    const plan = getCurrentPlan();
+    const ok = await confirmAutoPlanOverwrite(plan, buildT3ConfirmOpts(nextVal, getT3Preview(course, plan)));
+    if (!ok) return false;
+    applyT3Strategy(getCurrentCourse(), getCurrentPlan(), nextVal);
+    return true;
   }
 
   function getPlanYear(yr, yIdx) {
@@ -583,6 +928,8 @@ window.initUNEPlannerApp = function () {
       aosApplied = Boolean(Engine.preselectAOS(course, plan, matchedAosEntry, DATA));
     }
     exitSlotPicker();
+    clearUndoSnapshot();
+    state.t3BannerDismissedFor = null;
     state.catalogShowIneligible = null;
     state.catEligLimit = 80;
     state.catIneligLimit = 60;
@@ -1289,20 +1636,59 @@ window.initUNEPlannerApp = function () {
   }
 
   let toastTimer = null;
-  function showToast(msg) {
+  const TOAST_TONES = ["success", "warning", "info"];
+
+  // Always strip .has-undo on hide: it sets pointer-events:auto, so an invisible undo toast would eat clicks.
+  function hideToast() {
+    clearTimeout(toastTimer);
+    const el = document.getElementById("planner-toast");
+    if (!el) return;
+    el.style.opacity = "0";
+    el.classList.remove("has-undo", "is-success", "is-warning", "is-info");
+    state.undoSnapshot = null;
+  }
+
+  function clearUndoSnapshot() {
+    const el = document.getElementById("planner-toast");
+    if (el && el.classList.contains("has-undo")) hideToast();
+    state.undoSnapshot = null;
+  }
+
+  // opts: { tone: 'success'|'warning'|'info', onUndo: fn, ms }
+  function showToast(msg, opts) {
+    const o = opts || {};
     let el = document.getElementById("planner-toast");
     if (!el) {
       el = document.createElement("div");
       el.id = "planner-toast";
       el.className = "planner-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
       document.body.appendChild(el);
     }
-    el.textContent = msg;
-    el.style.opacity = "1";
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      el.style.opacity = "0";
-    }, 3000);
+    el.classList.remove("has-undo", "is-success", "is-warning", "is-info");
+    if (TOAST_TONES.includes(o.tone)) el.classList.add(`is-${o.tone}`);
+    const hasUndo = typeof o.onUndo === "function";
+    const ms = Number.isFinite(o.ms) ? o.ms : hasUndo ? 6000 : msg.length > 110 ? 5000 : 3000;
+    if (hasUndo) {
+      el.classList.add("has-undo");
+      // Fresh innerHTML re-creates .toast-countdown so its CSS animation restarts.
+      el.innerHTML = `<span class="toast-msg">${esc(msg)}</span><button type="button" class="toast-undo-btn">↶ Undo</button><button type="button" class="toast-close-btn" aria-label="Close">✕</button><span class="toast-countdown" style="--toast-ms:${ms}ms"></span>`;
+      el.querySelector(".toast-undo-btn").onclick = () => {
+        const undo = o.onUndo;
+        clearTimeout(toastTimer);
+        el.style.opacity = "0";
+        el.classList.remove("has-undo", "is-success", "is-warning", "is-info");
+        undo();
+      };
+      el.querySelector(".toast-close-btn").onclick = hideToast;
+    } else {
+      state.undoSnapshot = null;
+      el.textContent = msg;
+    }
+    el.style.opacity = "1";
+    toastTimer = setTimeout(hideToast, ms);
   }
 
   /* ==========================================================================
@@ -1447,26 +1833,10 @@ window.initUNEPlannerApp = function () {
     };
   }
 
-  function runSmartAutoPlan() {
-    const course = getCurrentCourse();
-    const plan = getCurrentPlan();
-    if (!confirmAutoPlanOverwrite(plan)) return false;
-    const generated = Engine.autoSchedulePlan(course, plan, DATA);
-    generated.hasUserEdits = false;
-    state.savedPlansByCourse[course.code] = generated;
-    const openPh = findOpenPlaceholders(generated);
-    if (openPh.length > 0 && !isMobileViewport()) {
-      activateSlotPicker(openPh[0], !isTabletViewport());
-    } else {
-      exitSlotPicker();
-    }
-    saveState();
-    renderAll({ resetSidebarScroll: true });
-    showToast(
-      openPh.length > 0
-        ? `Generated ${course.code} schedule! ${openPh.length} student-choice slot${openPh.length === 1 ? "" : "s"} ready to pick.`
-        : `Generated complete schedule for ${course.code}!`
-    );
+  async function runSmartAutoPlan() {
+    const ok = await confirmAutoPlanOverwrite(getCurrentPlan());
+    if (!ok) return false;
+    rescheduleWithUndo(getCurrentCourse(), getCurrentPlan(), null, { pickerMode: "auto" });
     return true;
   }
 
@@ -2029,7 +2399,7 @@ window.initUNEPlannerApp = function () {
 
         <div class="finder-card-meta">
           ${c.modes?.length ? `<span class="meta-chip">${esc(c.modes.join(" / "))}</span>` : ""}
-          ${validAtar ? `<span class="meta-chip">ATAR ${esc(validAtar)}</span>` : ""}
+          ${validAtar && !notOfferedLabel ? `<span class="meta-chip">ATAR ${esc(validAtar)}</span>` : ""}
           ${majorCount ? `<span class="meta-chip">${majorCount} Major${majorCount > 1 ? "s" : ""}</span>` : ""}
           ${minorCount ? `<span class="meta-chip">${minorCount} Minor${minorCount > 1 ? "s" : ""}</span>` : ""}
           ${c.studyPlanIds?.length ? `<span class="meta-chip">${c.studyPlanIds.length} Official Plan${c.studyPlanIds.length > 1 ? "s" : ""}</span>` : ""}
@@ -2125,8 +2495,13 @@ window.initUNEPlannerApp = function () {
       summaryPieces.push(activeAos.slice(0, 2).join(" + "));
     }
     summaryPieces.push(`T${plan.commencingTrimester} · ${plan.studyLoad} · ${plan.preferredMode}`);
+    const t3Preview = getT3Preview(course, plan);
+    const t3Key = getT3StatusKey(plan, t3Preview);
+    const t3Ta = getActiveT3Analysis(plan);
+    // Pill sits outside the truncated first span so the ellipsis never clips it.
     mobToggle.innerHTML = `
       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">⚙ Configure: ${esc(summaryPieces.join(" · "))}</span>
+      ${t3Key !== "off" ? `<span class="t3-status-pill is-${t3Key}">${esc(T3_PILL_LABELS[t3Key])}</span>` : ""}
       <span style="flex-shrink:0;margin-left:8px;color:var(--primary);">${state.mobileConfigOpen ? "Hide ▴" : "Edit ▾"}</span>
     `;
     mobToggle.onclick = () => {
@@ -2311,6 +2686,41 @@ window.initUNEPlannerApp = function () {
       }
     }
 
+    // Live T3 option annotations from Engine.previewT3Options (degrades to plain names if unavailable)
+    const t3OptionLabels = { ...T3_STRATEGY_NAMES };
+    const pvA = t3Preview?.accelerate;
+    const pvS = t3Preview?.spread;
+    if (t3Preview) {
+      if (t3Preview.stdFinishLabel) t3OptionLabels.none = `Off (T1 & T2) · ${t3Preview.stdFinishLabel}`;
+      if (pvS) t3OptionLabels.spread = pvS.feasible ? `Spread Load (3+3+2) · ${pvS.finishLabel}` : "Spread Load (3+3+2) · no fit";
+      if (pvA) {
+        t3OptionLabels.accelerate = pvA.feasible
+          ? `Fast-Track · ${pvA.trimestersSaved} tri earlier (${pvA.finishLabel})`
+          : "Fast-Track · bottlenecked";
+      }
+    }
+    let t3Hint = "";
+    if (t3Key === "off") {
+      t3Hint = pvA?.feasible
+        ? `Fast-Track could finish ${pvA.trimestersSaved} trimester${pvA.trimestersSaved === 1 ? "" : "s"} earlier.`
+        : pvS?.feasible
+        ? "3+3+2 could lighten your trimesters."
+        : "";
+    } else if (t3Key === "fasttrack") {
+      t3Hint = t3Ta
+        ? `Finishes ${t3Ta.accFinishLabel} (${t3Ta.trimestersSaved} tri earlier).`
+        : pvA?.feasible
+        ? `Run Auto-Plan: could finish ${pvA.finishLabel}.`
+        : "";
+    } else if (t3Key === "bottleneck") {
+      const chainTxt = chainCodesText(t3Ta || pvA);
+      t3Hint = `No earlier finish${chainTxt ? `: ${chainTxt}` : ""}.${pvS?.feasible ? " Try 3+3+2." : ""}`;
+    } else if (t3Key === "spread") {
+      t3Hint = t3Ta ? `${t3Ta.t3PlacedCount} unit${t3Ta.t3PlacedCount === 1 ? "" : "s"} in T3 · ${t3Ta.accFinishLabel}.` : pvS?.feasible ? `Run Auto-Plan: finishes ${pvS.finishLabel}.` : "";
+    } else if (t3Key === "spread-fallback") {
+      t3Hint = "No 3+3+2 fit · standard pacing.";
+    }
+
     // 4. Intake, Load, Mode & Honest T3 Strategy (clean 2x2 grid on mobile, inline flex on desktop)
     parts.push(`
       <div class="config-meta-grid">
@@ -2339,13 +2749,20 @@ window.initUNEPlannerApp = function () {
           </select>
         </div>
 
-        <div class="config-pair">
+        <div class="config-group t3-group is-${t3Key}" style="grid-column:1 / -1;">
           <span class="config-label" title="Standard T1/T2 vs Lighter 3+3+2 Load-Spreading vs Fast-Track Check">T3</span>
-          <select class="select-input" id="sel-t3-strategy">
-            <option value="none" ${!plan.t3Strategy || plan.t3Strategy === "none" ? "selected" : ""}>Off (T1 &amp; T2)</option>
-            <option value="spread" ${plan.t3Strategy === "spread" ? "selected" : ""}>Spread Load (3+3+2)</option>
-            <option value="accelerate" ${plan.t3Strategy === "accelerate" ? "selected" : ""}>Fast-Track (If Possible)</option>
+          <select class="select-input" id="sel-t3-strategy" aria-describedby="t3-ribbon-hint">
+            ${["none", "spread", "accelerate"]
+              .map(
+                (v) =>
+                  `<option value="${v}" ${(plan.t3Strategy || "none") === v ? "selected" : ""}>${esc(t3OptionLabels[v])}</option>`
+              )
+              .join("")}
           </select>
+          <button type="button" class="t3-status-pill is-${t3Key}" id="btn-t3-status-pill" style="font-family:inherit;cursor:pointer;" title="Show the T3 result on the board">${esc(
+            T3_PILL_LABELS[t3Key]
+          )}</button>
+          ${t3Hint ? `<span class="t3-ribbon-hint" id="t3-ribbon-hint">${esc(t3Hint)}</span>` : ""}
         </div>
       </div>
     `);
@@ -2434,49 +2851,58 @@ window.initUNEPlannerApp = function () {
       saveState();
       renderAll({ resetSidebarScroll: false });
     };
-    document.getElementById("sel-t3-strategy").onchange = (e) => {
-      const nextVal = e.target.value;
+    const t3Sel = document.getElementById("sel-t3-strategy");
+    t3Sel.onchange = async () => {
+      const nextVal = t3Sel.value;
       const prevVal = plan.t3Strategy || "none";
-      const existingCount = Engine.getPlannedPlacements(plan, DATA).length;
-      const stratNames = {
-        none: "Off (T1 & T2)",
-        spread: "Spread Load (3+3+2)",
-        accelerate: "Fast-Track (If Possible)",
-      };
+      if (nextVal === prevVal) return;
 
-      if (existingCount === 0) {
+      if (Engine.getPlannedPlacements(plan, DATA).length === 0) {
         plan.t3Strategy = nextVal;
         plan.includeT3InAuto = nextVal !== "none";
         plan.t3Analysis = null;
         exitSlotPicker();
         saveState();
         renderAll({ resetSidebarScroll: false });
+        if (nextVal !== "none") showToast(`T3 set to ${T3_STRATEGY_NAMES[nextVal]}. Click ✨ Auto-Plan to schedule it.`, { tone: "info" });
         return;
       }
 
-      // If the user has made edits (or legacy concrete units), confirm before overwriting and revert on cancel!
-      if (!confirmAutoPlanOverwrite(plan)) {
-        const sEl = document.getElementById("sel-t3-strategy");
-        if (sEl) sEl.value = prevVal;
-        if (e && e.target) e.target.value = prevVal;
+      // Apply only after the in-app confirm resolves true; on cancel revert visibly (never a silent snap-back).
+      t3Sel.disabled = true;
+      let ok = false;
+      try {
+        ok = await confirmAutoPlanOverwrite(plan, buildT3ConfirmOpts(nextVal, t3Preview));
+      } finally {
+        t3Sel.disabled = false;
+      }
+      if (!ok) {
+        t3Sel.value = prevVal;
+        showToast(`Kept T3 as ${T3_STRATEGY_NAMES[prevVal] || prevVal}. Your plan wasn't changed.`, { tone: "info" });
         return;
       }
-
-      plan.t3Strategy = nextVal;
-      plan.includeT3InAuto = nextVal !== "none";
-      const updated = Engine.autoSchedulePlan(course, plan, DATA);
-      updated.hasUserEdits = false;
-      state.savedPlansByCourse[course.code] = updated;
-      const openPh = findOpenPlaceholders(updated);
-      if (openPh.length > 0 && state.sidebarTab === "slot" && !isMobileViewport()) {
-        activateSlotPicker(openPh[0], false);
-      } else {
-        exitSlotPicker();
-      }
-      saveState();
-      renderAll({ resetSidebarScroll: false });
-      showToast(`Re-scheduled ${course.code} with T3 strategy: ${stratNames[nextVal] || nextVal}.`);
+      applyT3Strategy(course, plan, nextVal);
     };
+
+    const t3PillBtn = document.getElementById("btn-t3-status-pill");
+    if (t3PillBtn) {
+      t3PillBtn.onclick = () => {
+        if (state.t3BannerDismissedFor === course.code) {
+          state.t3BannerDismissedFor = null;
+          renderAll({ resetSidebarScroll: false });
+        }
+        const banner = document.querySelector("#board-area .t3-status-banner");
+        if (banner) {
+          if (isMobileViewport() && state.mobilePane !== "plan") {
+            state.mobilePane = "plan";
+            syncResponsiveClasses();
+          }
+          banner.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          document.getElementById("sel-t3-strategy")?.focus();
+        }
+      };
+    }
 
     const presetBar = document.getElementById("preset-bar");
     if (course.code === "BSC") {
@@ -2486,21 +2912,21 @@ window.initUNEPlannerApp = function () {
         ${BSC_PRESETS.map((p, i) => `<button class="preset-chip" data-preset="${i}">${esc(p.label)}</button>`).join("")}
       `;
       presetBar.querySelectorAll("[data-preset]").forEach((btn) => {
-        btn.onclick = () => {
-          if (!confirmAutoPlanOverwrite(plan)) return;
+        btn.onclick = async () => {
           const pr = BSC_PRESETS[parseInt(btn.dataset.preset, 10)];
-          plan.aosStructure = pr.structure;
-          plan.selectedMajors = [...pr.majors];
-          plan.selectedMinor = pr.minor;
-          const generated = Engine.autoSchedulePlan(course, plan, DATA);
-          generated.hasUserEdits = false;
-          state.savedPlansByCourse[course.code] = generated;
-          const openPh = findOpenPlaceholders(generated);
-          if (openPh.length > 0 && !isMobileViewport()) activateSlotPicker(openPh[0], !isTabletViewport());
-          else exitSlotPicker();
-          saveState();
-          renderAll({ resetSidebarScroll: true });
-          showToast(`Loaded BSc preset: ${pr.label}`);
+          if (!pr) return;
+          const ok = await confirmAutoPlanOverwrite(plan, { title: `Load preset “${pr.label}”?`, confirmLabel: "Load preset" });
+          if (!ok) return;
+          rescheduleWithUndo(
+            course,
+            plan,
+            (d) => {
+              d.aosStructure = pr.structure;
+              d.selectedMajors = [...pr.majors];
+              d.selectedMinor = pr.minor;
+            },
+            { pickerMode: "auto", lead: `Loaded BSc preset: ${pr.label}.` }
+          );
         };
       });
     } else {
@@ -3030,7 +3456,8 @@ window.initUNEPlannerApp = function () {
     if (slotSearchInp && slotEval) {
       const onSlotSearch = () => {
         state.slotQuery = slotSearchInp.value;
-        state.slotShowIneligible = null;
+        // Keep the user's Hide/Show choice while typing; only return to auto when the search is cleared.
+        if (!state.slotQuery.trim()) state.slotShowIneligible = null;
         state.slotEligLimit = 100;
         state.slotSwapLimit = 60;
         state.slotIneligLimit = 80;
@@ -3044,7 +3471,6 @@ window.initUNEPlannerApp = function () {
     if (slotLvlSel) {
       slotLvlSel.onchange = (e) => {
         state.slotLevelFilter = e.target.value;
-        state.slotShowIneligible = null;
         state.slotEligLimit = 100;
         state.slotSwapLimit = 60;
         state.slotIneligLimit = 80;
@@ -3064,7 +3490,6 @@ window.initUNEPlannerApp = function () {
     if (forceElecChk) {
       forceElecChk.onchange = (e) => {
         state.slotForceElectives = e.target.checked;
-        state.slotShowIneligible = null;
         state.slotEligLimit = 100;
         state.slotSwapLimit = 60;
         state.slotIneligLimit = 80;
@@ -3138,7 +3563,7 @@ window.initUNEPlannerApp = function () {
     if (searchInp) {
       const onCatSearch = () => {
         state.catalogQuery = searchInp.value;
-        state.catalogShowIneligible = null;
+        if (!state.catalogQuery.trim()) state.catalogShowIneligible = null;
         state.catEligLimit = 80;
         state.catIneligLimit = 60;
         refreshCatalogInPlace();
@@ -3543,8 +3968,186 @@ window.initUNEPlannerApp = function () {
   /* ==========================================================================
      5. TRIMESTER BOARD + MOBILE TRIMESTER FILTER
      ========================================================================== */
+  function renderT3BannerHtml(course, plan, preview) {
+    const ta = getActiveT3Analysis(plan);
+    if (!ta || state.t3BannerDismissedFor === course.code) return "";
+    const key = getT3StatusKey(plan, preview);
+    const spreadOk = Boolean(preview?.spread?.feasible);
+    const metric = (label, value, win) =>
+      `<span class="t3-metric${win ? " is-win" : ""}">${esc(label)} <strong>${esc(value)}</strong></span>`;
+    const n = ta.t3PlacedCount || 0;
+    let icon = "⚡";
+    let kicker = "";
+    let title = "";
+    let text = "";
+    let metrics = [];
+    let chainHtml = "";
+    let showSpreadCta = false;
+
+    if (ta.status === "accelerated") {
+      kicker = "T3 Fast-Track active";
+      title = `Finish ${ta.accFinishLabel}, ${ta.trimestersSaved} trimester${ta.trimestersSaved === 1 ? "" : "s"} earlier`;
+      text = "Auto-Plan used Trimester 3 to bring units forward. Check the T3 units (top stripe) for intensives and teaching dates.";
+      metrics = [
+        metric("Standard", ta.stdFinishLabel),
+        metric("Fast-Track", ta.accFinishLabel, true),
+        metric("In T3", `${n} unit${n === 1 ? "" : "s"}`),
+        metric("Peak", `${ta.peakTriCpActive} CP`),
+      ];
+      showSpreadCta = spreadOk;
+    } else if (ta.status === "bottlenecked") {
+      icon = "⛓";
+      kicker = "Fast-Track: no earlier finish";
+      title = `Stayed on standard pacing, finishing ${ta.stdFinishLabel}`;
+      text = `A prerequisite chain sets your earliest finish, and T3 can't shorten it.${
+        spreadOk ? ` 3+3+2 can still lighten your trimesters (peak ${preview.spread.peakTriCp} CP).` : ""
+      }`;
+      metrics = [metric("Finish", ta.stdFinishLabel)];
+      if (ta.totalMajorUnits > 0) metrics.push(metric("Major units in T3", `${ta.t3MajorUnits}/${ta.totalMajorUnits}`));
+      else if (ta.totalCourseUnits > 0) metrics.push(metric("Course units in T3", `${ta.t3CourseUnits ?? 0}/${ta.totalCourseUnits}`));
+      chainHtml = renderChainTrailHtml(ta.bottleneckChain, true);
+      showSpreadCta = spreadOk;
+    } else if (ta.status === "spread") {
+      icon = "⇄";
+      kicker = "T3 Load-Spread (3+3+2) active";
+      title = `${n} unit${n === 1 ? "" : "s"} moved into T3, finishing ${ta.accFinishLabel}`;
+      text = "Your main trimesters are lighter, with the same finish year.";
+      metrics = [
+        metric("Peak before", `${ta.peakTriCpStd} CP`),
+        metric("Peak now", `${ta.peakTriCpActive} CP`, ta.peakTriCpActive < ta.peakTriCpStd),
+        metric("Finish", ta.accFinishLabel),
+      ];
+    } else {
+      icon = "ℹ";
+      kicker = "3+3+2 not possible";
+      title = `Kept standard pacing, finishing ${ta.stdFinishLabel}`;
+      text = "No T3 spread fits within your standard finish year (too few of your units run in T3).";
+      metrics = [metric("Finish", ta.stdFinishLabel)];
+    }
+
+    return `
+      <div class="t3-status-banner is-${key}" role="status" aria-live="polite">
+        <span class="t3-banner-icon" aria-hidden="true">${icon}</span>
+        <div class="t3-banner-body">
+          <span class="t3-banner-kicker">${esc(kicker)}</span>
+          <p class="t3-banner-title">${esc(title)}</p>
+          <p class="t3-banner-text">${esc(text)}</p>
+          ${metrics.length ? `<div class="t3-banner-metrics">${metrics.join("")}</div>` : ""}
+          ${chainHtml}
+          <div class="t3-banner-actions">
+            ${showSpreadCta ? `<button type="button" class="t3-cta is-spread-cta" data-action="t3-switch-spread">⇄ Switch to 3+3+2</button>` : ""}
+            <button type="button" class="t3-cta-ghost" data-action="t3-off">Turn T3 off</button>
+          </div>
+        </div>
+        <button type="button" class="t3-banner-dismiss" aria-label="Dismiss">✕</button>
+      </div>
+    `;
+  }
+
+  let chainFocusTimer = null;
+  function focusChainUnit(code) {
+    const findCard = () =>
+      Array.from(document.querySelectorAll("#board-area .slot-card[data-unit-code]")).find((el) => el.dataset.unitCode === code);
+    let card = findCard();
+    if (isMobileViewport() && (state.mobilePane !== "plan" || (card && card.closest(".mobile-hidden-tri")) || (!card && state.mobileTriFilter !== "all"))) {
+      state.mobilePane = "plan";
+      state.mobileTriFilter = "all";
+      renderAll({ resetSidebarScroll: false });
+      card = findCard();
+    }
+    if (!card) {
+      openUnitModal(code);
+      return;
+    }
+    clearTimeout(chainFocusTimer);
+    document.querySelectorAll(".slot-card.is-chain-focus").forEach((el) => el.classList.remove("is-chain-focus"));
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("is-chain-focus");
+    chainFocusTimer = setTimeout(() => card.classList.remove("is-chain-focus"), 3300);
+  }
+
+  function parseFinishChrono(label) {
+    const m = /Year\s+(\d+)\s*·\s*T(\d)/.exec(String(label || ""));
+    return m ? (Number(m[1]) - 1) * 3 + Number(m[2]) - 1 : null;
+  }
+
+  function renderSummaryPillsHtml(course, plan, report, preview, openPhCount) {
+    let lastChrono = null;
+    let peak = 0;
+    let t3Units = 0;
+    (plan.years || []).forEach((yr, yIdx) => {
+      [1, 2, 3].forEach((t) => {
+        const slots = yr.trimesters?.[t] || [];
+        if (slots.length) lastChrono = yIdx * 3 + t - 1;
+        if (t === 3) t3Units += slots.length;
+        peak = Math.max(peak, report.trimesterLoads[`${yIdx}_${t}`]?.cp || 0);
+      });
+    });
+    const pill = (cls, label, valueHtml) =>
+      `<div class="summary-pill ${cls}"><span class="summary-pill-label">${esc(label)}</span><span class="summary-pill-value">${valueHtml}</span></div>`;
+    const pills = [];
+
+    if (lastChrono !== null) {
+      const yrObj = plan.years[Math.floor(lastChrono / 3)];
+      const finishTxt = `Year ${Math.floor(lastChrono / 3) + 1} · T${(lastChrono % 3) + 1}`;
+      const stdChrono = parseFinishChrono(getActiveT3Analysis(plan)?.stdFinishLabel || preview?.stdFinishLabel);
+      const delta = stdChrono === null ? 0 : lastChrono - stdChrono;
+      const deltaHtml = delta
+        ? ` <span class="summary-pill-delta${delta > 0 ? " is-later" : ""}">${Math.abs(delta)} tri ${delta > 0 ? "later" : "earlier"}</span>`
+        : "";
+      pills.push(pill("is-finish", `Finish (${getPlanYear(yrObj, Math.floor(lastChrono / 3))})`, `${esc(finishTxt)}${deltaHtml}`));
+    }
+
+    const maxLoad = plan.studyLoad === "Part-time" ? 12 : 24;
+    const peakCls = peak > maxLoad ? "is-heavy" : peak > 0 && peak <= maxLoad - 6 ? "is-light" : "";
+    pills.push(pill(`is-peak ${peakCls}`, "Peak trimester", `${peak} CP`));
+
+    if (report.isAwardReady) {
+      pills.push(pill("is-ready", "Status", "Award ready"));
+    } else if (report.unitErrorCount > 0 || report.resolved.incompatiblePairWarning) {
+      const nIss = report.unitErrorCount + (report.resolved.incompatiblePairWarning ? 1 : 0);
+      pills.push(pill("is-attention", "Status", `${nIss} issue${nIss === 1 ? "" : "s"}`));
+    } else {
+      pills.push(pill("is-progress", "Status", openPhCount ? `${openPhCount} open slot${openPhCount === 1 ? "" : "s"}` : `${report.totalPlannedCp}/${report.targetCp} CP`));
+    }
+
+    if ((plan.t3Strategy || "none") !== "none") {
+      const key = getT3StatusKey(plan, preview);
+      pills.push(pill("is-t3", `T3 · ${T3_PILL_LABELS[key]}`, `${t3Units} unit${t3Units === 1 ? "" : "s"} in T3`));
+    }
+    return `<div class="progress-summary-pills">${pills.join("")}</div>`;
+  }
+
+  const BOARD_NOTE_TYPES = {
+    capstone_final_tri: "Final tri",
+    early_enrol_close: "Early close",
+    quota: "Quota",
+    gap_rule: "Gap rule",
+    clinical_wwcc: "WWCC",
+  };
+
+  function renderBoardNoteChips(u) {
+    const notes = Array.isArray(u?.planningNotes) ? u.planningNotes : [];
+    return notes
+      .filter((n) => n && typeof n === "object" && BOARD_NOTE_TYPES[n.type])
+      .slice(0, 2)
+      .map((n) => {
+        const sev = n.severity === "err" ? "err" : n.severity === "warn" ? "warn" : "info";
+        const tip = [n.label, n.detail].filter(Boolean).join(" — ");
+        return `<span class="planning-note-chip ${sev}" style="padding:1px 6px;font-size:10px;" title="${esc(tip)}">${
+          sev === "info" ? "ℹ" : "⚠"
+        } ${esc(BOARD_NOTE_TYPES[n.type])}</span>`;
+      })
+      .join("");
+  }
+
   function renderBoard(course, plan, report) {
     const board = document.getElementById("board-area");
+    const t3Preview = getT3Preview(course, plan);
+    const t3Strat = plan.t3Strategy || "none";
+    const t3Key = getT3StatusKey(plan, t3Preview);
+    const t3Ta = getActiveT3Analysis(plan);
+    const t3PlacedByAuto = Boolean(t3Ta && (t3Ta.status === "accelerated" || t3Ta.status === "spread"));
     const { buckets, attributedBucketByCode } = report.resolved;
     const bucketMap = Object.fromEntries(buckets.map((b) => [b.id, b]));
     const openPlaceholders = findOpenPlaceholders(plan);
@@ -3599,6 +4202,8 @@ window.initUNEPlannerApp = function () {
           <div class="progress-seg" style="width:${pctPh}%;background:var(--border-strong);"></div>
         </div>
 
+        ${renderSummaryPillsHtml(course, plan, report, t3Preview, openPlaceholders.length)}
+
         <div class="rules-pills-row">
           ${levelRulesHtml}
           <span class="rule-check-pill">
@@ -3615,18 +4220,22 @@ window.initUNEPlannerApp = function () {
             ? `<div class="diagnostics-box">
                 ${allDiagnostics
                   .map(
-                    (iss) => `
-                  <div class="diag-item ${iss.severity}">
+                    (iss) => {
+                      const isT3 = Boolean(iss.actionT3Spread) || /(^|\s)T3 (Fast-Track|Load-Spread)/.test(String(iss.text || ""));
+                      const t3Cls = isT3 ? ` t3${iss.actionT3Spread ? " is-bottleneck" : ""}` : "";
+                      return `
+                  <div class="diag-item ${iss.severity}${t3Cls}">
                     <span>${iss.severity === "error" ? "⛔" : iss.severity === "warning" ? "⚠️" : "ℹ️"} ${esc(iss.text)}</span>
                     ${
                       iss.actionUnit && !isUnitPlanned(iss.actionUnit, plan)
                         ? `<button class="btn btn-sm" data-add-unit="${esc(iss.actionUnit)}" data-add-smart="1">+ Add ${esc(iss.actionUnit)}</button>`
-                        : iss.actionT3Spread
-                        ? `<button class="btn btn-sm btn-soft" id="btn-switch-t3-spread">🌿 Use Spread Load (3+3+2)</button>`
+                        : iss.actionT3Spread && t3Preview?.spread?.feasible !== false
+                        ? `<button class="btn btn-sm btn-soft" data-action="t3-switch-spread">⇄ Switch to 3+3+2</button>`
                         : ""
                     }
                   </div>
-                `
+                `;
+                    }
                   )
                   .join("")}
               </div>`
@@ -3737,13 +4346,28 @@ window.initUNEPlannerApp = function () {
                     }
                   }
 
+                  // T3 rhythm: Off stays droppable (just hatched); active strategies get a tinted header
+                  let t3ColCls = "";
+                  let t3TagHtml = "";
+                  if (tNum === 3) {
+                    t3ColCls =
+                      t3Strat === "none"
+                        ? `is-t3 t3-off${slots.length === 0 ? " is-empty" : ""}`
+                        : t3Strat === "accelerate"
+                        ? "is-t3 t3-active-fast"
+                        : "is-t3 t3-active-spread";
+                    t3TagHtml = `<span class="tri-t3-tag is-${t3Key}">${esc(t3Key === "off" ? "Optional" : T3_PILL_LABELS[t3Key])}</span>`;
+                  }
+                  const loadCls = isOverloaded ? "overload" : effCp >= maxTriLoad ? "is-full" : tLoad.cp > 0 ? "is-light" : "";
+
                   return `
-                    <div class="tri-col ${isTarget ? "target-active" : ""} ${mobHidden ? "mobile-hidden-tri" : ""}"
+                    <div class="tri-col ${t3ColCls} ${isTarget ? "target-active" : ""} ${mobHidden ? "mobile-hidden-tri" : ""}"
                          data-drop-year="${yIdx}"
                          data-drop-tri="${tNum}">
                       <div class="tri-col-header">
                         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                           <span class="tri-name">Trimester ${tNum}</span>
+                          ${t3TagHtml}
                           ${intensivePillHtml}
                           ${
                             hasConfirmedDateClash
@@ -3765,14 +4389,16 @@ window.initUNEPlannerApp = function () {
                               : ""
                           }
                         </div>
-                        <span class="tri-load-badge ${isOverloaded ? "overload" : ""}" title="${esc(loadTip)}">${tLoad.cp} CP</span>
+                        <span class="tri-load-badge ${loadCls}" title="${esc(loadTip)}">${tLoad.cp} CP</span>
                       </div>
                       <div class="tri-slots">
                         ${slots
-                          .map((slot) => renderBoardSlot(slot, yIdx, tNum, plan, report, bucketMap, attributedBucketByCode))
+                          .map((slot) =>
+                            renderBoardSlot(slot, yIdx, tNum, plan, report, bucketMap, attributedBucketByCode, t3PlacedByAuto ? t3Ta.status : "")
+                          )
                           .join("")}
                         <div class="tri-empty-drop no-print" data-pick-target="${yIdx}_${tNum}">
-                          ${isTarget ? "🎯 Picking unit…" : "+ Tap to pick eligible unit"}
+                          ${isTarget ? "🎯 Picking unit…" : tNum === 3 && t3Strat === "none" && slots.length === 0 ? "+ Optional T3: tap or drop a unit" : "+ Tap to pick eligible unit"}
                         </div>
                       </div>
                     </div>
@@ -3792,7 +4418,7 @@ window.initUNEPlannerApp = function () {
       </div>
     `;
 
-    board.innerHTML = progressHtml + emptyWelcome + mobileTriBar + yearsHtml + footerControls;
+    board.innerHTML = renderT3BannerHtml(course, plan, t3Preview) + progressHtml + emptyWelcome + mobileTriBar + yearsHtml + footerControls;
 
     const jumpNextPh = document.getElementById("btn-jump-next-placeholder");
     if (jumpNextPh && openPlaceholders.length > 0) {
@@ -3802,26 +4428,22 @@ window.initUNEPlannerApp = function () {
       };
     }
 
-    const switchSpreadBtn = document.getElementById("btn-switch-t3-spread");
-    if (switchSpreadBtn) {
-      switchSpreadBtn.onclick = () => {
-        if (!confirmAutoPlanOverwrite(plan)) return;
-        plan.t3Strategy = "spread";
-        plan.includeT3InAuto = true;
-        const updated = Engine.autoSchedulePlan(course, plan, DATA);
-        updated.hasUserEdits = false;
-        state.savedPlansByCourse[course.code] = updated;
-        const openPh = findOpenPlaceholders(updated);
-        if (openPh.length > 0 && state.sidebarTab === "slot" && !isMobileViewport()) {
-          activateSlotPicker(openPh[0], false);
-        } else {
-          exitSlotPicker();
-        }
-        saveState();
-        renderAll({ resetSidebarScroll: false });
-        showToast("Switched T3 to Spread Load (lighter 18 CP trimesters where possible)!");
+    board.querySelectorAll('[data-action="t3-switch-spread"]').forEach((btn) => {
+      btn.onclick = () => confirmAndApplyT3Strategy("spread");
+    });
+    board.querySelectorAll('[data-action="t3-off"]').forEach((btn) => {
+      btn.onclick = () => confirmAndApplyT3Strategy("none");
+    });
+    const t3Dismiss = board.querySelector(".t3-banner-dismiss");
+    if (t3Dismiss) {
+      t3Dismiss.onclick = () => {
+        state.t3BannerDismissedFor = course.code;
+        t3Dismiss.closest(".t3-status-banner")?.remove();
       };
     }
+    board.querySelectorAll("[data-chain-unit]").forEach((btn) => {
+      btn.onclick = () => focusChainUnit(btn.dataset.chainUnit);
+    });
 
     const emptyAuto = document.getElementById("btn-empty-auto");
     if (emptyAuto) emptyAuto.onclick = runSmartAutoPlan;
@@ -3972,7 +4594,7 @@ window.initUNEPlannerApp = function () {
     elective: "Elective",
   };
 
-  function renderBoardSlot(slot, yIdx, tNum, plan, report, bucketMap, attributedBucketByCode) {
+  function renderBoardSlot(slot, yIdx, tNum, plan, report, bucketMap, attributedBucketByCode, t3AutoStatus) {
     if (slot.type === "placeholder") {
       const isSelected = state.targetSlot && state.targetSlot.replaceSlotId === slot.id;
       const phCat = inferPlaceholderCategory(slot);
@@ -4013,6 +4635,7 @@ window.initUNEPlannerApp = function () {
           <div class="slot-placeholder-head">
             <div class="slot-placeholder-badges">
               <span class="cat-tag cat-${phCat}">${esc(roleLabel)}</span>
+              <span class="slot-kind-tag is-open">Open</span>
               ${lvlChip}
               <span style="font-size:10.5px;font-weight:700;color:var(--text-subtle);">${esc(slot.cp ?? 6)} CP</span>
             </div>
@@ -4057,9 +4680,18 @@ window.initUNEPlannerApp = function () {
     const curFlatIdx = yIdx * 3 + (tNum - 1);
     const minFlatIdx = Math.max(0, (plan.commencingTrimester || 1) - 1);
     const disableMoveBack = curFlatIdx === 0 || curFlatIdx === minFlatIdx;
+    // Required = unit sits in a mandatory course/AOS bucket; anything else was a choice
+    const isMandatory = (bucketMap?.[bInfo.bucketId] || {}).poolKind === "mandatory";
+    const kindCls = isMandatory ? "is-mandatory" : "is-user-pick";
+    const kindTag = `<span class="slot-kind-tag ${kindCls}" title="${isMandatory ? "Required unit for your course / area of study" : "Chosen from a list or open elective pool"}">${
+      isMandatory ? "Required" : "Choice"
+    }</span>`;
+    const t3Cls = tNum === 3 && t3AutoStatus ? ` t3-moved${t3AutoStatus === "accelerated" ? " is-fasttrack" : ""}` : "";
 
     return `
-      <div class="slot-card cat-${cat} ${statusCls}" draggable="true" data-drag-board="${yIdx}|${tNum}|${esc(slot.id)}|${esc(slot.code)}">
+      <div class="slot-card cat-${cat} ${statusCls} ${kindCls}${t3Cls}" draggable="true" data-unit-code="${esc(slot.code)}" data-drag-board="${yIdx}|${tNum}|${esc(slot.id)}|${esc(slot.code)}"${
+        t3Cls ? ` title="Placed in T3 by ${t3AutoStatus === "accelerated" ? "Fast-Track" : "3+3+2 Load-Spread"}"` : ""
+      }>
         <div class="slot-top">
           <button class="unit-code-link" data-inspect-unit="${esc(slot.code)}">
             ${esc(slot.code)} <span style="font-weight:500;color:var(--text-subtle);">· ${esc(u ? (u.cp ?? 6) : (slot.cp ?? 6))} CP</span>
@@ -4074,7 +4706,9 @@ window.initUNEPlannerApp = function () {
         <div class="slot-footer">
           <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
             <span class="cat-tag cat-${cat}" title="${esc(bInfo.bucketTitle)}">${esc(bInfo.badgeRole)}</span>
+            ${kindTag}
             ${u?.yearLong ? `<span class="badge-mini badge-yearlong">Year-Long</span>` : ""}
+            ${renderBoardNoteChips(u)}
           </div>
           <div class="tri-pills">${u ? renderUnitTrimesterPills(u, tNum) : ""}</div>
         </div>
@@ -4965,8 +5599,9 @@ window.initUNEPlannerApp = function () {
       `,
       (modal) => {
         modal.querySelector("#btn-save-custom").onclick = () => {
-          const code = (modal.querySelector("#cust-code").value || "").trim().toUpperCase().replace(/\s+/g, "");
-          const title = (modal.querySelector("#cust-title").value || "").trim() || "General Elective Unit";
+          // '|' breaks the |-delimited drag-and-drop payloads, so strip it from code and title
+          const code = (modal.querySelector("#cust-code").value || "").trim().toUpperCase().replace(/[\s|]+/g, "");
+          const title = (modal.querySelector("#cust-title").value || "").replace(/\|/g, " ").replace(/\s+/g, " ").trim() || "General Elective Unit";
           const parsedCp = parseInt(modal.querySelector("#cust-cp").value, 10);
           const cp = Number.isFinite(parsedCp) && parsedCp >= 0 ? parsedCp : 6;
           const parsedLvl = parseInt(modal.querySelector("#cust-lvl").value, 10);
@@ -4976,7 +5611,7 @@ window.initUNEPlannerApp = function () {
             showToast("Unit code must be 2–20 letters/numbers (no '|' or special characters).");
             return;
           }
-          if (DATA.units[code]) {
+          if (Object.prototype.hasOwnProperty.call(DATA.units, code)) {
             showToast(`${code} is an official UNE unit — select it from the All Units tab instead.`);
             return;
           }
@@ -5090,7 +5725,18 @@ window.initUNEPlannerApp = function () {
           };
           reader.readAsText(file);
         };
-        modal.querySelector("#exp-reset").onclick = () => {
+        modal.querySelector("#exp-reset").onclick = async () => {
+          const current = getCurrentPlan();
+          const ok = await openConfirmModal({
+            tone: "danger",
+            icon: "🗑",
+            title: `Reset your ${course.code} plan?`,
+            sub: "This clears every unit, choice and custom unit for this course.",
+            bodyHtml: "<p>You can restore it with <strong>↶ Undo</strong> straight after.</p>",
+            confirmLabel: "Reset plan",
+          });
+          if (!ok) return;
+          const snap = takeUndoSnapshot(course, current);
           const blank = Engine.createDefaultPlan(course, DATA);
           blank.hasUserEdits = false;
           state.savedPlansByCourse[course.code] = blank;
@@ -5098,7 +5744,8 @@ window.initUNEPlannerApp = function () {
           saveState();
           closeModal();
           renderAll({ resetSidebarScroll: true });
-          showToast(`Reset ${course.code} plan.`);
+          state.undoSnapshot = snap;
+          showToast(`Reset ${course.code} plan.`, { tone: "warning", onUndo: snap ? restoreUndoSnapshot : null });
         };
       }
     );
@@ -5577,6 +6224,12 @@ window.initUNEPlannerApp = function () {
   // Global keyboard shortcuts: '/' focuses Course Finder search, 'Escape' closes modals or tablet drawer
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
+      // Priority: confirm modal -> standard modal -> tablet drawer -> active slot picker
+      if (activeConfirm) {
+        e.preventDefault();
+        activeConfirm.finish(false);
+        return;
+      }
       const mb = document.getElementById("modal-backdrop");
       if (mb && !mb.classList.contains("hidden")) {
         closeModal();
@@ -5585,6 +6238,11 @@ window.initUNEPlannerApp = function () {
       if (state.tabletDrawerOpen) {
         state.tabletDrawerOpen = false;
         syncResponsiveClasses();
+        return;
+      }
+      if (state.view === "planner" && state.targetSlot && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) {
+        exitSlotPicker();
+        renderAll({ resetSidebarScroll: false });
       }
     } else if (
       e.key === "/" &&

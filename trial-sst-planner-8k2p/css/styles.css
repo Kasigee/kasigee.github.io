@@ -3204,3 +3204,1258 @@ html.dark .badge-yearlong {
     border-color: #8c0c0c !important;
   }
 }
+
+/* ==========================================================================
+   v2027.8 — T3 STRATEGY UX OVERHAUL
+   Banner + bottleneck chain, ribbon T3 status, in-app confirm modal,
+   1-click undo toast, board T3 rhythm, progress summary pills, focus rings.
+   Modifier classes (.is-fasttrack / .is-spread / .is-spread-fallback /
+   .is-bottleneck / .is-off) only set --t3-* tokens; components consume them.
+   ========================================================================== */
+:root {
+  --t3-fast: #4d6b10;
+  --t3-fast-bg: #f3f9e4;
+  --t3-fast-border: #c5df8e;
+  --t3-fast-strong: #95c236;
+  --t3-hatch: rgba(0, 22, 61, 0.035);
+  --focus-ring: #2774ae;
+
+  /* Neutral defaults (no modifier) */
+  --t3-c: var(--text-muted);
+  --t3-bg: var(--surface-alt);
+  --t3-bd: var(--border);
+  --t3-stripe: var(--border-strong);
+}
+
+html.dark {
+  --t3-fast: #b5dc5c;
+  --t3-fast-bg: rgba(149, 194, 54, 0.15);
+  --t3-fast-border: rgba(149, 194, 54, 0.4);
+  --t3-fast-strong: #95c236;
+  --t3-hatch: rgba(255, 255, 255, 0.03);
+  --focus-ring: #95c236;
+}
+
+.is-off {
+  --t3-c: var(--text-subtle);
+  --t3-bg: var(--surface-alt);
+  --t3-bd: var(--border);
+  --t3-stripe: var(--border-strong);
+}
+
+.is-fasttrack {
+  --t3-c: var(--t3-fast);
+  --t3-bg: var(--t3-fast-bg);
+  --t3-bd: var(--t3-fast-border);
+  --t3-stripe: var(--t3-fast-strong);
+}
+
+.is-bottleneck {
+  --t3-c: var(--warn);
+  --t3-bg: var(--warn-bg);
+  --t3-bd: var(--warn-border);
+  --t3-stripe: var(--warn);
+}
+
+.is-spread {
+  --t3-c: var(--primary);
+  --t3-bg: var(--primary-soft);
+  --t3-bd: var(--primary-border);
+  --t3-stripe: var(--primary);
+}
+
+.is-spread-fallback {
+  --t3-c: var(--info);
+  --t3-bg: var(--info-bg);
+  --t3-bd: var(--info-border);
+  --t3-stripe: var(--info);
+}
+
+/* ---------- (1) T3 Strategy Status & Bottleneck Chain Banner ---------- */
+.t3-status-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "icon body dismiss";
+  align-items: start;
+  gap: 10px 14px;
+  padding: 13px 14px;
+  background: linear-gradient(100deg, var(--t3-bg) 0%, var(--surface) 72%);
+  border: 1px solid var(--t3-bd);
+  border-left: 5px solid var(--t3-stripe);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  animation: t3-banner-in 0.28s ease-out;
+}
+
+.t3-banner-icon {
+  grid-area: icon;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font-size: 18px;
+  line-height: 1;
+  background: var(--t3-bg);
+  border: 1px solid var(--t3-bd);
+  color: var(--t3-c);
+}
+
+.t3-banner-body {
+  grid-area: body;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.t3-banner-kicker {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--t3-c);
+}
+
+.t3-banner-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.t3-banner-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 82ch;
+}
+
+.t3-banner-metrics {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.t3-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.t3-metric strong {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.t3-metric.is-win {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok);
+}
+
+.t3-metric.is-win strong {
+  color: var(--ok);
+}
+
+.t3-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.t3-cta,
+.t3-cta-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.14s ease;
+}
+
+.t3-cta {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-fg);
+  box-shadow: var(--shadow-sm);
+}
+
+.t3-cta:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.t3-cta:active,
+.t3-cta-ghost:active {
+  transform: translateY(1px);
+}
+
+.t3-cta.is-spread-cta {
+  background: var(--une-lime);
+  border-color: var(--une-lime-dark);
+  color: #161c0a;
+}
+
+.t3-cta.is-spread-cta:hover {
+  background: #a5d243;
+  border-color: var(--une-lime-dark);
+}
+
+.t3-cta-ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.t3-cta-ghost:hover {
+  background: var(--surface-hover);
+  border-color: var(--text-subtle);
+}
+
+.t3-banner-dismiss {
+  grid-area: dismiss;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-subtle);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.t3-banner-dismiss:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* Bottleneck chain trail (<ol>) — also used inside .confirm-modal-body */
+.t3-chain-trail {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px dashed var(--t3-bd);
+  border-radius: var(--radius-md);
+}
+
+.t3-chain-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+  margin-right: 2px;
+}
+
+.t3-chain-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+}
+
+button.t3-chain-step,
+.t3-chain-step > button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.t3-chain-step > button {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+button.t3-chain-step:hover,
+.t3-chain-step:has(> button):hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.t3-chain-step > button:hover {
+  text-decoration: underline;
+}
+
+.t3-chain-step.is-done {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok);
+}
+
+.t3-chain-step.is-blocker {
+  background: var(--err-bg);
+  border-color: var(--err);
+  color: var(--err);
+  box-shadow: 0 0 0 2px var(--err-bg);
+}
+
+.t3-chain-step.is-target {
+  background: var(--t3-fast-bg);
+  border-color: var(--t3-fast-border);
+  color: var(--t3-fast);
+}
+
+.t3-chain-arrow {
+  color: var(--text-subtle);
+  font-size: 12px;
+  font-weight: 700;
+  user-select: none;
+}
+
+.t3-chain-note {
+  flex-basis: 100%;
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-subtle);
+}
+
+/* ---------- (2) Config Ribbon Live T3 Availability ---------- */
+.config-group.t3-group {
+  padding: 3px 4px 3px 9px;
+  background: var(--t3-bg);
+  border: 1px solid var(--t3-bd);
+  border-radius: var(--radius-md);
+  gap: 7px;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.t3-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px 2px 7px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--t3-bd);
+  color: var(--t3-c);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.t3-status-pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--t3-stripe);
+}
+
+.t3-status-pill.is-bottleneck::before {
+  animation: t3-dot-pulse 1.8s ease-in-out infinite;
+}
+
+.config-toggle-mobile {
+  gap: 8px;
+}
+
+#btn-mobile-config-toggle .t3-status-pill {
+  flex: none;
+  margin-left: 6px;
+  padding: 1px 7px 1px 6px;
+  font-size: 10.5px;
+}
+
+.seg-group.t3-seg .seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+
+.seg-group.t3-seg .seg-btn:not(.active):not([aria-disabled="true"]):hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.config-group.t3-group:not(.is-off) .seg-group.t3-seg .seg-btn.active {
+  color: var(--t3-c);
+  box-shadow: var(--shadow-sm), inset 0 -2px 0 var(--t3-stripe);
+}
+
+.seg-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.t3-option-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  border: 1px solid transparent;
+}
+
+.t3-option-badge.is-limited {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn);
+}
+
+.t3-option-badge.is-na {
+  background: var(--surface-hover);
+  border-color: var(--border);
+  color: var(--text-subtle);
+}
+
+.t3-ribbon-hint {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-subtle);
+  max-width: 38ch;
+}
+
+/* ---------- (3) In-App Confirmation Modal (above .modal-backdrop z 70) ---------- */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 14, 38, 0.62);
+  backdrop-filter: blur(3px);
+  overscroll-behavior: contain;
+  animation: confirm-fade 0.16s ease-out;
+}
+
+html.dark .confirm-overlay {
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.confirm-modal {
+  --t3-c: var(--primary);
+  --t3-bg: var(--primary-soft);
+  --t3-bd: var(--primary-border);
+  --t3-stripe: var(--une-lime);
+  width: 100%;
+  max-width: 480px;
+  max-height: min(86dvh, 680px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--t3-stripe);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: confirm-pop 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+
+/* Modifier tokens re-declared at modal specificity so they beat the defaults above */
+.confirm-modal.is-fasttrack {
+  --t3-c: var(--t3-fast);
+  --t3-bg: var(--t3-fast-bg);
+  --t3-bd: var(--t3-fast-border);
+  --t3-stripe: var(--t3-fast-strong);
+}
+
+.confirm-modal.is-spread {
+  --t3-c: var(--primary);
+  --t3-bg: var(--primary-soft);
+  --t3-bd: var(--primary-border);
+  --t3-stripe: var(--primary);
+}
+
+.confirm-modal.is-warning {
+  --t3-c: var(--warn);
+  --t3-bg: var(--warn-bg);
+  --t3-bd: var(--warn-border);
+  --t3-stripe: var(--warn);
+}
+
+.confirm-modal.is-danger {
+  --t3-c: var(--err);
+  --t3-bg: var(--err-bg);
+  --t3-bd: var(--err-border);
+  --t3-stripe: var(--err);
+}
+
+.confirm-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px 12px;
+}
+
+.confirm-modal-icon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  line-height: 1;
+  background: var(--t3-bg);
+  border: 1px solid var(--t3-bd);
+  color: var(--t3-c);
+}
+
+.confirm-modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.confirm-modal-sub {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.confirm-modal-body {
+  padding: 0 18px 14px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.confirm-modal-body p {
+  margin: 0;
+}
+
+.confirm-modal-body ul,
+.confirm-modal-body ol:not(.t3-chain-trail) {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.confirm-modal-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.confirm-modal-body .confirm-modal-check {
+  padding: 4px 0 0;
+  border-top: none;
+}
+
+.confirm-modal-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+
+.confirm-modal .btn-cancel,
+.confirm-modal .btn-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 15px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.14s ease, border-color 0.14s ease, filter 0.14s ease;
+}
+
+.confirm-modal .btn-cancel {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.confirm-modal .btn-cancel:hover {
+  background: var(--surface-hover);
+  border-color: var(--text-subtle);
+}
+
+.confirm-modal .btn-confirm {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-fg);
+  box-shadow: var(--shadow-sm);
+}
+
+.confirm-modal .btn-confirm:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.confirm-modal.is-fasttrack .btn-confirm {
+  background: var(--une-lime);
+  border-color: var(--une-lime-dark);
+  color: #161c0a;
+}
+
+.confirm-modal.is-warning .btn-confirm,
+.confirm-modal.is-danger .btn-confirm {
+  background: var(--t3-stripe);
+  border-color: var(--t3-stripe);
+  color: var(--surface);
+}
+
+.confirm-modal.is-fasttrack .btn-confirm:hover,
+.confirm-modal.is-warning .btn-confirm:hover,
+.confirm-modal.is-danger .btn-confirm:hover {
+  filter: brightness(1.08);
+}
+
+/* ---------- (4) 1-Click Undo Toast ---------- */
+.planner-toast.has-undo {
+  --toast-accent: var(--une-lime);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 9px 12px 15px;
+  overflow: hidden;
+  text-align: left;
+  pointer-events: auto;
+  box-shadow: var(--shadow-lg), inset 4px 0 0 var(--toast-accent);
+}
+
+.planner-toast.is-success { --toast-accent: #95c236; border-color: #95c236; }
+.planner-toast.is-warning { --toast-accent: #fbbf24; border-color: #fbbf24; }
+.planner-toast.is-info { --toast-accent: #60a5fa; border-color: #60a5fa; }
+
+.toast-msg {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.toast-undo-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--une-lime);
+  color: #161c0a;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.toast-undo-btn:hover {
+  background: #a5d243;
+}
+
+.toast-close-btn {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.toast-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.toast-countdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--toast-accent, var(--une-lime));
+  transform-origin: left center;
+  animation: toast-countdown var(--toast-ms, 6000ms) linear forwards;
+}
+
+/* ---------- (5) Board Visual Hierarchy & T3 Rhythm ---------- */
+.tri-col.is-t3.t3-off {
+  background-image: repeating-linear-gradient(135deg, transparent 0 10px, var(--t3-hatch) 10px 11px);
+}
+
+.tri-col.is-t3.t3-off .tri-col-header {
+  opacity: 0.72;
+}
+
+.tri-col.is-t3.t3-off.is-empty {
+  min-height: 112px;
+}
+
+.tri-col.is-t3.t3-off.is-empty .tri-empty-drop {
+  flex: 0 1 auto;
+  min-height: 46px;
+  border-color: var(--border);
+  background: transparent;
+  font-size: 11.5px;
+}
+
+.tri-col.is-t3.t3-off.is-empty .tri-empty-drop:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.tri-col.is-t3.t3-active-fast {
+  background-image: linear-gradient(180deg, var(--t3-fast-bg), transparent 64px);
+  box-shadow: inset 0 3px 0 var(--t3-fast-strong);
+}
+
+.tri-col.is-t3.t3-active-spread {
+  background-image: linear-gradient(180deg, var(--primary-soft), transparent 64px);
+  box-shadow: inset 0 3px 0 var(--primary);
+}
+
+/* Keep drag/target feedback authoritative over T3 tints (still droppable when Off) */
+.tri-col.is-t3:is(.drag-valid, .drag-invalid, .target-active) {
+  background-image: none;
+}
+
+.tri-col.is-t3:is(.drag-valid, .drag-invalid, .target-active) .tri-col-header {
+  opacity: 1;
+}
+
+.tri-col.is-t3.drag-valid { box-shadow: inset 0 0 0 2px var(--ok); }
+.tri-col.is-t3.drag-invalid { box-shadow: inset 0 0 0 2px var(--err); }
+.tri-col.is-t3.target-active { box-shadow: inset 0 0 0 2px var(--info); }
+
+.tri-t3-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--t3-bg);
+  border: 1px solid var(--t3-bd);
+  color: var(--t3-c);
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.tri-load-badge.is-light:not(.overload) {
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  border-style: dashed;
+  color: var(--info);
+}
+
+.tri-load-badge.is-full:not(.overload) {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok);
+}
+
+.slot-card.is-mandatory .unit-code-link::after {
+  content: "\1F512";
+  content: "\1F512" / "";
+  display: inline-block;
+  margin-left: 5px;
+  font-size: 9.5px;
+  vertical-align: 1px;
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+
+.slot-card.is-user-pick:not(.has-error):not(.has-warning) {
+  border-top-color: var(--primary-border);
+  border-right-color: var(--primary-border);
+  border-bottom-color: var(--primary-border);
+  background-image: linear-gradient(90deg, var(--primary-soft), transparent 55%);
+}
+
+.slot-card.t3-moved {
+  --t3-stripe: var(--primary);
+}
+
+.slot-card.t3-moved.is-fasttrack {
+  --t3-stripe: var(--t3-fast-strong);
+}
+
+.slot-card.t3-moved:not(.has-error) {
+  border-top: 2px solid var(--t3-stripe);
+}
+
+.slot-card.is-chain-focus {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--une-lime);
+  outline-offset: 2px;
+  scroll-margin: 96px 0 calc(var(--bottom-nav-h) + 24px);
+  animation: chain-focus-pulse 1.1s ease-out 3;
+}
+
+.slot-kind-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.slot-kind-tag.is-user-pick {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.slot-kind-tag.is-open {
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  border-style: dashed;
+  color: var(--info);
+}
+
+/* CSS-only "＋" affordance — do not add the glyph in markup */
+.slot-placeholder-label::before {
+  content: "\FF0B";
+  content: "\FF0B" / "";
+  display: inline-block;
+  margin-right: 4px;
+  color: var(--primary);
+  font-weight: 800;
+  opacity: 0.7;
+  transition: transform 0.18s ease, opacity 0.14s ease;
+}
+
+.slot-placeholder:hover .slot-placeholder-label::before,
+.slot-placeholder:focus-visible .slot-placeholder-label::before {
+  opacity: 1;
+  transform: rotate(90deg);
+}
+
+/* ---------- (6) Progress Card Summary Pills & Pinned T3 Diagnostics ---------- */
+.progress-summary-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.summary-pill {
+  --sp-c: var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 11px;
+  border-radius: var(--radius-md);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--sp-c);
+}
+
+.summary-pill-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-subtle);
+}
+
+.summary-pill-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-pill-delta {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ok);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-pill-delta.is-later {
+  color: var(--warn);
+}
+
+.summary-pill.is-finish { --sp-c: var(--primary); }
+.summary-pill.is-peak { --sp-c: var(--accent); }
+.summary-pill.is-peak.is-heavy { --sp-c: var(--warn); }
+.summary-pill.is-peak.is-light { --sp-c: var(--info); }
+.summary-pill.is-progress { --sp-c: var(--info); }
+.summary-pill.is-ready { --sp-c: var(--ok); background: var(--ok-bg); border-color: var(--ok-border); }
+.summary-pill.is-attention { --sp-c: var(--warn); background: var(--warn-bg); border-color: var(--warn-border); }
+.summary-pill.is-t3 { --sp-c: var(--t3-fast-strong); background: var(--t3-fast-bg); border-color: var(--t3-fast-border); }
+
+.summary-pill.is-peak.is-heavy .summary-pill-value,
+.summary-pill.is-attention .summary-pill-value { color: var(--warn); }
+.summary-pill.is-ready .summary-pill-value { color: var(--ok); }
+
+.diagnostics-box .diag-item.t3 {
+  order: -1;
+  border-left-width: 4px;
+  font-weight: 600;
+}
+
+.diagnostics-box .diag-item.t3.is-bottleneck {
+  box-shadow: 0 0 0 1px var(--warn-border);
+}
+
+/* ---------- (7) Keyboard Focus ---------- */
+:where(.t3-cta, .t3-cta-ghost, .t3-banner-dismiss, button.t3-chain-step, .t3-chain-step > button,
+  .seg-btn, .btn-cancel, .btn-confirm, .confirm-modal-check input, .toast-undo-btn,
+  .toast-close-btn, .unit-code-link, .slot-card, .slot-placeholder, .tri-empty-drop,
+  .btn, .config-toggle-mobile, .select-input, .text-input, .icon-action, .preset-chip):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.planner-toast :where(.toast-undo-btn, .toast-close-btn):focus-visible {
+  outline-color: #ffffff;
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes t3-banner-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes confirm-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confirm-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes toast-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@keyframes chain-focus-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(149, 194, 54, 0.7); }
+  100% { box-shadow: 0 0 0 12px rgba(149, 194, 54, 0); }
+}
+
+@keyframes t3-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t3-status-banner,
+  .confirm-overlay,
+  .confirm-modal,
+  .slot-card.is-chain-focus,
+  .t3-status-pill.is-bottleneck::before {
+    animation: none;
+  }
+
+  .slot-placeholder:hover .slot-placeholder-label::before {
+    transform: none;
+  }
+}
+
+/* ---------- Tablet (768–1099px) ---------- */
+@media screen and (min-width: 768px) and (max-width: 1099px) {
+  .t3-status-banner {
+    padding: 12px;
+    gap: 8px 12px;
+  }
+
+  .progress-summary-pills {
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  }
+
+  .t3-ribbon-hint {
+    max-width: 30ch;
+  }
+}
+
+/* ---------- Mobile (<768px) ---------- */
+@media screen and (max-width: 767px) {
+  .t3-status-banner {
+    gap: 8px 10px;
+    padding: 11px 10px 11px 11px;
+    border-left-width: 4px;
+  }
+
+  .t3-banner-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+  }
+
+  .t3-banner-title {
+    font-size: 14px;
+  }
+
+  .t3-cta,
+  .t3-cta-ghost {
+    flex: 1 1 auto;
+    min-height: 40px;
+  }
+
+  .t3-chain-trail {
+    padding: 7px 8px;
+    gap: 5px;
+  }
+
+  .t3-chain-step {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .config-group.t3-group {
+    padding: 8px 10px;
+  }
+
+  .seg-group.t3-seg {
+    flex: 1;
+  }
+
+  .seg-group.t3-seg .seg-btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 36px;
+  }
+
+  .t3-ribbon-hint {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .confirm-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .confirm-modal {
+    max-width: none;
+    max-height: 88dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  .confirm-modal-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .confirm-modal .btn-cancel,
+  .confirm-modal .btn-confirm {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .planner-toast.has-undo {
+    text-align: left;
+  }
+
+  .toast-undo-btn {
+    min-height: 36px;
+  }
+
+  .tri-col.is-t3.t3-off.is-empty {
+    min-height: 88px;
+  }
+
+  .progress-summary-pills {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .summary-pill {
+    padding: 7px 9px;
+  }
+
+  .summary-pill-value {
+    font-size: 14px;
+  }
+}
+
+/* ---------- Print ---------- */
+@media print {
+  :root,
+  html,
+  html.dark {
+    --t3-fast: #4d6b10;
+    --t3-fast-bg: #f3f9e4;
+    --t3-fast-border: #b5d47a;
+    --t3-fast-strong: #6f951f;
+    --t3-hatch: transparent;
+  }
+
+  .t3-banner-actions,
+  .t3-cta,
+  .t3-cta-ghost,
+  .t3-banner-dismiss,
+  .confirm-overlay,
+  .toast-undo-btn,
+  .toast-countdown {
+    display: none !important;
+  }
+
+  .t3-status-banner {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "icon body";
+    background: #ffffff !important;
+    border-color: #cfd6de !important;
+    border-left-color: var(--t3-stripe) !important;
+    box-shadow: none !important;
+    animation: none !important;
+    break-inside: avoid;
+    margin-bottom: 10px;
+  }
+
+  .t3-banner-icon,
+  .t3-chain-trail,
+  .t3-chain-step,
+  .t3-metric,
+  .summary-pill {
+    background: #ffffff !important;
+  }
+
+  .t3-chain-trail {
+    border: 1px solid #cfd6de !important;
+    break-inside: avoid;
+  }
+
+  .t3-chain-step.is-blocker {
+    border-width: 2px;
+    box-shadow: none;
+  }
+
+  .t3-status-pill.is-bottleneck::before {
+    animation: none;
+  }
+
+  .tri-col.is-t3 {
+    background-image: none !important;
+  }
+
+  .slot-card.is-chain-focus {
+    animation: none !important;
+    outline: none !important;
+  }
+
+  .slot-card.is-user-pick {
+    background-image: none !important;
+  }
+
+  .slot-placeholder-label::before {
+    content: none;
+  }
+
+  .summary-pill {
+    break-inside: avoid;
+  }
+}
