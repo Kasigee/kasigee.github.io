@@ -12,9 +12,15 @@ window.initUNEPlannerApp = function () {
   const THEME_KEY = "une_sst_theme";
   const FEEDBACK_LOG_KEY = "une_planner_feedback_log_v1";
   const FEEDBACK_REVIEWER_KEY = "une_planner_reviewer_v1";
+  const FEEDBACK_EMAIL_KEY = "une_planner_reviewer_email_v1";
 
   // Staff Testing Feedback Tracker Config (optional: paste a UNE Microsoft Forms / SharePoint tracker URL here!)
   const FEEDBACK_CONFIG = {
+    emailUser: "kasimirgregory",
+    emailDomain: "une.edu.au",
+    // After clicking FormSubmit's first activation email, Kasimir can paste the alias token here.
+    formSubmitAlias: "",
+    subjectPrefix: "[UNE Planner Bug]",
     formUrl: "",
     sharedDocLabel: "Shared Feedback Tracker",
   };
@@ -92,7 +98,11 @@ window.initUNEPlannerApp = function () {
     return null;
   }
 
+  // Keep session copies available for export when an embedded planner denies storage writes.
+  let memoryFeedbackLog = null;
+
   function loadFeedbackLog() {
+    if (memoryFeedbackLog) return memoryFeedbackLog.slice();
     try {
       const raw = safeLocalGet(FEEDBACK_LOG_KEY);
       if (!raw) return [];
@@ -105,7 +115,7 @@ window.initUNEPlannerApp = function () {
   }
 
   function saveFeedbackLog(list) {
-    safeLocalSet(FEEDBACK_LOG_KEY, JSON.stringify(Array.isArray(list) ? list : []));
+    memoryFeedbackLog = safeLocalSet(FEEDBACK_LOG_KEY, JSON.stringify(list)) ? null : list.slice();
   }
 
   const CAT_LABELS = {
@@ -1709,10 +1719,7 @@ window.initUNEPlannerApp = function () {
     hdr.innerHTML = `
       <div class="brand-group">
         <button class="une-brand-btn" id="btn-brand-home" title="Browse all ${DATA.meta.counts.courses} UNE 2027 Courses">
-          <div class="une-crest" aria-hidden="true">
-            <span class="une-crest-letters">une</span>
-            <span class="une-crest-bar"></span>
-          </div>
+          <img class="une-logo-img" src="assets/une-logo.png?v=2027.10" alt="University of New England" width="46" height="46" />
           <div class="une-brand-text">
             <span class="une-brand-name">University of New England</span>
             <span class="une-brand-sub">2027 Course &amp; Unit Planner</span>
@@ -5922,9 +5929,67 @@ window.initUNEPlannerApp = function () {
     }
   }
 
-  function openBugReportModal(prefillUnitCode, preservedDraft) {
+  const feedbackRecipient = `${FEEDBACK_CONFIG.emailUser}@${FEEDBACK_CONFIG.emailDomain}`;
+  let feedbackSequence = 0;
+  let feedbackSending = false;
+  function feedbackId() {
+    return window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}-${++feedbackSequence}`;
+  }
+
+  function storeFeedbackItem(item) {
+    const log = loadFeedbackLog();
+    const index = log.findIndex(entry => entry.id === item.id);
+    if (index < 0) log.unshift(item);
+    else log[index] = item;
+    saveFeedbackLog(log);
+    return log.length;
+  }
+
+  function feedbackMailto(subject, body) {
+    // Clip whole Unicode characters, accounting for their actual URL-encoded lengths.
+    function encodeWithin(value, budget) {
+      let encoded = "";
+      for (const ch of value) {
+        const part = encodeURIComponent(/^[\uD800-\uDFFF]$/.test(ch) ? "\uFFFD" : ch);
+        if (encoded.length + part.length > budget - 3) return encoded + "...";
+        encoded += part;
+      }
+      return encoded;
+    }
+    const prefix = `mailto:${feedbackRecipient}?subject=${encodeWithin(subject.replace(/[\r\n]+/g, " "), 350)}&body=`;
+    return prefix + encodeWithin(body, 1800 - prefix.length);
+  }
+
+  async function postFeedback(subject, fields, replyTo) {
+    if (window.location.protocol === "file:") return "offline";
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(`https://formsubmit.co/ajax/${FEEDBACK_CONFIG.formSubmitAlias || feedbackRecipient}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          _subject: subject, _template: "table", _captcha: "false", _honey: "",
+          ...(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo) ? { _replyto: replyTo } : {}),
+          ...fields,
+        }),
+      });
+      const data = await response.json();
+      if (/activat|confirm|verif/i.test(data?.message || "")) return "activation";
+      return response.ok && data && typeof data === "object" && data.success !== false && data.success !== "false"
+        ? "sent" : "offline";
+    } catch (_) {
+      return "offline";
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  function openBugReportModal(prefillUnitCode, preservedDraft, delivery) {
     const ctx = capturePlannerContext();
     const savedReviewer = preservedDraft?.reviewer !== undefined ? preservedDraft.reviewer : (safeLocalGet(FEEDBACK_REVIEWER_KEY) || "");
+    const savedEmail = preservedDraft?.email ?? safeLocalGet(FEEDBACK_EMAIL_KEY) ?? "";
     const savedCat = preservedDraft?.category || (ctx.view === "finder" ? "Mobile / Tablet / Search glitch" : "Prerequisite / Co-requisite error");
     const unitInit =
       preservedDraft?.units !== undefined
@@ -5934,6 +5999,7 @@ window.initUNEPlannerApp = function () {
         : "";
     const descInit = preservedDraft?.description || "";
     const log = loadFeedbackLog();
+    const unsentCount = log.filter(item => !item.sent).length;
 
     // Canonical 12-column schema matching dist/UNE_2027_Planner_Bug_Tracker_Template.csv
     const TRACKER_HEADERS = [
@@ -5985,6 +6051,7 @@ window.initUNEPlannerApp = function () {
         `UNE 2027 Course Planner — Tester Bug / Feedback Report`,
         `Date: ${item.timestamp}`,
         `Reviewer: ${item.reviewer || "Anonymous Staff"}`,
+        ...(item.email ? [`Reviewer email: ${item.email}`] : []),
         `Context: ${courseLine}`,
         `Category: ${item.category}`,
         `Unit(s): ${item.units || "N/A"}`,
@@ -5994,6 +6061,7 @@ window.initUNEPlannerApp = function () {
         `Diagnostics: ${item.diagnosticsSummary}`,
         `Viewport: ${item.viewport}`,
         `Link: ${item.directUrl}`,
+        ...(item.appVersion ? [`App version: ${item.appVersion}`] : []),
       ].join("\n");
     }
 
@@ -6027,6 +6095,7 @@ window.initUNEPlannerApp = function () {
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
               <span class="config-label">Your Testing Session Log (${log.length} item${log.length === 1 ? "" : "s"})</span>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-soft" id="btn-bug-send-log" type="button">Email ${unsentCount ? "Unsent" : "All"} (${unsentCount || log.length})</button>
                 <button class="btn btn-sm btn-primary" id="btn-bug-copy-tsv" type="button" title="Copies 12-column data rows (no duplicate header) matching the Tracker Template — paste into Row 2+">📊 Copy Rows (12-Col Template)</button>
                 <button class="btn btn-sm btn-soft" id="btn-bug-dl-csv" type="button">⬇ Download CSV</button>
                 <button class="btn btn-sm" id="btn-bug-clear-log" type="button" style="color:var(--err);">Clear Log</button>
@@ -6041,7 +6110,7 @@ window.initUNEPlannerApp = function () {
                       <span><strong>${esc(it.courseCode)}</strong> · <span style="color:var(--primary);font-weight:700;">${esc(it.category)}</span>${it.units ? ` · <code>${esc(it.units)}</code>` : ""}</span>
                       <button class="icon-action remove" data-del-bug="${idx}" type="button" title="Delete entry">✕</button>
                     </div>
-                    <div style="color:var(--text-muted);">${esc(it.description)}</div>
+                    <div style="color:var(--text-muted);"><small>${it.sent ? "Sent" : "Local"}</small> · ${esc(it.description)}</div>
                   </div>
                 `
                 )
@@ -6055,29 +6124,32 @@ window.initUNEPlannerApp = function () {
 
     openModal(
       `<div style="font-weight:800;font-size:15.5px;">🐞 Report a Bug or Rule Issue (DC / CC Testing)</div>
-       <div style="font-size:12px;color:var(--text-subtle);">Log multiple issues as you test — auto-captures course, filters, rules, and schedule in the exact 12-column Bug Tracker schema.</div>`,
+       <div style="font-size:12px;color:var(--text-subtle);">Sent reports go straight to Kasimir’s UNE inbox with ${esc(FEEDBACK_CONFIG.subjectPrefix)} in the subject line.</div>`,
       `
         <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:11.5px;color:var(--text-muted);">
           <div><strong>Auto-captured context:</strong> <span class="course-code-pill teal" style="font-size:10.5px;padding:1px 6px;">${esc(ctx.courseCode)}</span> ${esc(ctx.courseTitle)} · ${esc(ctx.viewport)}</div>
           <div style="margin-top:3px;color:var(--text-subtle);word-break:break-word;">${esc(ctx.configSummary)}</div>
         </div>
 
-        <div class="form-grid-2">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:10px;">
           <div>
-            <label class="config-label">Your Name / Discipline</label>
+            <label class="config-label" for="bug-reviewer">Your Name / Discipline</label>
             <input type="text" class="text-input" id="bug-reviewer" placeholder="e.g. Robert (Exercise Science)" value="${esc(savedReviewer)}" style="width:100%;margin-top:4px;" />
           </div>
           <div>
-            <label class="config-label">Issue Category</label>
+            <label class="config-label" for="bug-email">Your Email (optional, for reply)</label>
+            <input type="email" class="text-input" id="bug-email" placeholder="e.g. name@une.edu.au" value="${esc(savedEmail)}" style="width:100%;margin-top:4px;" />
+          </div>
+          <div>
+            <label class="config-label" for="bug-category">Issue Category</label>
             <select class="select-input" id="bug-category" style="width:100%;margin-top:4px;">
               ${categories.map((catOpt) => `<option value="${esc(catOpt)}" ${savedCat === catOpt ? "selected" : ""}>${esc(catOpt)}</option>`).join("")}
             </select>
           </div>
-        </div>
-
-        <div>
-          <label class="config-label">Unit Code(s) Involved (optional)</label>
-          <input type="text" class="text-input" id="bug-units" placeholder="e.g. EXSC390, EXSC260, EXSC370" value="${esc(unitInit)}" style="width:100%;margin-top:4px;text-transform:uppercase;" />
+          <div>
+            <label class="config-label" for="bug-units">Unit Code(s) Involved (optional)</label>
+            <input type="text" class="text-input" id="bug-units" placeholder="e.g. EXSC390, EXSC260, EXSC370" value="${esc(unitInit)}" style="width:100%;margin-top:4px;text-transform:uppercase;" />
+          </div>
         </div>
 
         <div>
@@ -6087,7 +6159,8 @@ window.initUNEPlannerApp = function () {
 
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
           <div style="display:flex;gap:7px;flex-wrap:wrap;">
-            <button class="btn btn-primary" id="btn-bug-save-log" type="button">+ Add to Session Log</button>
+            <button class="btn btn-primary" id="btn-bug-send-now" type="button">Send Report Now</button>
+            <button class="btn btn-soft" id="btn-bug-save-log" type="button">+ Add to Session Log</button>
             <button class="btn btn-soft" id="btn-bug-copy-one" type="button">📋 Copy Single Report</button>
           </div>
           ${
@@ -6097,11 +6170,21 @@ window.initUNEPlannerApp = function () {
           }
         </div>
 
+        ${delivery ? `<div role="status" style="padding:10px;border:1px solid var(--border);border-left:4px solid ${delivery.result === "sent" ? "var(--primary)" : "#b7791f"};border-radius:6px;background:var(--surface-alt);">
+          ${esc(delivery.message)}
+          ${delivery.result !== "sent" ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+            <a class="btn btn-soft" href="${esc(feedbackMailto(delivery.subject, delivery.body))}">Open in Email (mailto:)</a>
+            <button class="btn btn-soft" type="button" id="bug-fallback-copy">Copy Report</button>
+            ${delivery.result === "offline" && delivery.item ? '<button class="btn btn-soft" type="button" id="bug-fallback-save">+ Save to Session Log</button>' : ""}
+          </div>` : ""}
+        </div>` : ""}
         ${logHtml}
       `,
       (modal) => {
         function readCurrentDraft() {
           return {
+            id: preservedDraft?.id,
+            email: modal.querySelector("#bug-email").value.trim(),
             reviewer: modal.querySelector("#bug-reviewer").value || "",
             category: modal.querySelector("#bug-category").value,
             units: modal.querySelector("#bug-units").value || "",
@@ -6115,15 +6198,18 @@ window.initUNEPlannerApp = function () {
           const category = d.category;
           const units = d.units.trim().toUpperCase();
           const description = d.description.trim();
-          if (reviewer) {
-            safeLocalSet(FEEDBACK_REVIEWER_KEY, reviewer);
-          }
+          safeLocalSet(FEEDBACK_REVIEWER_KEY, reviewer);
+          safeLocalSet(FEEDBACK_EMAIL_KEY, d.email);
           if (!description) {
             showToast("Please describe what happened first.");
             return null;
           }
           return {
             timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+            id: d.id || feedbackId(),
+            email: d.email,
+            sent: false,
+            appVersion: "v2027.10",
             reviewer: reviewer || "Staff Tester",
             category,
             units,
@@ -6137,12 +6223,94 @@ window.initUNEPlannerApp = function () {
         modal.querySelector("#btn-bug-save-log").onclick = () => {
           const item = buildDraftItem();
           if (!item) return;
-          const next = [item, ...loadFeedbackLog()];
-          saveFeedbackLog(next);
+          const count = storeFeedbackItem(item);
           renderHeader(getCurrentCourse(), getCurrentPlan());
-          showToast(`Saved to Testing Log (${next.length} item${next.length === 1 ? "" : "s"})!`);
-          openBugReportModal("");
+          showToast(`Saved to Testing Log (${count} item${count === 1 ? "" : "s"})!`);
+          openBugReportModal("", { reviewer: readCurrentDraft().reviewer, email: item.email });
         };
+
+        const singleButton = modal.querySelector("#btn-bug-send-now");
+        const batchButton = modal.querySelector("#btn-bug-send-log");
+        const fallbackCopy = modal.querySelector("#bug-fallback-copy");
+        if (fallbackCopy) fallbackCopy.onclick = () => copyTextToClipboard(delivery.body, "Copied the full report.");
+        const fallbackSave = modal.querySelector("#bug-fallback-save");
+        if (fallbackSave) fallbackSave.onclick = modal.querySelector("#btn-bug-save-log").onclick;
+
+        async function sendReports(batch) {
+          if (feedbackSending) {
+            showToast("A report is already sending.");
+            return;
+          }
+          const draft = readCurrentDraft();
+          let items;
+          let subject;
+          let fields;
+          if (batch) {
+            // Older logs predate IDs. Assign them before sending so later edits or deletions are respected.
+            const log = loadFeedbackLog().map(entry => entry.id ? entry : { ...entry, id: feedbackId() });
+            if (!log.length) return;
+            saveFeedbackLog(log);
+            const unsent = log.filter(entry => !entry.sent);
+            items = unsent.length ? unsent : log;
+            const reviewer = draft.reviewer.trim() || items[0].reviewer || "Staff Tester";
+            subject = `${FEEDBACK_CONFIG.subjectPrefix} Batch (${items.length} items) · ${reviewer}`;
+            fields = { Reviewer: reviewer, Reports: items.map(buildSingleText).join("\n\n") };
+          } else {
+            const item = buildDraftItem();
+            if (!item) return;
+            // Store before the request so closing the dialog or tab during delivery retains the report.
+            storeFeedbackItem(item);
+            draft.id = item.id;
+            items = [item];
+            subject = `${FEEDBACK_CONFIG.subjectPrefix} ${item.courseCode} · ${item.category}${item.units ? ` (${item.units})` : ""}`;
+            fields = {
+              Timestamp: item.timestamp, Reviewer: item.reviewer, Reviewer_Email: item.email,
+              Course: itemToTrackerRow(item)[2], School: item.school, Category: item.category,
+              Units: item.units, Issue: item.description, Active_Config: item.configSummary,
+              Board_Snapshot: item.boardSnapshot, Diagnostics: item.diagnosticsSummary,
+              Viewport: item.viewport, Direct_Link: item.directUrl, App_Version: item.appVersion,
+            };
+          }
+          const button = batch ? batchButton : singleButton;
+          const controls = modal.querySelectorAll(".modal-body button, .modal-body input, .modal-body select, .modal-body textarea");
+          const originalLabel = button.textContent;
+          button.textContent = "Sending…";
+          controls.forEach(control => { control.disabled = true; });
+          feedbackSending = true;
+          let result;
+          try {
+            result = await postFeedback(subject, fields, draft.email);
+          } catch (_) {
+            result = "offline";
+          } finally {
+            feedbackSending = false;
+            controls.forEach(control => { control.disabled = false; });
+            button.textContent = originalLabel;
+          }
+          let message;
+          if (result === "sent") {
+            const ids = new Set(items.map(item => item.id));
+            const sentAt = new Date().toISOString();
+            saveFeedbackLog(loadFeedbackLog().map(entry => ids.has(entry.id) ? { ...entry, sent: true, sentAt } : entry));
+            message = batch ? `Emailed ${items.length} logged report(s).` : "Report emailed — copy saved in your session log.";
+            if (!batch) Object.assign(draft, { id: undefined, units: "", description: "" });
+          } else {
+            message = result === "activation"
+              ? "FormSubmit sent a one-time activation email to Kasimir’s inbox. Once Kasimir clicks Activate, direct sends will work. Your report is saved in the session log."
+              : "Direct send couldn't connect. A local file, network restriction or timeout can cause this. Your report is in the session log. Open an email draft or copy the full report.";
+          }
+          renderHeader(getCurrentCourse(), getCurrentPlan());
+          showToast(message);
+          // Never reopen a dialog the reviewer has closed, or replace another dialog.
+          if (button.isConnected && !modal.classList.contains("hidden")) {
+            openBugReportModal("", draft, {
+              result, message, subject, body: items.map(buildSingleText).join("\n\n"), item: batch ? null : items[0],
+            });
+          }
+        }
+
+        singleButton.onclick = () => sendReports(false);
+        if (batchButton) batchButton.onclick = () => sendReports(true);
 
         modal.querySelector("#btn-bug-copy-one").onclick = () => {
           const item = buildDraftItem();

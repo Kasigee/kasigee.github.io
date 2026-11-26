@@ -13,9 +13,10 @@
 
 :root {
   /* Core UNE Light Palette */
+  --une-black: #040707;
   --une-charcoal: #272525;
   --une-charcoal-2: #333131;
-  --une-lime: #95c236;
+  --une-lime: #96c03d;
   --une-lime-dark: #6f951f;
   --une-teal: #1d7880;
   --une-teal-hover: #155c62;
@@ -164,7 +165,7 @@ button, select, input {
    TRIAL PROTOTYPE BANNER
    ========================================================================== */
 .trial-banner {
-  background: #1a1919;
+  background: #121414;
   color: #e6eaee;
   font-size: 12px;
   padding: 6px 18px;
@@ -205,10 +206,10 @@ button, select, input {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: var(--une-charcoal);
+  background: var(--une-black);
   color: #ffffff;
   border-bottom: 3px solid var(--une-lime);
-  padding: 8px 18px;
+  padding: 6px 18px;
   min-height: var(--header-h);
   display: flex;
   align-items: center;
@@ -225,48 +226,27 @@ button, select, input {
   flex: 1;
 }
 
-/* UNE Geometric Brand Lockup (Charcoal square + Signature Lime lowercase mark) */
+/* Official UNE Brand Lockup (flush on official UNE black header, no distortion or artificial border) */
 .une-brand-btn {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 11px;
   background: transparent;
   border: none;
-  padding: 2px 4px 2px 0;
+  padding: 0 4px 0 0;
   color: #ffffff;
   cursor: pointer;
   flex-shrink: 0;
   text-align: left;
 }
 
-.une-crest {
-  width: 38px;
-  height: 38px;
-  border-radius: 7px;
-  background: #171616;
-  border: 1.5px solid rgba(149, 194, 54, 0.55);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+.une-logo-img {
+  display: block;
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  border-radius: 0;
   flex-shrink: 0;
-}
-
-.une-crest-letters {
-  color: var(--une-lime);
-  font-weight: 900;
-  font-size: 15px;
-  letter-spacing: -0.05em;
-  text-transform: lowercase;
-}
-
-.une-crest-bar {
-  width: 22px;
-  height: 2px;
-  background: var(--une-lime);
-  border-radius: 2px;
-  margin-top: 2px;
 }
 
 .une-brand-text {
@@ -2667,8 +2647,13 @@ html.dark .badge-yearlong {
   }
 
   .app-header {
-    padding: 6px 12px;
+    padding: 5px 12px;
     gap: 8px;
+  }
+
+  .une-logo-img {
+    width: 40px;
+    height: 40px;
   }
 
   .une-brand-text,
